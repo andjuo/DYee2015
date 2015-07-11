@@ -1,0 +1,10 @@
+*~
+#*
+*.root
+*.d
+*.so
+*.pyc
+__init__.py
+
+# do not track directories
+
