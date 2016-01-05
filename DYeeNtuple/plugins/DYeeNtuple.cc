@@ -35,6 +35,8 @@
 
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
 //#include "DataFormats/JetReco/interface/GenJetCollection.h"
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 //#include "DataFormats/METReco/interface/METCollection.h"
@@ -55,17 +57,31 @@
 //#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 //#include "DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h"
 
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+
+#ifndef DYee8TeV_reg
+#define DYee8TeV_reg
+#endif
+
 //#include "DYee/Analysis/Include/TDielectron.hh"
 #include "DYee/Analysis/Include/TElectron.hh"
 #include "DYee/Analysis/Include/TEventInfo.hh"
+//#include "DYee/DYeeNtuple/Include/TElectron.hh"
+//#include "DYee/DYeeNtuple/Include/TEventInfo.hh"
+//#include "DYee/Analysis/Include/TElectron.hh"
+//#include "DYee/Analysis/Include/TEventInfo.hh"
 //#include "DYee/Analysis/Include/TGenInfo.hh"
 //#include "DYee/Analysis/Include/TGenPhoton.hh"
 //#include "DYee/Analysis/Include/TJet.hh"
-//#include "DYee/Analysis/Include/TMuon.hh"
+#include "DYee/Analysis/Include/TMuon.hh"
 //#include "DYee/Analysis/Include/TPhoton.hh"
 //#include "DYee/Analysis/Include/TVertex.hh"
 //#include "DYee/Analysis/Include/ZeeData.hh"
 
+#include <TClonesArray.h>
+//#include <TFile.h>
+#include <TTree.h>
 
 //
 // class declaration
@@ -125,7 +141,7 @@ protected:
   edm::EDGetTokenT<reco::PFMETCollection> tok_PFMET;
 
   // Data to keep
-  TFile *outfile;
+  //TFile *outfile;
   TTree *outtree;
   mithep::TEventInfo *evInfo;
   TClonesArray *electronArr;
@@ -146,7 +162,7 @@ protected:
 // constructors and destructor
 //
 DYeeNtuple::DYeeNtuple(const edm::ParameterSet& iConfig) :
-  outfile(NULL),
+  outtree(NULL),
   evInfo(NULL),
   electronArr(NULL),
   nInputEvts(0),
@@ -179,17 +195,19 @@ DYeeNtuple::DYeeNtuple(const edm::ParameterSet& iConfig) :
   // Register tokens
   tok_Elec = consumes<reco::GsfElectronCollection>(electronCollName_);
   tok_Photon= consumes<reco::PhotonCollection>(photonCollName_);
-  tok_PFJet = consumes<reco::PFJetCollection>(pfJetCollName_);
+  //tok_PFJet = consumes<reco::PFJetCollection>(pfJetCollName_);
   tok_Muon = consumes<reco::MuonCollection>(muonCollName_);
   tok_Vertex = consumes<reco::VertexCollection>(vertexCollName_);
-  tok_Conv= consumes<reco::ConversionCollection>(convCollName_);
+  //tok_Conv= consumes<reco::ConversionCollection>(convCollName_);
   tok_BS= consumes<reco::BeamSpot>(offlineBSName_);
-  tok_Rho= consumes<double>(rhoInpTag_);
+  //tok_Rho= consumes<double>(rhoInpTag_);
   tok_PFMET= consumes<reco::PFMETCollection>(pfMETTag_);
 
   // Create structures
   evInfo = new mithep::TEventInfo();
   electronArr = new TClonesArray("mithep::TElectron");
+  mithep::TElectron dummyE;
+  mithep::TMuon dummyM;
 }
 
 
@@ -223,10 +241,12 @@ void DYeeNtuple::beginJob()
     edm::LogError("DYee") << "structures contain null pointer\n";
     throw edm::Exception(edm::errors::NullPointerError);
   }
-  outfile = new TFile(outFileName_,"RECREATE");
-  if (!outfile) {
-    edm::LogError("DYee") << "failed to create the file "
-			  << "<" << outFileName_ << ">\n";
+
+  edm::Service<TFileService> fs;
+  outtree = fs->make<TTree> ("Events","Selected events");
+
+  if (!outtree) {
+    edm::LogError("DYee") << "failed to create the output tree";
     throw edm::Exception(edm::errors::FileOpenError);
   }
 }

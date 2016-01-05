@@ -3,7 +3,9 @@
 
 //#define DYee7TeV
 //#define DYee8TeV
+#ifndef DYee8TeV_reg
 #define DYee8TeV_reg
+#endif
 
 
 // Mass-Rapidity binning
