@@ -1,4 +1,9 @@
-<use name="FWCore/Framework"/>
-<use name="FWCore/PluginManager"/>
-<use name="FWCore/ParameterSet"/>
+<use name="FWCore/Framework" />
+<use name="FWCore/PluginManager" />
+<use name="FWCore/ParameterSet" />
+<use name="CommonTools/UtilAlgos" />
+<use name="RecoEgamma/EgammaTools" />
+<use name="DYee/Analysis"/>
+<flags CPPDEFINES="DYee8TeV_reg"/>
 <flags EDM_PLUGIN="1"/>
+

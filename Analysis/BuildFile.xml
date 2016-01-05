@@ -1,0 +1,6 @@
+<use   name="root"/>
+<use   name="rootrflx"/>
+<flags CPPDEFINES="DYee8TeV_reg"/>
+<export>
+  <lib   name="1"/>
+</export>

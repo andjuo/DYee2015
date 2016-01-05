@@ -1,0 +1,5 @@
+<lcgdict>
+  <class name="mithep::TEventInfo"/>
+  <class name="mithep::TElectron"/>
+  <class name="mithep::TMuon"/>
+</lcgdict>
