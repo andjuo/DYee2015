@@ -13,8 +13,6 @@ process.source = cms.Source("PoolSource",
     )
 )
 
-process.demo = cms.EDAnalyzer('DYeeNtuple'
-)
+process.load("DYee.DYeeNtuple.CfiFile_cfi")
 
-
-process.p = cms.Path(process.demo)
+process.p = cms.Path(process.DYeeNtuplizer)
