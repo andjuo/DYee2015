@@ -1,0 +1,130 @@
+\documentclass[a4paper]{article}
+
+\pdfoutput=1
+%\usepackage{jheppub} 
+
+\usepackage{lineno}
+\usepackage[pdftex]{graphicx}
+%\graphicspath{{dir-figs/}}
+
+\usepackage{stmaryrd,xcolor}
+\newcommand{\textred}[1]{{\color{red!70!black}#1}}
+\newcommand{\textgreen}[1]{{\color{green!50!black}#1}}
+\newcommand{\textblue}[1]{{\color{blue!90!black}#1}}
+
+\title{Calculation of the covariance matrix for the Drell-Yan measurement}
+\author{A.~Juodagalvis\\[2mm]
+\small
+Vilnius University, Institute of Theoretical Physics and Astronomy, \\
+\small A.\ Go\v{s}tauto st.\ 12, Vilnius 01108, Lithuania}
+
+\begin{document}
+\linenumbers
+
+%\abstract{Information about the needed data structures.}
+\maketitle
+
+The aim of this summary is to provide information about the needed
+data structures. All quantities that involve event count should be
+provided as a 1D histogram containing both the event count $N$ and the
+associated uncertainty. In the case of experimental data, the
+uncertainty is simply the Poissonian uncertainty ($\sqrt{N}$). The
+simulated event count may have a different uncertainty, depending on
+how the event count was obtained. For example, the background
+estimation uncertainty may be different from the Poissonian prediction.
+
+The 1D Drell-Yan cross section measurement provides the cross section
+values in bins of mass
+
+\begin{equation}
+\frac{d\sigma}{dM}\ =\ {\cal F}^{-1}_\mathrm{FSR}
+\left\{
+\frac{
+  {\cal F}^{-1}_\mathrm{resol}\{ N_\mathrm{obs.yield} - N_\mathrm{bkg.yield} \}
+}{
+  A \varepsilon \rho
+}
+\right\},
+\end{equation}
+where ${\cal F}^{-1}_\mathrm{X}$ denotes the unfolding correction for
+the detector ($X=\mathrm{resol}$) and FSR ($X=\mathrm{FSR}$) effects,
+$N_\mathrm{obs.yield}$ is the measured event yield,
+$N_\mathrm{bkg.yield}$ is the estimated background yield, $A$ is the
+event acceptance, $\varepsilon$ is the event efficiency, and $\rho$ is
+the efficiency correction factor.
+
+\medskip
+
+{\bf Input 1}. Measured event yield distribution $N_\mathrm{obs.yield}$ as
+a 1D histogram.
+
+\medskip
+
+{\bf Input 2}. Background event yield distributions subdivided by
+sources (1D distributions)
+
+\begin{equation}
+N_\mathrm{bkg}\ =\ \sum\limits_\mathrm{source} N_\mathrm{bkg.yield,source}
+\end{equation}
+
+\medskip
+
+{\bf Input 3}. Since the correction-related uncertainties are
+evaluated by varying certain input parameters (e.g.\ individual scale
+factor values), a compressed dataset of simulated \textit{signal}
+events is needed. Try to keep only relevant events.
+It would probably be something like
+
+\begin{equation}
+\begin{tabular}{cl}\\
+\phantom{xxx} &
+$
+  \{
+  \mathrm{four\_momentum\_of\_lepton}_{1,\mathrm{reco}}$,\\
+&  $\mathrm{four\_momentum\_of\_lepton}_{2,\mathrm{reco}}$,\\
+&  $\mathrm{selected\_flag},$\\
+&  $\mathrm{four\_momentum\_of\_lepton}_{1,\mathrm{gen,postFSR}},$\\
+&  $\mathrm{four\_momentum\_of\_lepton}_{2,\mathrm{gen,postFSR}},$\\
+&  $\mathrm{four\_momentum\_of\_lepton}_{1,\mathrm{gen,preFSR}},$\\
+&  $\mathrm{four\_momentum\_of\_lepton}_{2,\mathrm{gen,preFSR}},$\\
+&  $\mathrm{event\_weight}
+  \},$
+\end{tabular}
+\end{equation}
+
+\noindent
+where ``selected\_flag'' marks whether the event passes the event
+selection requirements for $p_T$, $\eta$, isolation etc.
+
+This dataset should allow picking the correct lepton momentum/energy
+or efficiency scale correction for each event, and calculate any
+simulation-based correction (like $\varepsilon$ and $A$).
+
+The acceptable cut-off for the dataset is
+$M_{\ell\ell,\mathrm{gen,preFSR}}\leq15$~GeV, if
+$M_{\ell\ell,\mathrm{reco}}<15$~GeV. No selection cuts should be
+applied (only flaged for passing), so that this dataset could be used
+for all corrections.
+
+\medskip
+
+{\bf Input 4}. Tables for lepton momentum/energy scale correction (in
+a suitable format).
+
+\medskip
+
+{\bf Input 5}. Tables for the efficiency scale correction from
+tag-and-probe. Include each type of $\rho$ factor with the associated
+uncertainty.
+
+\medskip
+
+{\bf Input 6}. Distributions for cross checks. For example,
+RooBayesResponse objects for the detector resolution and FSR
+unfoldings. Event efficiency scale $\rho$, efficiency $\varepsilon$,
+acceptance $A$ distributions. Yield distribution without lepton
+momentum/energy scale correction.
+Final distribution of the cross section.
+
+\end{document}
+
