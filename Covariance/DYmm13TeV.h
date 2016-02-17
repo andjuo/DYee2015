@@ -14,13 +14,17 @@
 
 // Header file for the classes stored in the TTree if any.
 #include <TLorentzVector.h>
+#include <iostream>
+#include <sstream>
+#include <stdarg.h>
 
 
 // Fixed size dimensions of array or collections stored in the TTree if any.
 
 class DYmm13TeV_t {
 public :
-   TTree          *fChain;   //!pointer to the analyzed TTree or TChain
+  //TTree          *fChain;   //!pointer to the analyzed TTree or TChain
+  TChain           *fChain;
    Int_t           fCurrent; //!current Tree number in a TChain
 
    // Declaration of leaf types
@@ -59,33 +63,40 @@ public :
    TBranch        *b_Weight_PU;   //!
    TBranch        *b_Weight_Gen;   //!
 
-   DYmm13TeV_t(TTree *tree=0);
+   DYmm13TeV_t(TString fname="", TString treeName="DYTree");
    virtual ~DYmm13TeV_t();
    virtual Int_t    Cut(Long64_t entry);
    virtual Int_t    GetEntry(Long64_t entry);
    virtual Long64_t LoadTree(Long64_t entry);
-   virtual void     Init(TTree *tree);
+   virtual int      Init(TString fname);
    virtual void     Loop();
    virtual Bool_t   Notify();
    virtual void     Show(Long64_t entry = -1);
+
+   // Added methods
+   void DeactivateBranches();
+   void ActivateBranches(int count, ...); // list n branch names
+   void ActivateBranches(const std::vector<TString> &brV); // list of branch names
+
+   friend
+     std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj) {
+     if (out==std::cout) obj.Show();
+     else out << "cannot print pf_gjet_v3\n";
+     return out;
+   }
 };
 
 #endif
 
 #ifdef DYmm13TeV_t_cxx
-DYmm13TeV_t::DYmm13TeV_t(TTree *tree) : fChain(0) 
+DYmm13TeV_t::DYmm13TeV_t(TString fname, TString treeName) :
+  fChain(new TChain(treeName)),
+  fCurrent(-1)
 {
-// if parameter tree is not specified (or zero), connect the file
-// used to generate this class and read the Tree.
-   if (tree == 0) {
-      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("ROOTFile_nutple_CovarianceMatrixInput.root");
-      if (!f || !f->IsOpen()) {
-         f = new TFile("ROOTFile_nutple_CovarianceMatrixInput.root");
-      }
-      f->GetObject("DYTree",tree);
-
-   }
-   Init(tree);
+  if (fname.Length()==0) return;
+  if (!this->Init(fname)) {
+    std::cout << "Initialization failed in constructor" << std::endl;
+  }
 }
 
 DYmm13TeV_t::~DYmm13TeV_t()
@@ -113,8 +124,36 @@ Long64_t DYmm13TeV_t::LoadTree(Long64_t entry)
    return centry;
 }
 
-void DYmm13TeV_t::Init(TTree *tree)
+int DYmm13TeV_t::Init(TString fname)
 {
+  if (fname.Length()==0) {
+    std::cout << "DYmm13TeV_t::Init non-empty fname is expected\n";
+    return 0;
+  }
+  if (fname.Index(" ")==-1) {
+    // only one string defining files
+    fChain->Add(fname);
+  }
+  else {
+    std::stringstream ss(fname.Data());
+    TString fn;
+    while (!ss.eof()) {
+      ss >> fn;
+      std::cout << "adding file <" << fn << ">\n";
+      fChain->Add(fn);
+    }
+  }
+
+  // Clear fields
+  Charge_Reco_Lead=0;
+  Charge_Reco_Sub=0;
+  TrackerLayers_Reco_Lead=0;
+  TrackerLayers_Reco_Sub=0;
+  Flag_EventSelection=false;
+  Weight_Norm=0;
+  Weight_PU=0;
+  Weight_Gen=0;
+
    // The Init() function is called when the selector needs to initialize
    // a new tree or chain. Typically here the branch addresses and branch
    // pointers of the tree will be set.
@@ -132,9 +171,9 @@ void DYmm13TeV_t::Init(TTree *tree)
    Momentum_postFSR_Sub = 0;
    Momentum_preFSR_Lead = 0;
    Momentum_preFSR_Sub = 0;
-   // Set branch addresses and branch pointers
-   if (!tree) return;
-   fChain = tree;
+   //// Set branch addresses and branch pointers
+   //if (!tree) return;
+   //fChain = tree;
    fCurrent = -1;
    fChain->SetMakeClass(1);
 
@@ -155,6 +194,7 @@ void DYmm13TeV_t::Init(TTree *tree)
    fChain->SetBranchAddress("Weight_PU", &Weight_PU, &b_Weight_PU);
    fChain->SetBranchAddress("Weight_Gen", &Weight_Gen, &b_Weight_Gen);
    Notify();
+   return 1;
 }
 
 Bool_t DYmm13TeV_t::Notify()
@@ -175,11 +215,41 @@ void DYmm13TeV_t::Show(Long64_t entry)
    if (!fChain) return;
    fChain->Show(entry);
 }
-Int_t DYmm13TeV_t::Cut(Long64_t entry)
+Int_t DYmm13TeV_t::Cut(Long64_t )
 {
 // This function may be called from Loop.
 // returns  1 if entry is accepted.
 // returns -1 otherwise.
    return 1;
 }
+
+// a few useful methods
+void DYmm13TeV_t::DeactivateBranches() {
+  fChain->SetBranchStatus("*",0);
+}
+
+void DYmm13TeV_t::ActivateBranches(int count, ...) {
+  va_list vl;
+  va_start(vl,count);
+  std::cout << "ActivateBranches(" << count << "): ";
+  for (int i=0; i<count; ++i) {
+    typedef const char* constCharPtr;
+    TString brName= TString(va_arg(vl,constCharPtr));
+    fChain->SetBranchStatus(brName,1);
+    std::cout << " <" << brName << ">";
+  }
+  std::cout << "\n";
+  va_end(vl);
+}
+
+void DYmm13TeV_t::ActivateBranches(const std::vector<TString> &brV) {
+  unsigned int count=brV.size();
+  std::cout << "ActivateBranches(" << count << "): ";
+  for (unsigned int i=0; i<count; ++i) {
+    fChain->SetBranchStatus(brV[i],1);
+    std::cout << " <" << brV[i] << ">";
+  }
+  std::cout << "\n";
+}
+
 #endif // #ifdef DYmm13TeV_t_cxx
