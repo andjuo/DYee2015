@@ -1,0 +1,150 @@
+#ifndef Inputs_H
+#define Inputs_H
+
+#include <TROOT.h>
+#include <TCanvas.h>
+#include <TH1D.h>
+#include <TH2D.h>
+#include <TString.h>
+#include <TObjString.h>
+#include <TFile.h>
+#include <TVectorD.h>
+#include <TMatrixD.h>
+#include <TArrayD.h>
+#include <TRandom3.h>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <string>
+
+// -----------------------------------------------------------
+
+TString DayAndTimeTag(int eliminateSigns=1);
+
+void plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0);
+void plotHisto(TH2D* h2, TString cName);
+void plotHistoSame(TH1D *h1, TString canvName, TString drawOpt);
+
+void printHisto(const TH1D* h1);
+void printHisto(const TH2D* h1);
+
+inline void plotHisto(TH1* h1, TString cName)
+{  plotHisto((TH1D*)h1,cName); }
+inline void plotHisto(TH2* h1, TString cName)
+{  plotHisto((TH2D*)h1,cName); }
+
+inline void printHisto(TH1* h1)
+{  printHisto((TH1D*)h1); }
+inline void printHisto(TH2* h2)
+{  printHisto((TH2D*)h2); }
+
+
+// -----------------------------------------------------------
+
+TH1D* perMassBinWidth(const TH1D* h1, int prnBinW=0);
+TH1D *flattenHisto(const TH2D *h2, TString setName);
+
+// -----------------------------------------------------------
+
+void printObjStringField(TFile &f, TString keyName);
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+template<class histo_t>
+histo_t* loadHisto(TFile &fin, TString histoNameOnFile, TString histoName,
+		   int absenseIsError, histo_t *dummy)
+{
+  if (!dummy) {
+    // The type is defined
+  }
+
+  if (!fin.IsOpen()) {
+    std::cout << "file is not open <" << fin.GetName() << ">\n";
+    return NULL;
+  }
+
+  histo_t *h= (histo_t*) fin.Get(histoNameOnFile);
+  if (!h) {
+    if (absenseIsError) {
+      std::cout << "failed to find histo <" << histoNameOnFile << "> in file <"
+		<< fin.GetName() << ">\n";
+    }
+    return NULL;
+  }
+  h->SetName(histoName);
+  h->SetDirectory(0);
+
+  return h;
+}
+
+// -----------------------------------------------------------
+
+template<class histo_t>
+histo_t* loadHisto(TString fname, TString histoNameOnFile, TString histoName,
+		   histo_t *dummy)
+{
+  if (!dummy) {
+    // The type is defined
+  }
+
+  TFile fin(fname);
+  if (!fin.IsOpen()) {
+    std::cout << "failed to open the file <" << fname << ">\n";
+    return NULL;
+  }
+
+  histo_t *h= (histo_t*) fin.Get(histoNameOnFile);
+  if (!h) {
+    std::cout << "failed to find histo <" << histoNameOnFile << "> in file <"
+	      << fname << ">\n";
+    fin.Close();
+    return NULL;
+  }
+  h->SetName(histoName);
+  h->SetDirectory(0);
+  fin.Close();
+  return h;
+}
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
+		  TString setName, TString setTitle, const TH1D *h1protoType);
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+inline
+void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative)
+{
+  if (!hSrc) { std::cout << "randomizeWithinErr: hSrc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinErr: hDest is null\n"; return; }
+  for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+    double val=	gRandom->Gaus(hSrc->GetBinContent(ibin),
+			      hSrc->GetBinError(ibin));
+    if (nonNegative && (val<0)) val=0;
+    hDest->SetBinContent(ibin,val);
+  }
+}
+
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+TH2D* cov2corr(const TH2D* h2cov);
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+
+inline
+void HERE(const char *msg)
+{ std::cout << msg << std::endl; }
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+
+#endif
