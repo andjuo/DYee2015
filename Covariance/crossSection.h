@@ -10,19 +10,35 @@
 typedef enum { _varNone=0, _varYield, _varBkg, _varSig, _varDetRes, _varFSRRes,
     _varEff, _varRho, _varAcc, _varEffAcc, _varLast } TVaried_t;
 
+typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
+	       _bkgWJets, _bkgQCD, _bkgLast } TBkg_t;
+
+typedef enum { _csPostFsrInAcc=0, _csPostFsrFullSp,
+	       _csPreFsrInAcc, _csPreFsrFullSp } TCSType_t;
+
 TString variedVarName(TVaried_t);
+TString bkgName(TBkg_t);
+TString csTypeName(TCSType_t);
+
+inline
+TBkg_t next(TBkg_t &b)
+{ if (b<_bkgLast) b=TBkg_t(int(b)+1); return b; }
 
 // -----------------------------------------------------------
 
 RooUnfoldResponse* loadRooUnfoldResponse(TString fname, TString fieldName, TString name);
 RooUnfoldResponse* loadRooUnfoldResponse(TFile &fin, TString fieldName, TString name);
 RooUnfoldBayes* loadRooUnfoldBayes(TFile &fin, TString fieldName, TString name);
-void plotHisto(RooUnfoldResponse &rs, TString cNameBase);
+void plotHisto(RooUnfoldResponse &rs, TString cNameBase, int logx=0, int logy=0);
 
+// -----------------------------------------------------------
+
+class MuonCrossSection_t;
 
 // -----------------------------------------------------------
 
 class CrossSection_t {
+  friend class MuonCrossSection_t;
  protected:
   TString fName, fTag;
   TH1D *fh1Yield, *fh1Bkg;
@@ -31,6 +47,7 @@ class CrossSection_t {
   TH1D* fh1EffAcc;
   TH1D* fh1Theory;
   TVaried_t fVar;
+  TCSType_t fCSType;
   int fNIters;
   double fLumi;
  protected:
@@ -39,7 +56,8 @@ class CrossSection_t {
   TH1D *fh1Varied;
   RooUnfoldBayes *fDetResBayes, *fFSRBayes;
  public:
-  CrossSection_t(TString setName="xs", TString setTag="");
+  CrossSection_t(TString setName="xs", TString setTag="",
+		 TCSType_t setCSType=_csPreFsrFullSp);
   CrossSection_t(const CrossSection_t &cs,
 		 TString setName="xsNew", TString setTag="newTag");
   void clearAllPtrs();
@@ -54,6 +72,8 @@ class CrossSection_t {
   void h1Rho(const TH1D *h1) { fh1Rho=copy(h1,"h1Rho",fTag); }
   const TH1D *h1Acc() const { return fh1Acc; }
   void h1Acc(const TH1D *h1) { fh1Acc=copy(h1,"h1Acc",fTag); }
+  const TH1D *h1EffAcc() const { return fh1EffAcc; }
+  void h1EffAcc(const TH1D *h1) { fh1EffAcc=copy(h1,"h1EffAcc",fTag); }
   const RooUnfoldResponse* detRes() const { return fDetRes; }
   void detRes(const RooUnfoldResponse &rs) { fDetRes= new RooUnfoldResponse(rs); }
   const RooUnfoldResponse* fsrRes() const { return fFSRRes; }
@@ -64,6 +84,8 @@ class CrossSection_t {
   void tag(TString new_tag) { fTag=new_tag; }
   TVaried_t var() const { return fVar; }
   void var(TVaried_t new_var) { fVar=new_var; }
+  TCSType_t csType() const { return fCSType; }
+  void csType(TCSType_t setCS) { fCSType=setCS; }
   int nIters() const { return fNIters; }
   void nIters(int setIters) { fNIters=setIters; }
   double lumi() const { return fLumi; }
@@ -107,6 +129,54 @@ class CrossSection_t {
 
   // ----------------------------------------------
 
+};
+
+// -----------------------------------------------------------
+
+class MuonCrossSection_t {
+ protected:
+  CrossSection_t fCSa, fCSb;
+  TString fTag;
+  std::vector<TH1D*> fh1BkgV;
+  TVectorD fBkgWeights; //  xsec/nEvents
+  TH1D *fh1Bkg;
+  TH1D *fh1CS;
+  TH1D *fh1Theory;
+ protected:
+  RooUnfoldBayes *fFSRBayes;
+ public:
+  MuonCrossSection_t(TString setName, TString setTag,
+		     double lumiA=0, double lumiB=0);
+
+  void clear() { fh1BkgV.clear(); }
+
+  const CrossSection_t& csA() const { return fCSa; }
+  CrossSection_t& editCSa() { return fCSa; }
+  const CrossSection_t& csB() const { return fCSb; }
+  CrossSection_t& editCSb() { return fCSb; }
+
+  TString tag() const { return fTag; }
+  void lumi(double lumiA, double lumiB) { fCSa.lumi(lumiA); fCSb.lumi(lumiB); }
+
+  const TH1D* h1Bkg() const { return fh1Bkg; }
+  void h1Bkg(const TH1D *h1, int clearVec=1);
+  const std::vector<TH1D*>& bkgV() const { return fh1BkgV; }
+  const TVectorD& bkgW() const { return fBkgWeights; }
+  void setBkgV(const std::vector<TH1D*> &setBkg, const std::vector<double> &weights);
+  int recalcBkg(const std::vector<double> &weights);
+
+  const TH1D* h1CS() const { return fh1CS; }
+  const TH1D* h1Theory() const { return fh1Theory; }
+  void h1Theory(const TH1D* h1) { fh1Theory=fCSa.copy(h1,"h1Theory",fTag); }
+
+  TH1D* calcCrossSection();
+  TCanvas* plotCrossSection(TString canvName="cs", int recalculate=0);
+
+  int save(TString fnameBase);
+  int load(TString fnameBase, TString setTag);
+
+ protected:
+  //int init();
 };
 
 // -----------------------------------------------------------

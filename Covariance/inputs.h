@@ -11,6 +11,7 @@
 #include <TVectorD.h>
 #include <TMatrixD.h>
 #include <TArrayD.h>
+#include <TSystem.h>
 #include <TRandom3.h>
 #include <iostream>
 #include <vector>
@@ -21,17 +22,18 @@
 
 TString DayAndTimeTag(int eliminateSigns=1);
 
-void plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0);
-void plotHisto(TH2D* h2, TString cName);
+void plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE");
+void plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
 void plotHistoSame(TH1D *h1, TString canvName, TString drawOpt);
 
 void printHisto(const TH1D* h1);
 void printHisto(const TH2D* h1);
+void printRatio(const TH1D* h1a, const TH1D* h1b);
 
-inline void plotHisto(TH1* h1, TString cName)
-{  plotHisto((TH1D*)h1,cName); }
-inline void plotHisto(TH2* h1, TString cName)
-{  plotHisto((TH2D*)h1,cName); }
+inline void plotHisto(TH1* h1, TString cName, int logX=0, int logY=0, TString drawOpt="hist")
+{  plotHisto((TH1D*)h1,cName,logX,logY,drawOpt); }
+inline void plotHisto(TH2* h2, TString cName, int logX=0, int logY=0)
+{  plotHisto((TH2D*)h2,cName,logX,logY); }
 
 inline void printHisto(TH1* h1)
 {  printHisto((TH1D*)h1); }
@@ -108,6 +110,18 @@ histo_t* loadHisto(TString fname, TString histoNameOnFile, TString histoName,
 }
 
 // -----------------------------------------------------------
+
+template<class histo_t>
+histo_t* cloneHisto(const histo_t *hSrc, TString histoName, TString histoTitle)
+{
+  histo_t* h=(histo_t*) hSrc->Clone(histoName);
+  h->SetDirectory(0);
+  h->SetName(histoName);
+  h->SetTitle(histoTitle);
+  return h;
+}
+
+// -----------------------------------------------------------
 // -----------------------------------------------------------
 
 TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
@@ -133,7 +147,13 @@ void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative)
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
+int deriveCovariance(const std::vector<TH1D*> &rndCS,
+		     TString histoNameTag, TString histoTitle,
+		     TH1D **h1avgCS_out, TH2D **h2cov_out);
+
 TH2D* cov2corr(const TH2D* h2cov);
+
+void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------

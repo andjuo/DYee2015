@@ -17,21 +17,23 @@ TString DayAndTimeTag(int eliminateSigns)
 
 // -----------------------------------------------------------
 
-void plotHisto(TH1D* h1, TString cName, int logX, int logY)
+void plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
   if (logX) cx->SetLogx();
   if (logY) cx->SetLogy();
-  h1->Draw("LPE");
+  h1->Draw(drawOpt);
   cx->Update();
 }
 
 // ---------------------------------------------------------
 
-void plotHisto(TH2D* h2, TString cName)
+void plotHisto(TH2D* h2, TString cName, int logx, int logy)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
   cx->SetRightMargin(0.18);
+  cx->SetLogx(logx);
+  cx->SetLogy(logy);
   h2->Draw("COLZ");
   cx->Update();
 }
@@ -81,6 +83,31 @@ void printHisto(const TH2D *h2) {
     }
   }
 }
+
+// ---------------------------------------------------------
+
+void printRatio(const TH1D *h1a, const TH1D *h1b) {
+  std::cout << "\nhisto A " << h1a->GetName() << " " << h1a->GetTitle()
+	    << " [" << h1a->GetNbinsX() << "]\n";
+  std::cout << "\nhisto B " << h1b->GetName() << " " << h1b->GetTitle()
+	    << " [" << h1b->GetNbinsX() << "]\n";
+  for (int ibin=1; ibin<=h1a->GetNbinsX(); ibin++) {
+    if ( (h1a->GetBinLowEdge(ibin) != h1b->GetBinLowEdge(ibin)) ||
+	 (h1a->GetBinWidth(ibin) != h1b->GetBinWidth(ibin)) ) {
+      std::cout << "bining mismatch at ibin=" << ibin << "\n";
+      return;
+    }
+    std::cout << "ibin=" << ibin << " " << h1a->GetBinLowEdge(ibin)
+	      << " " << (h1a->GetBinLowEdge(ibin)+h1a->GetBinWidth(ibin))
+	      << "  " << h1a->GetBinContent(ibin) << " +- "
+	      << h1a->GetBinError(ibin)
+	      << "  " << h1b->GetBinContent(ibin) << " +- "
+	      << h1b->GetBinError(ibin)
+	      << "  " << h1a->GetBinContent(ibin)/h1b->GetBinContent(ibin)
+	      << "\n";
+  }
+}
+
 
 // ---------------------------------------------------------
 // ---------------------------------------------------------
@@ -178,6 +205,75 @@ TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
+int deriveCovariance(const std::vector<TH1D*> &rndCS,
+		     TString histoNameTag, TString histoTitle,
+		     TH1D **h1avgCS_out, TH2D **h2cov_out)
+{
+  int nSize= int(rndCS.size());
+  if (nSize<2) return 0;
+
+  TH1D *h1a= (TH1D*)rndCS[0]->Clone("h1_" + histoNameTag);
+  h1a->SetDirectory(0);
+  h1a->Sumw2();
+  h1a->SetTitle(histoTitle);
+  h1a->Reset();
+
+  // accumulate the average value
+  for (unsigned int i=0; i<rndCS.size(); i++) {
+    h1a->Add(rndCS[i]);
+  }
+  h1a->Scale(1/double(nSize));
+
+  // accumulate sqr sums
+  int dim=h1a->GetNbinsX();
+  TMatrixD sum2(dim+1,dim+1);
+  sum2.Zero();
+  for (unsigned int i=0; i<rndCS.size(); i++) {
+    const TH1D *h1= rndCS[i];
+    for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+      for (int jbin=1; jbin<=h1->GetNbinsX(); jbin++) { // ! 1D histo
+	sum2(ibin,jbin) +=
+	  ( h1->GetBinContent(ibin) - h1a->GetBinContent(ibin) ) *
+	  ( h1->GetBinContent(jbin) - h1a->GetBinContent(jbin) );
+      }
+    }
+  }
+
+  sum2 *= 1/double(nSize);
+
+  // create the covariance histogram
+  const TArrayD *xb= h1a->GetXaxis()->GetXbins();
+  const Double_t *x= xb->GetArray();
+  TString h2name= "h2cov_" + histoNameTag;
+  TH2D *h2= new TH2D(h2name,h2name, xb->GetSize()-1,x, xb->GetSize()-1,x);
+  h2->SetDirectory(0);
+  h2->Sumw2();
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) { // ! 2D histo
+      h2->SetBinContent( ibin,jbin, sum2(ibin,jbin) );
+      h2->SetBinError  ( ibin,jbin, 0.);
+    }
+  }
+
+  // assign uncertainties, taking into account that the uncertainty
+  // cannot be negative
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    double unc2= h2->GetBinContent(ibin,ibin);
+    if (unc2<0) {
+      std::cout << "negative central covariance in ibin=" << ibin << "\n";
+      unc2=0;
+    }
+    h1a->SetBinError(ibin, sqrt(unc2));
+  }
+
+  // assign results
+  if (h1avgCS_out) *h1avgCS_out= h1a;
+  if (h2cov_out) *h2cov_out= h2;
+  return 1;
+}
+
+// ---------------------------------------------------------
+
 TH2D* cov2corr(const TH2D* h2cov)
 {
   TH2D* h2corr=(TH2D*)h2cov->Clone(h2cov->GetName() + TString("_corr"));
@@ -192,6 +288,27 @@ TH2D* cov2corr(const TH2D* h2cov)
     }
   }
   return h2corr;
+}
+
+// ---------------------------------------------------------
+// ---------------------------------------------------------
+
+void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir)
+{
+  gSystem->mkdir(destDir,kTRUE);
+  gSystem->mkdir(destDir+TString("/png"),kTRUE);
+  gSystem->mkdir(destDir+TString("/pdf"),kTRUE);
+  gSystem->mkdir(destDir+TString("/root"),kTRUE);
+
+  TString saveName=destDir+TString("/png/");
+  saveName+=canvName;
+  saveName+=".png";
+  canv->SaveAs(saveName);
+  saveName.ReplaceAll("png","pdf");
+  canv->SaveAs(saveName);
+  saveName.ReplaceAll("pdf","root");
+  canv->SaveAs(saveName);
+  return;
 }
 
 // ---------------------------------------------------------
