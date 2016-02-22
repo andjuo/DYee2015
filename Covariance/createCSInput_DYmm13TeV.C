@@ -185,11 +185,12 @@ void createCSInput_DYmm13TeV()
     plotHistoSame(muCS.csB().copy(muCS.csB().h1Signal()),"cSignal43","LPE");
   }
 
-
+  HERE("calling muCS.save()");
   if (!muCS.save("cs_DYmm_13TeV_v1")) {
     std::cout << "saving failed\n";
     return;
   }
+  HERE("saving done");
 }
 
 // ---------------------------------------------------------
@@ -210,7 +211,7 @@ TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
 
   //std::cout << "n=" << n << "\n";
   double factor=1.;
-  factor=1.05; // to see the difference
+  //factor=1.05; // to see the difference
   for (int i=0; i<n; i++) {
     xb[i]=x[i]-xLow[i]*factor;
     //std::cout << "i=" << i << ", xLow=" << xLow[i] << ", xHigh=" << xHigh[i] << ", x=" << x[i] << "\n";

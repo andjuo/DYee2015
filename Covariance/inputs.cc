@@ -291,6 +291,28 @@ TH2D* cov2corr(const TH2D* h2cov)
 }
 
 // ---------------------------------------------------------
+
+TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out) {
+  TH2D* h2Corr= cov2corr(h2Cov);
+  h2Cov->SetStats(0);
+  TCanvas *cx= new TCanvas(canvName,canvName,1200,600);
+  cx->Divide(2,1);
+  cx->cd(1);
+  gPad->SetLogx();
+  gPad->SetLogy();
+  gPad->SetRightMargin(0.18);
+  h2Cov->Draw("COLZ");
+  cx->cd(2);
+  gPad->SetLogx();
+  gPad->SetLogy();
+  gPad->SetRightMargin(0.18);
+  h2Corr->Draw("COLZ");
+  cx->Update();
+  if (h2corr_out) (*h2corr_out)=h2Corr;
+  return cx;
+}
+
+// ---------------------------------------------------------
 // ---------------------------------------------------------
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir)

@@ -153,6 +153,9 @@ int deriveCovariance(const std::vector<TH1D*> &rndCS,
 
 TH2D* cov2corr(const TH2D* h2cov);
 
+TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
+		     TH2D** h2corr_out=NULL);
+
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
 
 // -----------------------------------------------------------

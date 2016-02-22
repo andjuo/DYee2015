@@ -74,9 +74,11 @@ public :
    virtual void     Show(Long64_t entry = -1);
 
    // Added methods
+   UInt_t GetEntries() { return fChain->GetEntries(); }
    void DeactivateBranches();
    void ActivateBranches(int count, ...); // list n branch names
    void ActivateBranches(const std::vector<TString> &brV); // list of branch names
+   void ActivateBranches(TString brNames);
 
    friend
      std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj) {
@@ -251,5 +253,27 @@ void DYmm13TeV_t::ActivateBranches(const std::vector<TString> &brV) {
   }
   std::cout << "\n";
 }
+
+void DYmm13TeV_t::ActivateBranches(TString brNames)
+{
+  if (brNames.Length()==0) {
+    std::cout << "DYmm13TeV_t::ActivateBranches non-empty string is expected\n";
+    return;
+  }
+  if (brNames.Index(" ")==-1) {
+    // only one string defining branches
+    fChain->SetBranchStatus(brNames,1);
+  }
+  else {
+    std::stringstream ss(brNames.Data());
+    TString fn;
+    while (!ss.eof()) {
+      ss >> fn;
+      std::cout << "adding branch <" << fn << ">\n";
+      fChain->SetBranchStatus(fn,1);
+    }
+  }
+}
+
 
 #endif // #ifdef DYmm13TeV_t_cxx

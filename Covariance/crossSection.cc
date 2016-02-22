@@ -278,7 +278,11 @@ TH1D* CrossSection_t::calcCrossSection()
 	       + TString(";unfolded yield")
 	       ,
 	       fh1Yield); // set x binning
+  //HERE("divide by fh1Rho");
   fh1UnfRhoCorr= copy(fh1Unf,"h1UnfRho",fTag);
+  //printHisto(fh1Unf);
+  //printHisto(fh1Rho);
+  //printHisto(fh1EffAcc);
   fh1UnfRhoCorr->Divide(fh1Rho);
   if (!fh1EffAcc) {
     fh1UnfRhoEffCorr= copy(fh1UnfRhoCorr,"h1UnfRhoEff",fTag);
@@ -291,6 +295,7 @@ TH1D* CrossSection_t::calcCrossSection()
     fh1UnfRhoEffAccCorr= copy(fh1UnfRhoCorr,"h1UnfRhoEffAcc",fTag);
     fh1UnfRhoEffAccCorr->Divide(fh1EffAcc);
   }
+  //HERE("divide by lumi");
   fh1UnfRhoEffAccCorr->Scale(1/fLumi);
   TH1D* h1Out=NULL;
   if (fCSType==_csPostFsrFullSp) {
@@ -332,6 +337,10 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
     if (new_var==_varYield) {
       fh1Signal= copy(fh1Varied,"h1Signal_var",useTag);
       fh1Signal->Add(fh1Bkg,-1);
+      HERE("\ncalcCrossSection - varied Yield");
+      printHisto(fh1Varied);
+      printHisto(fh1Bkg);
+      printHisto(fh1Signal);
     }
     else if (new_var==_varBkg) {
       fh1Signal= copy(fh1Yield,"h1Signal_var",useTag);
@@ -345,8 +354,11 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
 		 + TString(";unfolded yield")
 		 ,
 		 fh1Yield); // set x binning
+    printHisto(fh1Unf);
     fh1UnfRhoCorr= copy(fh1Unf,"h1UnfRho",useTag);
+    printHisto(fh1UnfRhoCorr);
     fh1UnfRhoCorr->Divide(fh1Rho);
+    printHisto(fh1UnfRhoCorr);
     if (!fh1EffAcc) {
       fh1UnfRhoEffCorr= copy(fh1UnfRhoCorr,"h1UnfRhoEff",useTag);
       fh1UnfRhoEffCorr->Divide(fh1Eff);
@@ -551,13 +563,14 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   if (!calcCrossSection()) return 0;
   const TH1D *h1Src= getVariedHisto(new_var);
   if (!h1Src) return 0;
+  //printHisto(h1Src);
   int trackRnd=1;
   TH1D *h1Track=NULL;
   if (trackRnd) {
     h1Track= copy(h1Src,"h1Track",fTag);
     h1Track->SetMarkerStyle(24);
-    plotHisto(h1Track, "cVaried",1);
-    plotHistoSame(h1Track,"cVaried","LPE");
+    plotHisto(h1Track, "cVaried"+fTag,1);
+    plotHistoSame(h1Track,"cVaried"+fTag,"LPE");
   }
   if (!fh1Varied) {
     fh1Varied= copy(h1Src,"hVar" + variedVarName(new_var), fTag);
@@ -573,7 +586,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       TH1D *h1var= copy(fh1Varied,"h1var" + TString(Form("_%d",i)), fTag);
       h1var->SetLineColor(color);
       h1var->SetMarkerColor(color);
-      plotHistoSame(h1var, "cVaried", "hist");
+      plotHistoSame(h1var, "cVaried"+fTag, "hist");
     }
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
@@ -592,6 +605,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var,
   if (!calcCrossSection()) return 0;
   const TH1D *h1Src= getVariedHisto(new_var);
   if (!h1Src) return 0;
+  //printHisto(h1Src);
   int trackRnd=1;
   TH1D *h1Track=NULL;
   if (trackRnd) {
@@ -611,6 +625,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var,
       //fh1Varied->SetMarkerStyle(24);
       int color=(i%9)+1;
       TH1D *h1var= copy(fh1Varied,"h1var" + TString(Form("_%d",i)), fTag);
+      //printHisto(h1var);
       h1var->SetLineColor(color);
       h1var->SetMarkerColor(color);
       plotHistoSame(h1var, "cVaried", "hist");
@@ -979,13 +994,15 @@ TH1D* MuonCrossSection_t::calcCrossSection()
     std::cout << "MuonCrossSection_t::calcCrossSection: object is not ready\n";
     return NULL;
   }
+  TH1D *h1a= fCSa.calcCrossSection();
+  TH1D *h1b= fCSb.calcCrossSection();
+  /*
   TH1D *h1postFSR= fCSa.copy(fCSa.calcCrossSection(),"h1postFSR",fTag);
   TH1D *h1CSb= fCSb.copy(fCSb.calcCrossSection());
   if (!h1postFSR || !h1CSb) {
     std::cout << "MuonCrossSection_t::calcCrossSection - failure\n";
     return NULL;
   }
-  HERE("scale");
   h1postFSR->Scale( fCSa.lumi() );
   h1CSb->Scale( fCSb.lumi() );
   h1postFSR->Add(h1CSb);
@@ -999,7 +1016,8 @@ TH1D* MuonCrossSection_t::calcCrossSection()
 		     + TString("; pre-FSR full space cross section"));
   double lumiTot= fCSa.lumi() + fCSb.lumi();
   h1CS_raw->Scale(1/lumiTot);
-  fh1CS= perMassBinWidth(h1CS_raw,0);
+  */
+  fh1CS= this->calcPreFsrCS_sumAB(h1a,h1b,fTag);
   return fh1CS;
 }
 
@@ -1034,6 +1052,63 @@ TCanvas* MuonCrossSection_t::plotCrossSection(TString canvName,int recalculate)
 
 // --------------------------------------------------------------
 
+int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
+				     std::vector<TH1D*> &rndCS)
+{
+  int trackCSa=1;
+  if (trackCSa) { plotHisto(fCSa.copy(fCSa.h1UnfRhoEffAccCorr(),fCSa.h1UnfRhoEffAccCorr()->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a",1,1,"LPE"); }
+  int trackCS=1;
+  if (trackCS) {
+    plotHisto(fh1CS,"muCSVar",1,1,"LPE");
+  }
+
+  int res=1;
+  rndCS.clear();
+  if (new_var==_varYield) {
+    std::vector<TH1D*> rndCSa, rndCSb;
+    res= (fCSa.sampleRndVec(_varYield,sampleSize,rndCSa) &&
+	  fCSb.sampleRndVec(_varYield,sampleSize,rndCSb)) ? 1:0;
+    if (res) {
+      for (int i=0; i<sampleSize; i++) {
+	TString useTag=Form("_rnd%d",i) + fTag;
+	TH1D *h1cs= this->calcPreFsrCS_sumAB(rndCSa[i],rndCSb[i],useTag);
+	rndCS.push_back(h1cs);
+	if (trackCSa) {
+	  rndCSa[i]->SetLineColor((i%9)+1);
+	  plotHistoSame(fCSa.copy(rndCSa[i],rndCSa[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a","hist");
+	}
+	if (trackCS) {
+	  h1cs->SetLineColor((i%9)+1);
+	  plotHistoSame(h1cs,"muCSVar","hist");
+	}
+      }
+    }
+  }
+  else {
+    std::cout << "sampleRndVec is not ready for new_var="
+	      << variedVarName(new_var) << "\n";
+    res=0;
+  }
+  if (!res) std::cout << "Error in MuonCrossSection_t::sampleRndVec\n";
+  return res;
+}
+
+// --------------------------------------------------------------
+
+int MuonCrossSection_t::deriveCov(const std::vector<TH1D*> &rndCS,
+				  TVaried_t var,
+				  TH1D **h1avgCS_out, TH2D **h2cov_out)
+{
+  int res= deriveCovariance(rndCS,
+			    variedVarName(var) + fTag,
+			    "avg " + csTypeName(_csPreFsrFullSp),
+			    h1avgCS_out, h2cov_out);
+  if (!res) std::cout << "error in MuonCrossSection_t::deriveCov\n";
+  return res;
+}
+
+// --------------------------------------------------------------
+
 int MuonCrossSection_t::save(TString fnameBase)
 {
   TString fnameA= fnameBase + "_csA.root";
@@ -1059,7 +1134,8 @@ int MuonCrossSection_t::save(TString fnameBase)
   if (fh1Bkg) fh1Bkg->Write("h1Bkg");
   if (fh1CS) fh1CS->Write("h1CS");
   if (fh1Theory) fh1Theory->Write("h1Theory");
-  if (fFSRBayes) fFSRBayes->Write("fsrBayes");
+  //HERE("save fsrBayes");
+  //if (fFSRBayes) fFSRBayes->Write("fsrBayes"); // crashes
 
   TObjString infoTag(fTag);
   infoTag.Write("tag");
@@ -1136,6 +1212,39 @@ int MuonCrossSection_t::load(TString fnameBase, TString setTag)
   fin.Close();
   return 1;
 }
+
+// --------------------------------------------------------------
+
+TH1D* MuonCrossSection_t::calcPreFsrCS_sumAB(const TH1D *h1a,
+					     const TH1D *h1b,
+					     TString useTag)
+{
+  HERE("entered calcPreFsrCS_sumAB");
+  if (!h1a || !h1b) {
+    std::cout << "calcPreFsrCS_sumAB : null ptrs\n";
+    return NULL;
+  }
+  TH1D *h1postFSR= fCSa.copy(h1a,"h1postFSR",fTag);
+  h1postFSR->Scale( fCSa.lumi() );
+  h1postFSR->Add(h1b, fCSb.lumi());
+  //printHisto(h1postFSR);
+
+  if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
+  fFSRBayes= new RooUnfoldBayes( fCSa.fFSRRes, h1postFSR, fCSa.fNIters, false);
+  TH1D* h1CS_raw= (TH1D*) fFSRBayes->Hreco()->Clone("h1preFSR_" + useTag);
+  h1CS_raw->SetDirectory(0);
+  h1CS_raw->SetTitle("h1preFSR_" + useTag +
+		     TString(";") + fh1Bkg->GetXaxis()->GetTitle()
+		     + TString("; pre-FSR full space cross section"));
+  double lumiTot= fCSa.lumi() + fCSb.lumi();
+  h1CS_raw->Scale(1/lumiTot);
+  TH1D *h1CS_tmp = perMassBinWidth(h1CS_raw,0);
+  //printHisto(h1CS_tmp);
+  delete h1postFSR;
+  delete h1CS_raw;
+  return h1CS_tmp;
+}
+
 
 // --------------------------------------------------------------
 // --------------------------------------------------------------

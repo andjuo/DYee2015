@@ -172,11 +172,16 @@ class MuonCrossSection_t {
   TH1D* calcCrossSection();
   TCanvas* plotCrossSection(TString canvName="cs", int recalculate=0);
 
+  int sampleRndVec(TVaried_t new_var, int sampleSize,
+		   std::vector<TH1D*> &rndCS);
+  int deriveCov(const std::vector<TH1D*> &rndCS, TVaried_t var,
+		TH1D **h1avgCS_out, TH2D **h2cov_out);
+
   int save(TString fnameBase);
   int load(TString fnameBase, TString setTag);
 
  protected:
-  //int init();
+  TH1D* calcPreFsrCS_sumAB(const TH1D *h1a, const TH1D *h1b,TString useTag);
 };
 
 // -----------------------------------------------------------
