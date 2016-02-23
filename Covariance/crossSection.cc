@@ -335,12 +335,24 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
 
   if (new_var <= _varBkg) {
     if (new_var==_varYield) {
+      if (0) {
+	TString cname="cTest" + useTag;
+	plotHisto(fh1Yield,cname,1,1,"hist");
+	plotHistoSame(fh1Varied,cname,"LPE");
+	printHisto(fh1Varied);
+      }
+      if (1) { // prevent compiler from malfunctioning optimization
+	TH1D *h1tmp=fh1Varied;
+	HERE(h1tmp->GetName());
+	fh1Varied=copy(fh1Yield,"h1Var_xx",useTag);
+	for (int ibin=1; ibin<=fh1Varied->GetNbinsX(); ibin++) {
+	  fh1Varied->SetBinContent(ibin, h1tmp->GetBinContent(ibin));
+	  fh1Varied->SetBinError(ibin,h1tmp->GetBinError(ibin));
+	}
+	//delete h1tmp; // do not delete - causes trouble
+      }
       fh1Signal= copy(fh1Varied,"h1Signal_var",useTag);
       fh1Signal->Add(fh1Bkg,-1);
-      HERE("\ncalcCrossSection - varied Yield");
-      printHisto(fh1Varied);
-      printHisto(fh1Bkg);
-      printHisto(fh1Signal);
     }
     else if (new_var==_varBkg) {
       fh1Signal= copy(fh1Yield,"h1Signal_var",useTag);
@@ -354,11 +366,11 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
 		 + TString(";unfolded yield")
 		 ,
 		 fh1Yield); // set x binning
-    printHisto(fh1Unf);
+    //printHisto(fh1Unf);
     fh1UnfRhoCorr= copy(fh1Unf,"h1UnfRho",useTag);
-    printHisto(fh1UnfRhoCorr);
+    //printHisto(fh1UnfRhoCorr);
     fh1UnfRhoCorr->Divide(fh1Rho);
-    printHisto(fh1UnfRhoCorr);
+    //printHisto(fh1UnfRhoCorr);
     if (!fh1EffAcc) {
       fh1UnfRhoEffCorr= copy(fh1UnfRhoCorr,"h1UnfRhoEff",useTag);
       fh1UnfRhoEffCorr->Divide(fh1Eff);
@@ -572,21 +584,27 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
     plotHisto(h1Track, "cVaried"+fTag,1);
     plotHistoSame(h1Track,"cVaried"+fTag,"LPE");
   }
-  if (!fh1Varied) {
-    fh1Varied= copy(h1Src,"hVar" + variedVarName(new_var), fTag);
-    fh1Varied->Reset();
-  }
+  if (fh1Varied) { delete fh1Varied; fh1Varied=NULL; }
+  fh1Varied= copy(h1Src,"hVar" + variedVarName(new_var), fTag);
+  fh1Varied->Reset();
+
   for (int i=0; i<sampleSize; i++) {
     std::cout << "\n\nrandomize: i=" << i << ", " << variedVarName(new_var) << "\n";
     const int nonNegative=0;
+    if (0) {
+      if (fh1Varied) { delete fh1Varied; fh1Varied=NULL; }
+      fh1Varied= copy(h1Src,"hVar" + variedVarName(new_var) + Form("_%d",i), fTag);
+      fh1Varied->Reset();
+    }
     randomizeWithinErr(h1Src, fh1Varied, nonNegative);
     if (trackRnd) {
       //fh1Varied->SetMarkerStyle(24);
       int color=(i%9)+1;
-      TH1D *h1var= copy(fh1Varied,"h1var" + TString(Form("_%d",i)), fTag);
+      TH1D *h1var= copy(fh1Varied,"h1varTmp" + TString(Form("_%d",i)), fTag);
       h1var->SetLineColor(color);
       h1var->SetMarkerColor(color);
-      plotHistoSame(h1var, "cVaried"+fTag, "hist");
+      h1var->SetMarkerStyle(5);
+      plotHistoSame(h1var, "cVaried"+fTag, "LPE");
     }
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
@@ -1053,10 +1071,27 @@ TCanvas* MuonCrossSection_t::plotCrossSection(TString canvName,int recalculate)
 // --------------------------------------------------------------
 
 int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
-				     std::vector<TH1D*> &rndCS)
+				     std::vector<TH1D*> &rndCS,
+				     std::vector<TH1D*> *rndCSa_out,
+				     std::vector<TH1D*> *rndCSb_out)
 {
   int trackCSa=1;
-  if (trackCSa) { plotHisto(fCSa.copy(fCSa.h1UnfRhoEffAccCorr(),fCSa.h1UnfRhoEffAccCorr()->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a",1,1,"LPE"); }
+  if (trackCSa) {
+    TH1D *h1a=fCSa.copy(fCSa.h1UnfRhoEffAccCorr(),fCSa.h1UnfRhoEffAccCorr()->GetName()+TString("tmp"),fTag + TString("tmp"));
+    h1a->SetTitle("UnfRhoEffAccCorr " + fCSa.tag() + " (postFSR cs)");
+    h1a->GetXaxis()->SetNoExponent();
+    h1a->GetXaxis()->SetMoreLogLabels();
+    plotHisto(h1a, "muCS_a",1,1,"LPE");
+  }
+  int trackCSb=1;
+  if (trackCSb) {
+    TH1D *h1b=fCSb.copy(fCSb.h1UnfRhoEffAccCorr(),fCSb.h1UnfRhoEffAccCorr()->GetName()+TString("tmp"),fTag + TString("tmp"));
+    h1b->SetTitle("UnfRhoEffAccCorr " + fCSb.tag() + " (postFSR cs)");
+    h1b->GetXaxis()->SetNoExponent();
+    h1b->GetXaxis()->SetMoreLogLabels();
+    plotHisto(h1b, "muCS_b",1,1,"LPE");
+  }
+
   int trackCS=1;
   if (trackCS) {
     plotHisto(fh1CS,"muCSVar",1,1,"LPE");
@@ -1064,10 +1099,11 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 
   int res=1;
   rndCS.clear();
+  std::vector<TH1D*> rndCSa, rndCSb;
   if (new_var==_varYield) {
-    std::vector<TH1D*> rndCSa, rndCSb;
-    res= (fCSa.sampleRndVec(_varYield,sampleSize,rndCSa) &&
-	  fCSb.sampleRndVec(_varYield,sampleSize,rndCSb)) ? 1:0;
+    res= (fCSa.sampleRndVec(new_var,sampleSize,rndCSa)
+	  && fCSb.sampleRndVec(new_var,sampleSize,rndCSb)
+	  ) ? 1:0;
     if (res) {
       for (int i=0; i<sampleSize; i++) {
 	TString useTag=Form("_rnd%d",i) + fTag;
@@ -1076,6 +1112,10 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 	if (trackCSa) {
 	  rndCSa[i]->SetLineColor((i%9)+1);
 	  plotHistoSame(fCSa.copy(rndCSa[i],rndCSa[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a","hist");
+	}
+	if (trackCSb) {
+	  rndCSb[i]->SetLineColor((i%9)+1);
+	  plotHistoSame(fCSb.copy(rndCSb[i],rndCSb[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_b","hist");
 	}
 	if (trackCS) {
 	  h1cs->SetLineColor((i%9)+1);
@@ -1089,6 +1129,8 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 	      << variedVarName(new_var) << "\n";
     res=0;
   }
+  if (rndCSa_out) (*rndCSa_out) = rndCSa;
+  if (rndCSb_out) (*rndCSb_out) = rndCSb;
   if (!res) std::cout << "Error in MuonCrossSection_t::sampleRndVec\n";
   return res;
 }

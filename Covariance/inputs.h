@@ -29,6 +29,7 @@ void plotHistoSame(TH1D *h1, TString canvName, TString drawOpt);
 void printHisto(const TH1D* h1);
 void printHisto(const TH2D* h1);
 void printRatio(const TH1D* h1a, const TH1D* h1b);
+void printField(TString keyName);
 
 inline void plotHisto(TH1* h1, TString cName, int logX=0, int logY=0, TString drawOpt="hist")
 {  plotHisto((TH1D*)h1,cName,logX,logY,drawOpt); }
@@ -140,6 +141,7 @@ void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative)
 			      hSrc->GetBinError(ibin));
     if (nonNegative && (val<0)) val=0;
     hDest->SetBinContent(ibin,val);
+    hDest->SetBinError  (ibin,0); //hSrc->GetBinError(ibin));
   }
 }
 
@@ -154,7 +156,11 @@ int deriveCovariance(const std::vector<TH1D*> &rndCS,
 TH2D* cov2corr(const TH2D* h2cov);
 
 TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
-		     TH2D** h2corr_out=NULL);
+		     TH2D** h2corr_out=NULL,
+		     int autoZRangeCorr=1);
+
+TCanvas *findCanvas(TString canvName);
+int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
 

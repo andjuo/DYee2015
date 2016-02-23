@@ -173,7 +173,9 @@ class MuonCrossSection_t {
   TCanvas* plotCrossSection(TString canvName="cs", int recalculate=0);
 
   int sampleRndVec(TVaried_t new_var, int sampleSize,
-		   std::vector<TH1D*> &rndCS);
+		   std::vector<TH1D*> &rndCS,
+		   std::vector<TH1D*> *rndCSa_out=NULL,
+		   std::vector<TH1D*> *rndCSb_out=NULL);
   int deriveCov(const std::vector<TH1D*> &rndCS, TVaried_t var,
 		TH1D **h1avgCS_out, TH2D **h2cov_out);
 

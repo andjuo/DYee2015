@@ -1,4 +1,5 @@
 #include "inputs.h"
+#include <sstream>
 
 // -----------------------------------------------------------
 
@@ -108,6 +109,18 @@ void printRatio(const TH1D *h1a, const TH1D *h1b) {
   }
 }
 
+
+// ---------------------------------------------------------
+
+void printField(TString keyName)
+{
+  TObject *obj= gDirectory->Get(keyName);
+  if (!obj) { std::cout << "printField: obj <" << keyName << "> not found\n"; }
+  else {
+    TObjString *str=(TObjString*)obj;
+    if (str) std::cout << "value: " << str->String() << "\n";
+  }
+}
 
 // ---------------------------------------------------------
 // ---------------------------------------------------------
@@ -292,7 +305,12 @@ TH2D* cov2corr(const TH2D* h2cov)
 
 // ---------------------------------------------------------
 
-TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out) {
+TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
+		     int autoZRange) {
+  h2Cov->GetXaxis()->SetMoreLogLabels();
+  h2Cov->GetXaxis()->SetNoExponent();
+  h2Cov->GetYaxis()->SetMoreLogLabels();
+  h2Cov->GetYaxis()->SetNoExponent();
   TH2D* h2Corr= cov2corr(h2Cov);
   h2Cov->SetStats(0);
   TCanvas *cx= new TCanvas(canvName,canvName,1200,600);
@@ -306,6 +324,7 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out) {
   gPad->SetLogx();
   gPad->SetLogy();
   gPad->SetRightMargin(0.18);
+  if (autoZRange) h2Corr->GetZaxis()->SetRangeUser(-1,1);
   h2Corr->Draw("COLZ");
   cx->Update();
   if (h2corr_out) (*h2corr_out)=h2Corr;
@@ -313,6 +332,37 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out) {
 }
 
 // ---------------------------------------------------------
+// ---------------------------------------------------------
+
+TCanvas *findCanvas(TString canvName)
+{
+  TSeqCollection *seq=gROOT->GetListOfCanvases();
+  TCanvas *cOut=NULL;
+  for (int i=0; i<=seq->LastIndex(); i++) {
+    TCanvas *c= (TCanvas*) seq->At(i);
+    //std::cout << "i=" << i << " " << c->GetName() << "\n";
+    if (c->GetName() == canvName) {
+      cOut=c; break;
+    }
+  }
+  return cOut;
+}
+
+// ---------------------------------------------------------
+
+int findCanvases(TString canvNames, std::vector<TCanvas*> &cV)
+{
+  unsigned int iniSize=cV.size();
+  std::stringstream ss(canvNames.Data());
+  TString cName;
+  while (!ss.eof()) {
+    ss >> cName;
+    TCanvas *c= findCanvas(cName);
+    if (c) cV.push_back(c);
+  }
+  return int(cV.size()-iniSize);
+}
+
 // ---------------------------------------------------------
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir)

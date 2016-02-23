@@ -2,11 +2,11 @@
 
 // --------------------------------------------------------------
 
-void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample);
+void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave);
 
 // --------------------------------------------------------------
 
-void studyDYmmCS(TVaried_t var= _varNone, int nSample=10)
+void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 {
   MuonCrossSection_t muCS("muCS","v1");
   if (!muCS.load("cs_DYmm_13TeV_v1","v1")) {
@@ -36,7 +36,7 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10)
   }
   else {
     std::cout << "perform study\n";
-    work(muCS,var,nSample);
+    work(muCS,var,nSample,doSave);
   }
  
 }
@@ -45,10 +45,10 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10)
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 
-void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample)
+void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
 {
-  std::vector<TH1D*> rndCSVec;
-  int res=muCS.sampleRndVec(var,nSample,rndCSVec);
+  std::vector<TH1D*> rndCSVec, rndCSaVec, rndCSbVec;
+  int res=muCS.sampleRndVec(var,nSample,rndCSVec,&rndCSaVec,&rndCSbVec);
   if (!res) return;
   TH1D* h1Avg=NULL;
   TH2D* h2Cov=NULL;
@@ -62,6 +62,54 @@ void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample)
 
   TH2D* h2Corr=NULL;
   TCanvas *cx= plotCovCorr(h2Cov,"ccov",&h2Corr);
+  if (!cx) std::cout << "cx is null\n";
+
+  if (doSave) {
+    TString fname="cov_mumu_" + variedVarName(var) + Form("_%d.root",nSample);
+    TFile fout(fname,"RECREATE");
+    if (!fout.IsOpen()) {
+      std::cout << "file <" << fname << "> could not be created\n";
+      return;
+    }
+    std::vector<TString> dirs;
+    std::vector<std::vector<TH1D*>*> hVs;
+    dirs.push_back("rnd_CSa");
+    hVs.push_back(&rndCSaVec);
+    dirs.push_back("rnd_CSb");
+    hVs.push_back(&rndCSbVec);
+    dirs.push_back("rnd_CStot");
+    hVs.push_back(&rndCSVec);
+    for (unsigned int iDir=0; iDir<dirs.size(); iDir++) {
+      fout.mkdir(dirs[iDir]);
+      fout.cd(dirs[iDir]);
+      std::vector<TH1D*> *hV= hVs[iDir];
+      for (unsigned int ih=0; ih<hV->size(); ih++) {
+	hV->at(ih)->Write();
+      }
+      fout.cd("");
+    }
+    if (muCS.h1CS()) muCS.h1CS()->Write();
+    if (muCS.h1Theory()) muCS.h1Theory()->Write();
+    if (h1Avg) h1Avg->Write();
+    if (h2Cov) h2Cov->Write();
+    if (h2Corr) h2Corr->Write();
+    if (c) c->Write();
+    if (cx) cx->Write();
+    std::vector<TCanvas*> canvV;
+    TString canvList="muCS_a muCS_b";
+    canvList.Append(" cVaried" + muCS.csA().tag());
+    canvList.Append(" cVaried" + muCS.csB().tag());
+    std::cout << "canvList=" << canvList << "\n";
+    if (findCanvases(canvList,canvV)) {
+      for (unsigned int ic=0; ic<canvV.size(); ic++) {
+	canvV[ic]->Write();
+      }
+    }
+    TObjString timeTag(DayAndTimeTag(0));
+    timeTag.Write("timeTag");
+    fout.Close();
+    std::cout << "file <" << fout.GetName() << "> created\n";
+  }
 }
 
 // --------------------------------------------------------------
