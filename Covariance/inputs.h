@@ -113,6 +113,7 @@ histo_t* loadHisto(TString fname, TString histoNameOnFile, TString histoName,
 // -----------------------------------------------------------
 
 template<class histo_t>
+inline
 histo_t* cloneHisto(const histo_t *hSrc, TString histoName, TString histoTitle)
 {
   histo_t* h=(histo_t*) hSrc->Clone(histoName);
@@ -120,6 +121,25 @@ histo_t* cloneHisto(const histo_t *hSrc, TString histoName, TString histoTitle)
   h->SetName(histoName);
   h->SetTitle(histoTitle);
   return h;
+}
+
+// -----------------------------------------------------------
+
+inline
+int copyContents(TH1D *h1Dest, const TH1D *h1Src)
+{
+  if (h1Dest->GetNbinsX() != h1Src->GetNbinsX()) {
+    std::cout << "copyContents(TH1D): number of bins is different :"
+	      << " h1Dest[" << h1Dest->GetNbinsX() << "],"
+	      << "h1Src[" << h1Src->GetNbinsX() << "]\n";
+    return 0;
+
+  }
+  for (int ibin=1; ibin<=h1Src->GetNbinsX(); ibin++) {
+    h1Dest->SetBinContent(ibin, h1Src->GetBinContent(ibin));
+    h1Dest->SetBinError  (ibin, h1Src->GetBinError  (ibin));
+  }
+  return 1;
 }
 
 // -----------------------------------------------------------

@@ -11,6 +11,7 @@ TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle, int plotIt=0
 void createCSInput_DYmm13TeV()
 {
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
+  srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
 
   TH1D* h1Dummy=NULL;
   //TH2D* h2Dummy=NULL;
@@ -51,21 +52,21 @@ void createCSInput_DYmm13TeV()
   h1BkgTot->Reset();
   //printHisto(h1BkgTot);
   std::vector<TH1D*> hBkgV;
-  std::vector<double> bkgWeights;
+  std::vector<double> bkgWeightUnc;
   hBkgV.reserve(_bkgLast);
-  bkgWeights.reserve(_bkgLast);
+  bkgWeightUnc.reserve(_bkgLast);
   for (TBkg_t b=_bkgZZ; b<_bkgLast; next(b)) {
     std::cout << "b=" << bkgName(b) << "\n";
     TH1D *h1= loadHisto(fin2, "h_"+bkgName(b), "h_"+bkgName(b),1,h1Dummy);
     if (!h1) return;
-    double w=1.;
+    double w=1., dw=0.;
     if (1) {
-      if (b==_bkgZZ) { w= 15.4/996944.; }
-      else if (b==_bkgWZ) { w= 66.1/978512.; }
-      else if (b==_bkgWW) { w= 118.7/993640.; }
+      if (b==_bkgZZ) { w= 15.4/996944.; dw=0.11; }
+      else if (b==_bkgWZ) { w= 66.1/978512.; dw= 0.40; }
+      else if (b==_bkgWW) { w= 118.7/993640.; dw= 0.08; }
       if (w!=double(1.)) h1->Scale( w * lumiTot );
     }
-    bkgWeights.push_back(1);
+    bkgWeightUnc.push_back(dw);
     hBkgV.push_back(h1);
     h1BkgTot->Add(h1);
   }
@@ -157,7 +158,7 @@ void createCSInput_DYmm13TeV()
   muCS.editCSb().fsrRes( *rooFSRRes );
 
   //muCS.h1Bkg( h1BkgTot );
-  muCS.setBkgV(hBkgV,bkgWeights);
+  muCS.setBkgV(hBkgV, bkgWeightUnc);
   muCS.h1Theory(h1_DiffXSec_data);
 
   if (0) {

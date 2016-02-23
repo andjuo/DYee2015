@@ -7,7 +7,7 @@
 
 // -----------------------------------------------------------
 
-typedef enum { _varNone=0, _varYield, _varBkg, _varSig, _varDetRes, _varFSRRes,
+typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes, _varFSRRes,
     _varEff, _varRho, _varAcc, _varEffAcc, _varLast } TVaried_t;
 
 typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
@@ -141,7 +141,7 @@ class MuonCrossSection_t {
   CrossSection_t fCSa, fCSb;
   TString fTag;
   std::vector<TH1D*> fh1BkgV;
-  TVectorD fBkgWeights; //  xsec/nEvents
+  TVectorD fBkgWeightUnc; // bkg weight uncertainty
   TH1D *fh1Bkg;
   TH1D *fh1CS;
   TH1D *fh1Theory;
@@ -164,8 +164,8 @@ class MuonCrossSection_t {
   const TH1D* h1Bkg() const { return fh1Bkg; }
   void h1Bkg(const TH1D *h1, int clearVec=1);
   const std::vector<TH1D*>& bkgV() const { return fh1BkgV; }
-  const TVectorD& bkgW() const { return fBkgWeights; }
-  void setBkgV(const std::vector<TH1D*> &setBkg, const std::vector<double> &weights);
+  const TVectorD& bkgWUnc() const { return fBkgWeightUnc; }
+  void setBkgV(const std::vector<TH1D*> &setBkg, const std::vector<double> &set_bkgWUncertainty);
   int recalcBkg(const std::vector<double> &weights);
 
   const TH1D* h1CS() const { return fh1CS; }

@@ -24,8 +24,8 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
     plotHisto(cloneHisto(muCS.h1Bkg(),"h1tmp1","tmp1"),"ctmp1",1,1,"hist");
 
     std::vector<double> bkgW;
-    bkgW.reserve(muCS.bkgW().GetNoElements());
-    for (int i=0; i<muCS.bkgW().GetNoElements(); i++) {
+    bkgW.reserve(muCS.bkgWUnc().GetNoElements());
+    for (int i=0; i<muCS.bkgWUnc().GetNoElements(); i++) {
       bkgW.push_back(2.);
     }
     if (!muCS.recalcBkg(bkgW)) return;

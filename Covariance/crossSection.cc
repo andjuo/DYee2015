@@ -12,6 +12,7 @@ TString variedVarName(TVaried_t v)
   case _varNone: name="none"; break;
   case _varYield: name="varYield"; break;
   case _varBkg: name="varBkg"; break;
+  case _varBkgXS: name="varBkgXS"; break;
   case _varSig: name="varSig"; break;
   case _varDetRes: name="varDetRes"; break;
   case _varFSRRes: name="varFSRRes"; break;
@@ -189,7 +190,8 @@ TH1D* CrossSection_t::getVariedHisto(TVaried_t new_var)
   TH1D* h1=NULL;
   switch(fVar) {
   case _varYield: h1=fh1Yield; break;
-  case _varBkg: h1=fh1Bkg; break;
+  case _varBkg:
+  case _varBkgXS: h1=fh1Bkg; break;
   case _varSig: h1=fh1Signal; break;
   case _varDetRes:
   case _varFSRRes:
@@ -922,7 +924,7 @@ MuonCrossSection_t::MuonCrossSection_t(TString setName, TString setTag,
   fCSa(setName + TString("a"), setTag + TString("a"), _csPostFsrFullSp),
   fCSb(setName + TString("b"), setTag + TString("b"), _csPostFsrFullSp),
   fTag(setTag),
-  fh1BkgV(), fBkgWeights(),
+  fh1BkgV(), fBkgWeightUnc(),
   fh1Bkg(NULL),
   fh1CS(NULL),
   fh1Theory(NULL),
@@ -938,7 +940,7 @@ void MuonCrossSection_t::h1Bkg(const TH1D *h1, int clearVec)
 {
   if (clearVec) {
     fh1BkgV.clear();
-    fBkgWeights.Clear();
+    fBkgWeightUnc.Clear();
   }
 
   double lumiTot= fCSa.lumi() + fCSb.lumi();
@@ -955,11 +957,11 @@ void MuonCrossSection_t::h1Bkg(const TH1D *h1, int clearVec)
 // --------------------------------------------------------------
 
 void MuonCrossSection_t::setBkgV(const std::vector<TH1D*> &setBkg,
-				 const std::vector<double> &weights)
+				 const std::vector<double> &weightUnc)
 {
   if (fh1Bkg) { delete fh1Bkg; fh1Bkg=NULL; }
   fh1BkgV.clear();
-  fBkgWeights.Clear();
+  fBkgWeightUnc.Clear();
   if (setBkg.size()==0) {
     std::cout << "setBkgV: size is 0\n";
     return;
@@ -967,13 +969,12 @@ void MuonCrossSection_t::setBkgV(const std::vector<TH1D*> &setBkg,
   TH1D *h1BkgSum= fCSa.copy(setBkg[0],fTag);
   for (unsigned int i=0; i<setBkg.size(); i++) {
     TH1D *h1=fCSa.copy(setBkg[i],fTag);
-    h1->Scale(weights[i]);
     fh1BkgV.push_back(h1);
     if (i>0) h1BkgSum->Add(h1);
   }
-  fBkgWeights.ResizeTo(weights.size());
-  for (unsigned int i=0; i<weights.size(); i++) {
-    fBkgWeights[i]= weights[i];
+  fBkgWeightUnc.ResizeTo(weightUnc.size());
+  for (unsigned int i=0; i<weightUnc.size(); i++) {
+    fBkgWeightUnc[i]= weightUnc[i];
   }
   h1Bkg(h1BkgSum,0);
 }
@@ -1105,7 +1106,8 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   rndCSa.reserve(sampleSize);
   rndCSb.reserve(sampleSize);
   if ((new_var==_varYield) ||
-      (new_var==_varBkg)) {
+      (new_var==_varBkg) ||
+      (new_var==_varBkgXS)) {
     // Prepare post-FSR cross sections
     if (new_var==_varYield) {
       res= (fCSa.sampleRndVec(new_var,sampleSize,rndCSa)
@@ -1136,6 +1138,43 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 
       res= (fCSa.sampleRndVec(_varBkg, rndBkgVa, rndCSa) &&
 	    fCSb.sampleRndVec(_varBkg, rndBkgVb, rndCSb)) ? 1:0;
+    }
+    else if (new_var==_varBkgXS) {
+      TH1D *h1BkgCopy= cloneHisto(fh1Bkg, fh1Bkg->GetName() + TString("_copy"),
+				  fh1Bkg->GetTitle());
+
+      std::vector<TH1D*> rndBkgVa, rndBkgVb;
+      TH1D *h1rnd= NULL;
+      double lumiTot= fCSa.lumi() + fCSb.lumi();
+      std::vector<double> rndV;
+      for (int i=0; i<fBkgWeightUnc.GetNoElements(); i++) rndV.push_back(1.);
+      for (int i=0; i<sampleSize; i++) {
+	TString useTag= Form("_rnd%d",i) + fTag;
+	for (int i=0; i<fBkgWeightUnc.GetNoElements(); i++) {
+	  rndV[i] = gRandom->Gaus(1.,fBkgWeightUnc[i]);
+	}
+	if (!this->recalcBkg(rndV)) {
+	  std::cout << "error recalculating the background\n";
+	  return 0;
+	}
+	h1rnd=cloneHisto(fh1Bkg,
+			 "h1rndBkg" + useTag,
+			 fh1Bkg->GetTitle());
+	TH1D* h1rndA= fCSa.copy(h1rnd);
+	h1rndA->Scale( fCSa.lumi()/lumiTot );
+	TH1D* h1rndB= fCSb.copy(h1rnd);
+	h1rndB->Scale( fCSb.lumi()/lumiTot );
+
+	if (rndVarVec_out) rndVarVec_out->push_back(h1rnd);
+	else delete h1rnd;
+	rndBkgVa.push_back(h1rndA);
+	rndBkgVb.push_back(h1rndB);
+      }
+
+      res= (fCSa.sampleRndVec(_varBkg, rndBkgVa, rndCSa) &&
+	    fCSb.sampleRndVec(_varBkg, rndBkgVb, rndCSb)) ? 1:0;
+      res=res && copyContents(fh1Bkg, h1BkgCopy);
+      delete h1BkgCopy;
     }
     else {
       std::cout << "case is not ready !!\n";
@@ -1251,7 +1290,7 @@ int MuonCrossSection_t::save(TString fnameBase)
     std::cout << "failed to create the file <" << fname << ">\n";
     return 0;
   }
-  fBkgWeights.Write("bkgWeights");
+  fBkgWeightUnc.Write("bkgWeightUnc");
   fout.mkdir("bkg");
   fout.cd("bkg");
   for (unsigned int i=0; i<fh1BkgV.size(); i++) fh1BkgV[i]->Write();
@@ -1296,9 +1335,9 @@ int MuonCrossSection_t::load(TString fnameBase, TString setTag)
     std::cout << "failed to open the file <" << fname << ">\n";
     return 0;
   }
-  fBkgWeights.Read("bkgWeights");
-  if (fBkgWeights.GetNoElements()>0) {
-    fh1BkgV.reserve(fBkgWeights.GetNoElements());
+  fBkgWeightUnc.Read("bkgWeightUnc");
+  if (fBkgWeightUnc.GetNoElements()>0) {
+    fh1BkgV.reserve(fBkgWeightUnc.GetNoElements());
     fin.cd("bkg");
     TList* objList= gDirectory->GetListOfKeys();
     if (!objList) {
