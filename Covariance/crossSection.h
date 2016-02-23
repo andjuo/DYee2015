@@ -65,7 +65,10 @@ class CrossSection_t {
   const TH1D *h1Yield() const { return fh1Yield; }
   void h1Yield(const TH1D* h1) { fh1Yield=copy(h1,"h1Yield",fTag); }
   const TH1D *h1Bkg() const { return fh1Bkg; }
-  void h1Bkg(const TH1D* h1) { fh1Bkg=copy(h1,"h1Bkg",fTag); }
+  void h1Bkg(const TH1D* h1, double scale=1.) {
+    fh1Bkg=copy(h1,"h1Bkg",fTag);
+    if (scale!=1.) fh1Bkg->Scale(scale);
+  }
   const TH1D *h1Eff() const { return fh1Eff; }
   void h1Eff(const TH1D *h1) { fh1Eff=copy(h1,"h1Eff",fTag); }
   const TH1D *h1Rho() const { return fh1Rho; }
@@ -175,7 +178,8 @@ class MuonCrossSection_t {
   int sampleRndVec(TVaried_t new_var, int sampleSize,
 		   std::vector<TH1D*> &rndCS,
 		   std::vector<TH1D*> *rndCSa_out=NULL,
-		   std::vector<TH1D*> *rndCSb_out=NULL);
+		   std::vector<TH1D*> *rndCSb_out=NULL,
+		   std::vector<TH1D*> *rndVarVec_out=NULL);
   int deriveCov(const std::vector<TH1D*> &rndCS, TVaried_t var,
 		TH1D **h1avgCS_out, TH2D **h2cov_out);
 

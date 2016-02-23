@@ -80,13 +80,15 @@ void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
     dirs.push_back("rnd_CStot");
     hVs.push_back(&rndCSVec);
     for (unsigned int iDir=0; iDir<dirs.size(); iDir++) {
-      fout.mkdir(dirs[iDir]);
-      fout.cd(dirs[iDir]);
       std::vector<TH1D*> *hV= hVs[iDir];
-      for (unsigned int ih=0; ih<hV->size(); ih++) {
-	hV->at(ih)->Write();
+      if (hV->size()) {
+	fout.mkdir(dirs[iDir]);
+	fout.cd(dirs[iDir]);
+	for (unsigned int ih=0; ih<hV->size(); ih++) {
+	  hV->at(ih)->Write();
+	}
+	fout.cd("");
       }
-      fout.cd("");
     }
     if (muCS.h1CS()) muCS.h1CS()->Write();
     if (muCS.h1Theory()) muCS.h1Theory()->Write();

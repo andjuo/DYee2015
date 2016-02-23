@@ -629,8 +629,8 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var,
   if (trackRnd) {
     h1Track= copy(h1Src,"h1Track",fTag);
     h1Track->SetMarkerStyle(24);
-    plotHisto(h1Track, "cVaried",1);
-    plotHistoSame(h1Track,"cVaried","LPE");
+    plotHisto(h1Track, "cVaried" + fTag,1);
+    plotHistoSame(h1Track,"cVaried" + fTag,"LPE");
   }
   if (!fh1Varied) {
     fh1Varied= copy(h1Src,"hVar" + variedVarName(new_var), fTag);
@@ -646,7 +646,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var,
       //printHisto(h1var);
       h1var->SetLineColor(color);
       h1var->SetMarkerColor(color);
-      plotHistoSame(h1var, "cVaried", "hist");
+      plotHistoSame(h1var, "cVaried" + fTag, "hist");
     }
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
@@ -1073,7 +1073,8 @@ TCanvas* MuonCrossSection_t::plotCrossSection(TString canvName,int recalculate)
 int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 				     std::vector<TH1D*> &rndCS,
 				     std::vector<TH1D*> *rndCSa_out,
-				     std::vector<TH1D*> *rndCSb_out)
+				     std::vector<TH1D*> *rndCSb_out,
+				     std::vector<TH1D*> *rndVarVec_out)
 {
   int trackCSa=1;
   if (trackCSa) {
@@ -1100,15 +1101,53 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   int res=1;
   rndCS.clear();
   std::vector<TH1D*> rndCSa, rndCSb;
-  if (new_var==_varYield) {
-    res= (fCSa.sampleRndVec(new_var,sampleSize,rndCSa)
-	  && fCSb.sampleRndVec(new_var,sampleSize,rndCSb)
-	  ) ? 1:0;
+  rndCS.reserve(sampleSize);
+  rndCSa.reserve(sampleSize);
+  rndCSb.reserve(sampleSize);
+  if ((new_var==_varYield) ||
+      (new_var==_varBkg)) {
+    // Prepare post-FSR cross sections
+    if (new_var==_varYield) {
+      res= (fCSa.sampleRndVec(new_var,sampleSize,rndCSa)
+	    && fCSb.sampleRndVec(new_var,sampleSize,rndCSb)
+	    ) ? 1:0;
+    }
+    else if (new_var==_varBkg) {
+      std::vector<TH1D*> rndBkgVa, rndBkgVb;
+      TH1D *h1rnd= NULL;
+      double lumiTot= fCSa.lumi() + fCSb.lumi();
+      for (int i=0; i<sampleSize; i++) {
+	TString useTag= Form("_rnd%d",i) + fTag;
+	h1rnd=cloneHisto(fh1Bkg,
+			 "h1rndBkg" + useTag,
+			 fh1Bkg->GetTitle());
+	int nonNegative=0;
+	randomizeWithinErr(fh1Bkg,h1rnd,nonNegative);
+	TH1D* h1rndA= fCSa.copy(h1rnd);
+	h1rndA->Scale( fCSa.lumi()/lumiTot );
+	TH1D* h1rndB= fCSb.copy(h1rnd);
+	h1rndB->Scale( fCSb.lumi()/lumiTot );
+
+	if (rndVarVec_out) rndVarVec_out->push_back(h1rnd);
+	else delete h1rnd;
+	rndBkgVa.push_back(h1rndA);
+	rndBkgVb.push_back(h1rndB);
+      }
+
+      res= (fCSa.sampleRndVec(_varBkg, rndBkgVa, rndCSa) &&
+	    fCSb.sampleRndVec(_varBkg, rndBkgVb, rndCSb)) ? 1:0;
+    }
+    else {
+      std::cout << "case is not ready !!\n";
+      return 0;
+    }
+
     if (res) {
       for (int i=0; i<sampleSize; i++) {
 	TString useTag=Form("_rnd%d",i) + fTag;
 	TH1D *h1cs= this->calcPreFsrCS_sumAB(rndCSa[i],rndCSb[i],useTag);
 	rndCS.push_back(h1cs);
+
 	if (trackCSa) {
 	  rndCSa[i]->SetLineColor((i%9)+1);
 	  plotHistoSame(fCSa.copy(rndCSa[i],rndCSa[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a","hist");
@@ -1124,6 +1163,50 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       }
     }
   }
+  /*
+  else if (new_var==_varBkg) {
+    std::vector<TH1D*> rndBkgV;
+    TH1D *h1rnd= NULL;
+    double lumiTot= fCSa.lumi() + fCSb.lumi();
+    for (int i=0; i<sampleSize; i++) {
+      TString useTag= Form("_rnd%d",i) + fTag;
+      h1rnd=cloneHisto(fh1Bkg,
+		       "h1rndBkg" + useTag,
+		       fh1Bkg->GetTitle());
+      int nonNegative=0;
+      randomizeWithinErr(fh1Bkg,h1rnd,nonNegative);
+      rndBkgV.push_back(h1rnd);
+      fCSa.h1Bkg(h1rnd, fCSa.lumi()/lumiTot);
+      fCSb.h1Bkg(h1rnd, fCSb.lumi()/lumiTot);
+      TH1D *h1csA_raw= fCSa.calcCrossSection();
+      TH1D *h1csA = fCSa.copy(h1csA_raw,
+			      h1csA_raw->GetName() + useTag + "a",
+			      fCSa.tag());
+      TH1D *h1csB_raw= fCSb.calcCrossSection();
+      TH1D* h1csB= fCSb.copy(h1csB_raw,
+			     h1csB_raw->GetName() + useTag + "b",
+			     fCSb.tag());
+      TH1D *h1cs = this->calcPreFsrCS_sumAB(h1csA,h1csB,useTag);
+      rndCSa.push_back(h1csA);
+      rndCSb.push_back(h1csB);
+      rndCS .push_back(h1cs);
+
+      if (trackCSa) {
+	h1csA->SetLineColor((i%9)+1);
+	plotHistoSame(fCSa.copy(h1csA,h1csA->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a","hist");
+      }
+      if (trackCSb) {
+	h1csB->SetLineColor((i%9)+1);
+	plotHistoSame(fCSb.copy(h1csB,h1csB->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_b","hist");
+      }
+      if (trackCS) {
+	h1cs->SetLineColor((i%9)+1);
+	plotHistoSame(h1cs,"muCSVar","hist");
+      }
+    }
+    if (rndVarVec_out) (*rndVarVec_out)= rndBkgV;
+  }
+  */
   else {
     std::cout << "sampleRndVec is not ready for new_var="
 	      << variedVarName(new_var) << "\n";
