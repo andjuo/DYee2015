@@ -2,6 +2,7 @@
 #define Inputs_H
 
 #include <TROOT.h>
+#include <TClass.h>
 #include <TCanvas.h>
 #include <TH1D.h>
 #include <TH2D.h>
@@ -129,6 +130,32 @@ histo_t* cloneHisto(const histo_t *hSrc, TString histoName, TString histoTitle)
   h->SetName(histoName);
   h->SetTitle(histoTitle);
   return h;
+}
+
+// -----------------------------------------------------------
+
+template<class histo_t, class histoTarget_t>
+inline
+histoTarget_t* cloneHisto(const histo_t *hSrc,
+			  TString histoName, TString histoTitle,
+			  const histoTarget_t *hDummy)
+{
+  if (hDummy) {} // do nothing. Just silence the compiler
+  histoTarget_t* h=(histoTarget_t*) hSrc->Clone(histoName);
+  h->SetDirectory(0);
+  h->SetName(histoName);
+  h->SetTitle(histoTitle);
+  return h;
+}
+
+// -----------------------------------------------------------
+
+inline
+void histoStyle(TH1D* h1, int color, int markerStyle)
+{
+  h1->SetLineColor(color);
+  h1->SetMarkerColor(color);
+  h1->SetMarkerStyle(markerStyle);
 }
 
 // -----------------------------------------------------------

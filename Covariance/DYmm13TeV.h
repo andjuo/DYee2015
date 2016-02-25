@@ -269,5 +269,5 @@ void DYmm13TeV_t::ActivateBranches(TString brNames)
   }
 }
 
-
+#undef DYmm13TeV_t_cxx
 #endif // #ifdef DYmm13TeV_t_cxx

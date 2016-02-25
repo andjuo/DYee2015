@@ -23,14 +23,17 @@ void processDYmm(Int_t maxEntries=-1)
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
   DYmm13TeV_t data(srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root");
   data.DeactivateBranches();
-  data.ActivateBranches("Momentum_postFSR_Lead  Momentum_postFSR_Sub  Momentum_preFSR_Lead  Momentum_preFSR_Sub  Weight_Norm  Weight_Gen");
+  data.ActivateBranches("Momentum_postFSR_Lead  Momentum_postFSR_Sub  Momentum_preFSR_Lead  Momentum_preFSR_Sub  Weight_Norm  Weight_Gen Weight_PU");
   data.ActivateBranches("Flag_EventSelection");
 
   TH1D *h1postFsrInAccSel_M= new TH1D("h1_postFsrInAccSel_M", "postFSR selected events in acceptance;M_{gen,postFSR} [GeV];count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_MW= new TH1D("h1_postFsrInAccSel_MW", "postFSR selected events in acceptance (weighted);M_{gen,postFSR} [GeV];weighted count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH1D *h1postFsrInAccSel_MWPU= new TH1D("h1_postFsrInAccSel_MWPU", "postFSR selected events in acceptance (weighted wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAcc_M= new TH1D("h1_postFsrInAcc_M", "postFSR in acceptace;M_{gen,postFSR} [GeV];count",DYtools::nMassBins,
 			    DYtools::massBinEdges);
   TH1D *h1postFsrInAcc_MW= new TH1D("h1_postFsrInAcc_Mweighted", "postFSR in acceptance;M_{gen,postFSR} [GeV];weighted count", DYtools::nMassBins,
+			    DYtools::massBinEdges);
+  TH1D *h1postFsrInAcc_MWPU= new TH1D("h1_postFsrInAcc_MweightedPU", "postFSR in acceptance (weighted wPU);M_{gen,postFSR} [GeV];weighted (wPU) count", DYtools::nMassBins,
 			    DYtools::massBinEdges);
   TH1D *h1postFsr_M= new TH1D("h1_postFsr_M", "postFSR;M_{gen,postFSR} [GeV];count",DYtools::nMassBins,
 			    DYtools::massBinEdges);
@@ -42,8 +45,10 @@ void processDYmm(Int_t maxEntries=-1)
 			   DYtools::massBinEdges);
   prepareHisto(h1postFsrInAccSel_M);
   prepareHisto(h1postFsrInAccSel_MW);
+  prepareHisto(h1postFsrInAccSel_MWPU);
   prepareHisto(h1postFsrInAcc_M);
   prepareHisto(h1postFsrInAcc_MW);
+  prepareHisto(h1postFsrInAcc_MWPU);
   prepareHisto(h1postFsr_M);
   prepareHisto(h1postFsr_MW);
   prepareHisto(h1preFsr_M);
@@ -78,9 +83,11 @@ void processDYmm(Int_t maxEntries=-1)
       if (data.Flag_EventSelection) {
 	h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
 	h1postFsrInAccSel_MW->Fill( mPostFsr, w );
+	h1postFsrInAccSel_MWPU->Fill( mPostFsr, w * data.Weight_PU );
       }
       h1postFsrInAcc_M->Fill( mPostFsr, 1. );
       h1postFsrInAcc_MW->Fill( mPostFsr, w );
+      h1postFsrInAcc_MWPU->Fill( mPostFsr, w * data.Weight_PU );
     }
     h1postFsr_M->Fill( mPostFsr, 1. );
     h1postFsr_MW->Fill( mPostFsr, w );
@@ -149,6 +156,16 @@ void processDYmm(Int_t maxEntries=-1)
   h1Eff->SetTitle("Efficiency;M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAcc_Sel/postFSR_inAcc");
   h1Eff->Divide(h1postFsrInAccSel_MW,h1postFsrInAcc_MW,1,1,"B");
 
+  TH1D* h1EffPU=(TH1D*)h1postFsrInAccSel_MWPU->Clone("h1EffPU");
+  h1EffPU->SetDirectory(0);
+  if (!h1EffPU->GetSumw2()) h1EffPU->Sumw2();
+  h1EffPU->SetTitle("Efficiency (wPU);M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAcc_Sel(wPU)/postFSR_inAcc(wPU)");
+  h1EffPU->Divide(h1postFsrInAccSel_MWPU,h1postFsrInAcc_MWPU,1,1,"B");
+
+  histoStyle(h1EffPU,kBlue,24);
+  TCanvas *cEffCmp=plotHisto(h1Eff,"cEff_noPU_vs_wPU",1,0,"LPE1");
+  plotHistoSame(h1EffPU,"cEff_noPU_vs_wPU","LPE");
+
   TH1D* h1Acc=(TH1D*)h1postFsrInAcc_MW->Clone("h1Acc");
   h1Acc->SetDirectory(0);
   if (!h1Acc->GetSumw2()) h1Acc->Sumw2();
@@ -165,6 +182,7 @@ void processDYmm(Int_t maxEntries=-1)
   if (maxEntries>0) fname.ReplaceAll(".root","_debug.root");
   TFile fout(fname,"RECREATE");
   h1Eff->Write();
+  h1EffPU->Write();
   h1Acc->Write();
   h1FSRCorr_binByBin->Write();
   fsrResp.Write();
@@ -181,6 +199,7 @@ void processDYmm(Int_t maxEntries=-1)
   h2FSRmig->Write();
   h1EffAccFsrUnf->Write();
   h2effAccFSRmig->Write();
+  cEffCmp->Write();
   cFSRTest->Write();
   cScaleToPreFsrTest->Write();
   TObjString timeTag(DayAndTimeTag(0));
