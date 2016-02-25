@@ -18,18 +18,19 @@ TString DayAndTimeTag(int eliminateSigns)
 
 // -----------------------------------------------------------
 
-void plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt)
+TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
   if (logX) cx->SetLogx();
   if (logY) cx->SetLogy();
   h1->Draw(drawOpt);
   cx->Update();
+  return cx;
 }
 
 // ---------------------------------------------------------
 
-void plotHisto(TH2D* h2, TString cName, int logx, int logy)
+TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
   cx->SetRightMargin(0.18);
@@ -37,21 +38,25 @@ void plotHisto(TH2D* h2, TString cName, int logx, int logy)
   cx->SetLogy(logy);
   h2->Draw("COLZ");
   cx->Update();
+  return cx;
 }
 
 // ---------------------------------------------------------
 
-void plotHistoSame(TH1D *h1, TString canvName, TString drawOpt)
+TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt)
 {
   TSeqCollection *seq=gROOT->GetListOfCanvases();
+  TCanvas *cOut=NULL;
   for (int i=0; i<=seq->LastIndex(); i++) {
     TCanvas *c= (TCanvas*) seq->At(i);
     //std::cout << "i=" << i << " " << c->GetName() << "\n";
     if (c->GetName() == canvName) {
       c->cd();
       h1->Draw(drawOpt + TString(" same"));
+      cOut=c;
     }
   }
+  return cOut;
 }
 
 // ---------------------------------------------------------
@@ -157,6 +162,52 @@ TH1D* flattenHisto(const TH2D *h2, TString setName)
     return h1;
   }
   return NULL;
+}
+
+// ---------------------------------------------------------
+
+TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
+	      int plotIt)
+{
+  Double_t *xLow= gr->GetEXlow();
+  Double_t *xHigh= gr->GetEXhigh();
+  Double_t *yLow= gr->GetEYlow();
+  Double_t *yHigh= gr->GetEYhigh();
+  int n=gr->GetN();
+  Double_t *x= gr->GetX();
+  Double_t *y= gr->GetY();
+
+  Double_t *xb= new Double_t[n+1];
+
+  //std::cout << "n=" << n << "\n";
+  double factor=1.;
+  //factor=1.05; // to see the difference
+  for (int i=0; i<n; i++) {
+    xb[i]=x[i]-xLow[i]*factor;
+    //std::cout << "i=" << i << ", xLow=" << xLow[i] << ", xHigh=" << xHigh[i] << ", x=" << x[i] << "\n";
+  }
+  xb[n]= x[n-1]+xHigh[n-1];
+  //std::cout << "last point " << xb[n] << "\n";
+
+
+  TH1D *h1= new TH1D(hName, hTitle, n, xb);
+  h1->SetDirectory(0);
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    h1->SetBinContent(ibin, y[ibin-1]);
+    h1->SetBinError  (ibin, 0.5*(yLow[ibin-1] + yHigh[ibin-1]));
+  }
+
+  if (plotIt) {
+    TString cName= "c" + hName;
+    TCanvas *c= new TCanvas(cName,cName,600,600);
+    c->SetLogx();
+    h1->SetLineColor(kRed);
+    h1->Draw("LPE1");
+    gr->Draw("LPE same");
+    c->Update();
+  }
+
+  return h1;
 }
 
 // ---------------------------------------------------------

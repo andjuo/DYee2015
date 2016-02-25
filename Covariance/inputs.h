@@ -13,6 +13,7 @@
 #include <TArrayD.h>
 #include <TSystem.h>
 #include <TRandom3.h>
+#include <TGraphAsymmErrors.h>
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -22,9 +23,9 @@
 
 TString DayAndTimeTag(int eliminateSigns=1);
 
-void plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE");
-void plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
-void plotHistoSame(TH1D *h1, TString canvName, TString drawOpt);
+TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE");
+TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
+TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt);
 
 void printHisto(const TH1D* h1);
 void printHisto(const TH2D* h1);
@@ -47,6 +48,9 @@ inline void printHisto(TH2* h2)
 TH1D* perMassBinWidth(const TH1D* h1, int prnBinW=0);
 TH1D *flattenHisto(const TH2D *h2, TString setName);
 
+TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
+	      int plotIt=0);
+
 // -----------------------------------------------------------
 
 void printObjStringField(TFile &f, TString keyName);
@@ -54,9 +58,13 @@ void printObjStringField(TFile &f, TString keyName);
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
+const TH1D* h1dummy=NULL;
+const TH2D* h2dummy=NULL;
+
+
 template<class histo_t>
 histo_t* loadHisto(TFile &fin, TString histoNameOnFile, TString histoName,
-		   int absenseIsError, histo_t *dummy)
+		   int absenseIsError, const histo_t *dummy)
 {
   if (!dummy) {
     // The type is defined

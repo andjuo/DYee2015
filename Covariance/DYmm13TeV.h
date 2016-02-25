@@ -260,18 +260,12 @@ void DYmm13TeV_t::ActivateBranches(TString brNames)
     std::cout << "DYmm13TeV_t::ActivateBranches non-empty string is expected\n";
     return;
   }
-  if (brNames.Index(" ")==-1) {
-    // only one string defining branches
-    fChain->SetBranchStatus(brNames,1);
-  }
-  else {
-    std::stringstream ss(brNames.Data());
-    TString fn;
-    while (!ss.eof()) {
-      ss >> fn;
-      std::cout << "adding branch <" << fn << ">\n";
-      fChain->SetBranchStatus(fn,1);
-    }
+  std::stringstream ss(brNames.Data());
+  TString fn;
+  while (!ss.eof()) {
+    ss >> fn;
+    std::cout << "adding branch <" << fn << ">\n";
+    fChain->SetBranchStatus(fn,1);
   }
 }
 
