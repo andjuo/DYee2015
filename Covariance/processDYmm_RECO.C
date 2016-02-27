@@ -1,4 +1,5 @@
 #include "DYmm13TeV.h"
+#include "DYmm13TeV_eff.h"
 #include "DYbinning.h"
 #include "inputs.h"
 #include "../RooUnfold/src/RooUnfoldResponse.h"
@@ -14,22 +15,6 @@ void prepareHisto(TH1D *h1) {
 }
 
 // --------------------------------------------------------------
-
-TH2D* loadEffHisto(TString hName) {
-  TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
-  srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
-
-  TString fname= srcPath + "Input5/ROOTFile_TagProbeEfficiency.root";
-  TFile fin(fname);
-  if (!fin.IsOpen()) {
-    std::cout << "failed to open the file <" << fname << ">\n";
-    return NULL;
-  }
-  TH2D *h2= loadHisto(fin, "h_2D_Eff_Iso_MC", hName,1,h2dummy);
-  fin.Close();
-  return h2;
-}
-
 // --------------------------------------------------------------
 
 void processDYmm_RECO(Int_t maxEntries=-1)
@@ -40,8 +25,30 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
 
-  TH2D* h2EffBinDef= loadEffHisto("h2EffBinDef");
+  DYTnPEff_t tnpEff;
+  TString fnameEff= srcPath + "Input5/ROOTFile_TagProbeEfficiency.root";
+  TFile finEff(fnameEff);
+  if (!finEff.IsOpen()) {
+    std::cout << "failed to open the file <" << fnameEff << ">\n";
+    return;
+  }
+  tnpEff.h2Eff_RecoID_Data= loadHisto(finEff,"h_2D_Eff_RecoID_Data","h2Eff_RecoID_Data",1,h2dummy);
+  tnpEff.h2Eff_Iso_Data= loadHisto(finEff,"h_2D_Eff_Iso_Data","h2Eff_Iso_Data",1,h2dummy);
+  tnpEff.h2Eff_HLT4p2_Data= loadHisto(finEff,"h_2D_Eff_HLTv4p2_Data","h2Eff_HLT4p2_Data",1,h2dummy);
+  tnpEff.h2Eff_HLT4p3_Data= loadHisto(finEff,"h_2D_Eff_HLTv4p3_Data","h2Eff_HLT4p3_Data",1,h2dummy);
+  tnpEff.h2Eff_RecoID_MC= loadHisto(finEff,"h_2D_Eff_RecoID_MC","h2Eff_RecoID_MC",1,h2dummy);
+  tnpEff.h2Eff_Iso_MC= loadHisto(finEff,"h_2D_Eff_Iso_MC","h2Eff_Iso_MC",1,h2dummy);
+  tnpEff.h2Eff_HLT4p2_MC= loadHisto(finEff,"h_2D_Eff_HLTv4p2_MC","h2Eff_HLT4p2_MC",1,h2dummy);
+  tnpEff.h2Eff_HLT4p3_MC= loadHisto(finEff,"h_2D_Eff_HLTv4p3_MC","h2Eff_HLT4p3_MC",1,h2dummy);
+  finEff.Close();
+  if (!tnpEff.updateVectors()) {
+    std::cout << "failed to load TnP efficiencies from <" << finEff.GetName() << ">\n";
+    return;
+  }
+  TH2D* h2EffBinDef= cloneHisto(tnpEff.h2Eff_RecoID_Data,"h2EffBinDef","h2EffBinDef");
   if (!h2EffBinDef) return;
+
+
 
   DYmm13TeV_t data(srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root");
   data.DeactivateBranches();
@@ -50,18 +57,18 @@ void processDYmm_RECO(Int_t maxEntries=-1)
 
   TH1D *h1recoSel_M= new TH1D("h1recoSel_M", "RECO selected;M_{reco} [GeV];count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1recoSel_MW= new TH1D("h1recoSel_MW", "RECO selected (weighted);M_{reco} [GeV];weighted count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH1D *h1recoSel_MWPU= new TH1D("h1recoSel_MWPU", "RECO selected (weighted,wPU);M_{reco} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
 
   TH1D *h1postFsrInAccSel_M= new TH1D("h1_postFsrInAccSel_M", "postFSR selected events in acceptance;M_{gen,postFSR} [GeV];count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_MW= new TH1D("h1_postFsrInAccSel_MW", "postFSR selected events in acceptance (weighted);M_{gen,postFSR} [GeV];weighted count",DYtools::nMassBins,DYtools::massBinEdges);
-
-  TH2D* h2PostFsrEventSpace= new TH2D("h2PostFsrEventSpace","post-FSR event space;(eta,pt) flat index 1;(eta,pt) flat index 2", DYtools::EtaPtFIMax+1, -0.5, DYtools::EtaPtFIMax+0.5, DYtools::EtaPtFIMax+1, -0.5, DYtools::EtaPtFIMax+0.5);
-  h2PostFsrEventSpace->SetDirectory(0);
-  h2PostFsrEventSpace->Sumw2();
+  TH1D *h1postFsrInAccSel_MWPU= new TH1D("h1_postFsrInAccSel_MWPU", "postFSR selected events in acceptance (weighted,wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
 
   prepareHisto(h1recoSel_M);
   prepareHisto(h1recoSel_MW);
+  prepareHisto(h1recoSel_MWPU);
   prepareHisto(h1postFsrInAccSel_M);
   prepareHisto(h1postFsrInAccSel_MW);
+  prepareHisto(h1postFsrInAccSel_MWPU);
 
   TH2D* h2DetResMig= new TH2D("h2DetResMig","Det.resolution migration", DYtools::nMassBins, DYtools::massBinEdges, DYtools::nMassBins, DYtools::massBinEdges);
   h2DetResMig->Sumw2();
@@ -70,6 +77,23 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   detResResp.UseOverflow();
   RooUnfoldResponse detResRespPU(h1recoSel_MW,h1postFsrInAccSel_MW,h2DetResMig,"rooUnf_detResRespPU","detResRespPU;M_{#mu#mu} [GeV];det.res.(PU) unfolded yield");
   detResRespPU.UseOverflow();
+
+  EventSpace_t postFsrES("mainES",tnpEff.h2Eff_RecoID_Data);
+  // expanded event space data
+  std::vector<TH2D*> h2PostFsrEventSpaceV;
+  h2PostFsrEventSpaceV.reserve(DYtools::nMassBins);
+
+  for (int im=0; im<DYtools::nMassBins; im++) {
+    TString mStr= DYtools::massStr(im);
+    TString hTitle=TString("post-FSR event space for ") + mStr + TString(" GeV;(eta,pt) flat index 1;(eta,pt) flat index 2");
+    mStr.ReplaceAll("-","_");
+    TH2D* h2PostFsrEventSpace= new TH2D("h2PostFsrEventSpace"+mStr,hTitle,
+	   DYtools::EtaPtFIMax+1, -0.5, DYtools::EtaPtFIMax+0.5,
+	   DYtools::EtaPtFIMax+1, -0.5, DYtools::EtaPtFIMax+0.5);
+    h2PostFsrEventSpace->SetDirectory(0);
+    h2PostFsrEventSpace->Sumw2();
+    h2PostFsrEventSpaceV.push_back(h2PostFsrEventSpace);
+  }
 
   UInt_t nEvents= data.GetEntries();
   UInt_t nProcessed=0, nSelected=0;
@@ -98,14 +122,15 @@ void processDYmm_RECO(Int_t maxEntries=-1)
 
     if (DYtools::InsideMassRange(mReco)) {
       h1recoSel_M->Fill( mReco, 1. );
-      h1recoSel_MW->Fill( mReco, wPU );
+      h1recoSel_MW->Fill( mReco, w );
+      h1recoSel_MWPU->Fill( mReco, wPU );
     }
 
     if ( ! DYtools::InsideMassRange(mPostFsr) &&
 	 data.Flag_EventSelection ) {
       if (mReco> DYtools::minMass) {
 	std::cout << "fake " << mPostFsr << " (mReco=" << mReco << ")\n";
-	detResResp.Fake(mReco, wPU);
+	detResResp.Fake(mReco, w);
 	detResRespPU.Fake(mReco, wPU);
       }
     }
@@ -124,11 +149,19 @@ void processDYmm_RECO(Int_t maxEntries=-1)
     if (DYtools::InAcceptance_mm(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub)) {
       h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
       h1postFsrInAccSel_MW->Fill( mPostFsr, w );
+      h1postFsrInAccSel_MWPU->Fill( mPostFsr, wPU );
+      std::cout << "\nadding mPostFsr=" << mPostFsr << " with wPU=" << wPU << "\n";
+
+      if (!postFsrES.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU)) {
+	std::cout << "postFsrES: not added\n";
+      }
 
       double fi1= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Lead);
       double fi2= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Sub);
       if ((fi1>=0) && (fi2>=0)) {
-	h2PostFsrEventSpace->Fill(fi1,fi2, w);
+	int idx= DYtools::massIdx(mPostFsr);
+	if (idx!=-1)
+	  h2PostFsrEventSpaceV[idx]->Fill(fi1,fi2, wPU);
       }
       if ((fi1>DYtools::EtaPtFIMax) || (fi2>DYtools::EtaPtFIMax)) {
 	std::cout << "EtaPtFIMax=" << DYtools::EtaPtFIMax
@@ -151,7 +184,7 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   TCanvas *cDetResTest=plotHisto(h1Unf,"cDetResTest",1,1,"LPE1");
   plotHistoSame(h1postFsrInAccSel_MW,"cDetResTest","LPE");
 
-  RooUnfoldBayes bayesDetResPU( &detResRespPU, h1recoSel_MW, 4 );
+  RooUnfoldBayes bayesDetResPU( &detResRespPU, h1recoSel_MWPU, 4 );
   TH1D *h1UnfPU= (TH1D*) bayesDetResPU.Hreco()->Clone("h1UnfPU");
   h1UnfPU->SetTitle("unfolded (PU) reco->postFSR");
   h1UnfPU->SetDirectory(0);
@@ -159,7 +192,7 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   h1UnfPU->SetMarkerStyle(5);
   h1UnfPU->SetMarkerColor(kBlue);
   TCanvas *cDetResTestPU=plotHisto(h1UnfPU,"cDetResTestPU",1,1,"LPE1");
-  plotHistoSame(h1postFsrInAccSel_MW,"cDetResTestPU","LPE");
+  plotHistoSame(h1postFsrInAccSel_MWPU,"cDetResTestPU","LPE");
 
   TH1D* h1UnfBinByBinCorr=(TH1D*)h1recoSel_MW->Clone("h1UnfBinByBinCorr");
   h1UnfBinByBinCorr->SetDirectory(0);
@@ -170,19 +203,27 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   TString fname="dymm_test_RECO.root";
   if (maxEntries>0) fname.ReplaceAll(".root","_debug.root");
   TFile fout(fname,"RECREATE");
+  tnpEff.save(fout);
   h1UnfBinByBinCorr->Write();
   detResResp.Write();
   detResRespPU.Write();
   h1recoSel_M->Write();
   h1recoSel_MW->Write();
+  h1recoSel_MWPU->Write();
   h1postFsrInAccSel_M->Write();
   h1postFsrInAccSel_MW->Write();
-  h2PostFsrEventSpace->Write();
+  h1postFsrInAccSel_MWPU->Write();
   h1Unf->Write();
   h1UnfPU->Write();
   h2DetResMig->Write();
   cDetResTest->Write();
   cDetResTestPU->Write();
+  postFsrES.save(fout);
+  fout.mkdir("eventSpace");
+  fout.cd("eventSpace");
+  for (unsigned int i=0; i<h2PostFsrEventSpaceV.size(); i++)
+    h2PostFsrEventSpaceV[i]->Write();
+  fout.cd();
   TObjString timeTag(DayAndTimeTag(0));
   timeTag.Write("timeTag");
 

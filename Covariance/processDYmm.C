@@ -130,9 +130,7 @@ void processDYmm(Int_t maxEntries=-1)
   TH1D *h1preFsrUnf= (TH1D*) bayesFSR.Hreco()->Clone("h1preFsrUnf");
   h1preFsrUnf->SetTitle("unfolded postFSR->preFSR");
   h1preFsrUnf->SetDirectory(0);
-  h1preFsrUnf->SetLineColor(kRed);
-  h1preFsrUnf->SetMarkerStyle(24);
-  h1preFsrUnf->SetMarkerColor(kRed);
+  histoStyle(h1preFsrUnf,kRed,24);
   h1preFsrUnf->GetXaxis()->SetMoreLogLabels();
   h1preFsrUnf->GetXaxis()->SetNoExponent();
   TCanvas *cFSRTest=plotHisto(h1preFsrUnf,"cFSRTest",1,1,"LPE1");
@@ -142,12 +140,11 @@ void processDYmm(Int_t maxEntries=-1)
   TH1D *h1EffAccFsrUnf= (TH1D*) bayesEffAccFsr.Hreco()->Clone("h1EffAccFsrUnf");
   h1EffAccFsrUnf->SetTitle("unfolded postFsrInAccSel -> preFSR");
   h1EffAccFsrUnf->SetDirectory(0);
-  h1EffAccFsrUnf->SetLineColor(kRed);
-  h1EffAccFsrUnf->SetMarkerStyle(24);
-  h1EffAccFsrUnf->SetMarkerColor(kRed);
+  histoStyle(h1EffAccFsrUnf,kRed,24);
   h1EffAccFsrUnf->GetXaxis()->SetMoreLogLabels();
   h1EffAccFsrUnf->GetXaxis()->SetNoExponent();
   TCanvas *cScaleToPreFsrTest= plotHisto(h1EffAccFsrUnf,"cScaleToPreFsrTest",1,1,"LPE1");
+  histoStyle(h1preFsr_MW,kBlue,5);
   plotHistoSame(h1preFsr_MW,"cScaleToPreFsrTest","LPE");
 
   TH1D* h1Eff=(TH1D*)h1postFsrInAccSel_MW->Clone("h1Eff");
