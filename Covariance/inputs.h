@@ -189,14 +189,32 @@ TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
 inline
 void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative)
 {
-  if (!hSrc) { std::cout << "randomizeWithinErr: hSrc is null\n"; return; }
-  if (!hDest) { std::cout << "randomizeWithinErr: hDest is null\n"; return; }
+  if (!hSrc) { std::cout << "randomizeWithinErr(1D): hSrc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinErr(1D): hDest is null\n"; return; }
   for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
     double val=	gRandom->Gaus(hSrc->GetBinContent(ibin),
 			      hSrc->GetBinError(ibin));
     if (nonNegative && (val<0)) val=0;
     hDest->SetBinContent(ibin,val);
     hDest->SetBinError  (ibin,0); //hSrc->GetBinError(ibin));
+  }
+}
+
+// -----------------------------------------------------------
+
+inline
+void randomizeWithinErr(const TH2D *hSrc, TH2D *hDest, int nonNegative)
+{
+  if (!hSrc) { std::cout << "randomizeWithinErr(2D): hSrc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinErr(2D): hDest is null\n"; return; }
+  for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=hSrc->GetNbinsY(); jbin++) {
+      double val=  gRandom->Gaus(hSrc->GetBinContent(ibin,jbin),
+				 hSrc->GetBinError(ibin,jbin));
+      if (nonNegative && (val<0)) val=0;
+      hDest->SetBinContent(ibin,jbin,val);
+      hDest->SetBinError  (ibin,jbin,0); //hSrc->GetBinError(ibin,jbin));
+    }
   }
 }
 

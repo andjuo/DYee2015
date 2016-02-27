@@ -17,7 +17,38 @@ const Double_t massBinEdges[nMassBins+1] =
 const Double_t minMass= massBinEdges[0];
 const Double_t maxMass= massBinEdges[nMassBins];
 
-const int EtaPtFIMax=25; // assummed maximum number of (eta,pt) bins
+
+
+// -------------------------------------------------------------
+
+inline
+  TString massStr(int iMass, int changeToUnderscore=0)
+{
+  TString s;
+  if ((iMass>=0) && (iMass<nMassBins)) {
+    char c=(changeToUnderscore) ? '_' : '-';
+    s=Form("%1.0lf%c%1.0lf",massBinEdges[iMass],c,massBinEdges[iMass+1]);
+  }
+  else if (iMass<0) s=Form("lt%1.0lf",massBinEdges[0]);
+  else  s=Form("gt%1.0lf",massBinEdges[nMassBins]);
+  return s;
+}
+
+// -------------------------------------------------------------
+
+inline
+int massIdx(Double_t mass) {
+  int idx=-1;
+  if ((mass>= minMass) && (mass<maxMass)) {
+    for (int i=0; i<nMassBins; i++) {
+      if ((mass>=massBinEdges[i]) && (mass<massBinEdges[i+1])) {
+	idx=i;
+	break;
+      }
+    }
+  }
+  return idx;
+}
 
 // -------------------------------------------------------------
 
@@ -35,55 +66,6 @@ int InAcceptance_mm(const TLorentzVector *v1, const TLorentzVector *v2) {
       return 1;
   }
   return 0;
-}
-
-// -------------------------------------------------------------
-
-inline
-int FlatIndex(const TH2D* h2BinDefs, double eta, double pt) {
-  int ibin=h2BinDefs->GetXaxis()->FindBin(eta);
-  int jbin=h2BinDefs->GetYaxis()->FindBin(pt);
-  int fi= (jbin-1) + (ibin-1)*h2BinDefs->GetNbinsY();
-  if ((ibin==0) || (jbin==0)) fi=-1;
-  else if ((ibin==h2BinDefs->GetNbinsX()+1) ||
-	   (jbin==h2BinDefs->GetNbinsY()+1)) fi=-1;
-  //std::cout << "eta=" << eta << ", pt=" << pt << ", ibin=" << ibin
-  //	    << ", jbin=" << jbin << ", fi=" << fi << "\n";
-  return fi;
-}
-
-// -------------------------------------------------------------
-
-inline
-int FlatIndex(const TH2D* h2BinDefs, const TLorentzVector *v) {
-  return FlatIndex(h2BinDefs,v->Eta(),v->Pt());
-}
-
-// -------------------------------------------------------------
-
-inline
-int GetValue(const TH2D* h2, double eta, double pt, double &v, double &err,
-	     double defaultVal=0., double defaultErr=0.)
-{
-  int ibin=h2->GetXaxis()->FindBin(eta);
-  int jbin=h2->GetYaxis()->FindBin(pt);
-  int ok=1;
-  if ((ibin==0) || (jbin==0)) ok=0;
-  else if ((ibin==h2->GetNbinsX()+1) ||
-	   (jbin==h2->GetNbinsY()+1)) ok=0;
-  if (ok) {
-    v=  h2->GetBinContent(ibin,jbin);
-    err=h2->GetBinError  (ibin,jbin);
-  }
-  else {
-    v=defaultVal;
-    err=defaultErr;
-  }
-  //std::cout << "eta=" << eta << ", pt=" << pt << ", ibin=" << ibin
-  //	    << ", jbin=" << jbin << ", ok=" << ok
-  //	    << ": " << v << " +- " << err
-  //	    << "\n";
-  return ok;
 }
 
 // -------------------------------------------------------------

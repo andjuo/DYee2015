@@ -1,7 +1,37 @@
 #include "inputs.h"
 #include "DYbinning.h"
+#include "DYmm13TeV_eff.h"
+
+void work_checkEffBins();
+void work_checkMassBins();
+
+// -----------------------------------------------------------------
+// -----------------------------------------------------------------
 
 void checkBins()
+{
+  //work_checkEffBins();
+  work_checkMassBins();
+}
+
+
+// -----------------------------------------------------------------
+
+void work_checkMassBins()
+{
+  TH1D *h1=new TH1D("h1","h1",DYtools::nMassBins,DYtools::massBinEdges);
+  for (int im=-1; im<=DYtools::nMassBins; im++) {
+    double mCenter= h1->GetXaxis()->GetBinCenter(im+1);
+    int idx= DYtools::massIdx(mCenter);
+    std::cout << "im=" << im << " " << DYtools::massStr(im) << " "
+	      << ", mCenter=" << mCenter
+	      << ", idx=" << idx << "\n";
+  }
+}
+
+// -----------------------------------------------------------------
+
+void work_checkEffBins()
 {
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
