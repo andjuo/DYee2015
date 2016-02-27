@@ -8,7 +8,7 @@
 // -----------------------------------------------------------
 
 typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes, _varFSRRes,
-    _varEff, _varRho, _varAcc, _varEffAcc, _varLast } TVaried_t;
+	       _varEff, _varRho, _varAcc, _varEffAcc, _varLast } TVaried_t;
 
 typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
 	       _bkgWJets, _bkgQCD, _bkgLast } TBkg_t;
@@ -30,6 +30,7 @@ RooUnfoldResponse* loadRooUnfoldResponse(TString fname, TString fieldName, TStri
 RooUnfoldResponse* loadRooUnfoldResponse(TFile &fin, TString fieldName, TString name);
 RooUnfoldBayes* loadRooUnfoldBayes(TFile &fin, TString fieldName, TString name);
 void plotHisto(RooUnfoldResponse &rs, TString cNameBase, int logx=0, int logy=0);
+RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString name);
 
 // -----------------------------------------------------------
 
@@ -54,6 +55,7 @@ class CrossSection_t {
   TH1D *fh1Signal, *fh1Unf, *fh1UnfRhoCorr, *fh1UnfRhoEffCorr;
   TH1D *fh1UnfRhoEffAccCorr, *fh1PreFsr, *fh1PreFsrCS;
   TH1D *fh1Varied;
+  RooUnfoldResponse *fResVaried;
   RooUnfoldBayes *fDetResBayes, *fFSRBayes;
  public:
   CrossSection_t(TString setName="xs", TString setTag="",
@@ -118,6 +120,12 @@ class CrossSection_t {
 		   std::vector<TH1D*> &rndCS);
   int sampleRndVec(TVaried_t new_var, const std::vector<TH1D*> &rndHistos,
 		   std::vector<TH1D*> &rndCS);
+  int sampleRndResponse(TVaried_t new_var, int sampleSize,
+			std::vector<TH1D*> &rndCS,
+			std::vector<RooUnfoldResponse*> *rndRespVPtr);
+  int sampleRndRespVec(TVaried_t new_var,
+		       const std::vector<RooUnfoldResponse*> &rndRespV,
+		       std::vector<TH1D*> &rndCS);
   int deriveCov(const std::vector<TH1D*> &rndCS, TH1D **h1avgCS, TH2D **h2cov);
 
   int save(TString fname) const;

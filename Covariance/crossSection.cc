@@ -116,6 +116,54 @@ void plotHisto(RooUnfoldResponse &rs, TString cNameBase, int logx, int logy)
 }
 
 // --------------------------------------------------------------
+
+RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString tag)
+{
+  TH2D *h2MigRnd= cloneHisto(R->Hresponse(), "h2MigRnd_"+tag, R->Hresponse()->GetTitle(),h2dummy);
+  if (!h2MigRnd) {
+    std::cout << "error in randomizeWithinErr(RooUnfoldResponse)\n";
+    return NULL;
+  }
+  int nonNegative=0;
+  randomizeWithinErr((TH2D*)R->Hresponse(), h2MigRnd, nonNegative);
+
+  TH1D* h1measRnd= cloneHisto(R->Hmeasured(),"h1measRnd"+tag,"h1measRnd",h1dummy);
+  h1measRnd->Reset();
+  TH1D* h1trueRnd= cloneHisto(R->Htruth(),"h1trueRnd"+tag,"h1trueRnd",h1dummy);
+  h1trueRnd->Reset();
+
+  for (int ibin=1; ibin<= h2MigRnd->GetNbinsX(); ibin++) {
+    double sum=0;
+    double sumErr2=0;
+    for (int jbin=1; jbin<= h2MigRnd->GetNbinsY(); jbin++) {
+      sum+= h2MigRnd->GetBinContent(ibin,jbin);
+      sumErr2+= pow(h2MigRnd->GetBinError(ibin,jbin),2);
+    }
+    h1measRnd->SetBinContent(ibin, sum);
+    h1measRnd->SetBinError  (ibin, sqrt(sumErr2));
+  }
+
+  for (int jbin=1; jbin<= h2MigRnd->GetNbinsY(); jbin++) {
+    double sum=0;
+    double sumErr2=0;
+    for (int ibin=1; ibin<= h2MigRnd->GetNbinsX(); ibin++) {
+      sum+= h2MigRnd->GetBinContent(ibin,jbin);
+      sumErr2+= pow(h2MigRnd->GetBinError(ibin,jbin),2);
+    }
+    h1trueRnd->SetBinContent(jbin, sum);
+    h1trueRnd->SetBinError  (jbin, sqrt(sumErr2));
+  }
+
+  RooUnfoldResponse *Rrnd= new RooUnfoldResponse(h1measRnd,h1trueRnd,h2MigRnd,
+						 "RespRnd"+tag,
+						 R->Hresponse()->GetTitle());
+  delete h1measRnd;
+  delete h1trueRnd;
+  delete h2MigRnd;
+  return Rrnd;
+}
+
+// --------------------------------------------------------------
 // --------------------------------------------------------------
 
 CrossSection_t::CrossSection_t(TString setName, TString setTag,
@@ -131,7 +179,8 @@ CrossSection_t::CrossSection_t(TString setName, TString setTag,
   fh1Signal(NULL), fh1Unf(NULL), fh1UnfRhoCorr(NULL),
   fh1UnfRhoEffCorr(NULL), fh1UnfRhoEffAccCorr(NULL),
   fh1PreFsr(NULL), fh1PreFsrCS(NULL),
-  fh1Varied(NULL), fDetResBayes(NULL), fFSRBayes(NULL)
+  fh1Varied(NULL), fResVaried(NULL),
+  fDetResBayes(NULL), fFSRBayes(NULL)
 {
 }
 
@@ -150,7 +199,8 @@ CrossSection_t::CrossSection_t(const CrossSection_t &cs,
   fh1Signal(NULL), fh1Unf(NULL), fh1UnfRhoCorr(NULL),
   fh1UnfRhoEffCorr(NULL), fh1UnfRhoEffAccCorr(NULL),
   fh1PreFsr(NULL), fh1PreFsrCS(NULL),
-  fh1Varied(NULL), fDetResBayes(NULL), fFSRBayes(NULL)
+  fh1Varied(NULL), fResVaried(NULL),
+  fDetResBayes(NULL), fFSRBayes(NULL)
 {
   if (!this->assign(cs)) {
     std::cout << "error in CrossSection_t::CrossSection_t(CrossSection_t)\n";
@@ -178,6 +228,7 @@ void CrossSection_t::clearAllPtrs()
   if (fh1PreFsr) { delete fh1PreFsr; fh1PreFsr=NULL; }
   if (fh1PreFsrCS) { delete fh1PreFsrCS; fh1PreFsrCS=NULL; }
   if (fh1Varied) { delete fh1Varied; fh1Varied=NULL; }
+  if (fResVaried) { delete fResVaried; fResVaried=NULL; }
   if (fDetResBayes) { delete fDetResBayes; fDetResBayes=NULL; }
   if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
 }
@@ -254,6 +305,7 @@ int CrossSection_t::assign(const CrossSection_t &cs)
   fh1UnfRhoEffCorr= copy(cs.fh1UnfRhoEffCorr);
   fh1UnfRhoEffAccCorr= copy(cs.fh1UnfRhoEffAccCorr);
   fh1Varied= copy(cs.fh1Varied);
+  if (cs.fResVaried) fResVaried= new RooUnfoldResponse(*cs.fResVaried);
 
   int res= checkPtrs();
   std::cout << "assign res=" << res << "\n";
@@ -399,9 +451,14 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
       fh1PreFsrCS= perMassBinWidth(h1PreFsrCS_raw);
     }
   }
-  if (new_var == _varSig) {
+  if ((new_var == _varSig) || (new_var == _varDetRes)) {
     if (fDetResBayes) delete fDetResBayes;
-    fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Varied, fNIters, false );
+    if (new_var == _varSig) {
+      fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Varied, fNIters, false );
+    }
+    else {
+      fDetResBayes= new RooUnfoldBayes( fResVaried, fh1Signal, fNIters, false );
+    }
     fh1Unf= copy(fDetResBayes->Hreco(), "h1Unf_" + useTag,
 		 "h1Unf_" + useTag
 		 + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -526,6 +583,25 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
       fh1PreFsrCS->GetYaxis()->SetTitle("pre-FSR full space #sigma");
     }
   }
+  else if (new_var == _varFSRRes) {
+    if (fCSType!=_csPreFsrFullSp) {
+      std::cout << "varied varFSRRes, but the cross section is not csPreFsrFullSp\n";
+      return NULL;
+    }
+    if (fFSRBayes) delete fFSRBayes;
+    fFSRBayes= new RooUnfoldBayes( fResVaried, fh1UnfRhoEffAccCorr, fNIters, false);
+    fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
+		    "h1preFsr_" + useTag
+		    + TString(";") + fh1Yield->GetXaxis()->GetTitle()
+		    + TString(";pre-FSR full space yield")
+		    ,
+		    fh1Yield); // set x binning
+
+    TH1D* h1PreFsrCS_raw= copy(fh1PreFsr,"h1PreFsrCS",useTag);
+    fh1PreFsrCS= perMassBinWidth(h1PreFsrCS_raw);
+    //fh1PreFsrCS->GetXaxis()->SetTitle("M_{ee} [GeV]");
+    fh1PreFsrCS->GetYaxis()->SetTitle("pre-FSR full space #sigma");
+  }
 
   TH1D *h1Out=NULL;
   if (fCSType==_csPostFsrFullSp) {
@@ -572,6 +648,13 @@ TCanvas* CrossSection_t::plotCrossSection(TString canvName)
 int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 				 std::vector<TH1D*> &rndCS)
 {
+  if ((new_var==_varDetRes) || (new_var==_varFSRRes)) {
+    if (!sampleRndResponse(new_var,sampleSize,rndCS,NULL)) {
+      std::cout << " called from sampleRndVec(var,sampleSize,rndCS)\n";
+      return 0;
+    }
+  }
+
   rndCS.clear();
   rndCS.reserve(sampleSize);
   if (!calcCrossSection()) return 0;
@@ -657,6 +740,73 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var,
   return 1;
 }
 				 
+// --------------------------------------------------------------
+
+int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
+				      std::vector<TH1D*> &rndCS,
+				      std::vector<RooUnfoldResponse*> *rndV_out)
+{
+  rndCS.clear();
+  rndCS.reserve(sampleSize);
+  TH1D *hCS=calcCrossSection();
+  if (!hCS) return 0;
+
+  int notRandom= ((new_var==_varFSRRes) &&
+		  (fCSType!=_csPreFsrInAcc) &&
+		  (fCSType!=_csPreFsrFullSp)) ? 1:0;
+  if (notRandom) {
+      std::cout << "CrossSection_t::sampleRndResponse: the cross section "
+		<< "is not pre-FSR, the result will not be random.\n";
+      return 0;
+  }
+
+  const RooUnfoldResponse *r=(new_var==_varDetRes) ? fDetRes : fFSRRes;
+  if (!r) {
+    std::cout << "sampleRndResponse(" << variedVarName(new_var)
+	      << ") the object is not ready\n";
+    return 0;
+  }
+  if (fResVaried) { delete fResVaried; fResVaried=NULL; }
+
+  for (int i=0; i<sampleSize; i++) {
+    std::cout << "\n\nrandomize: i=" << i << ", " << variedVarName(new_var) << "\n";
+    TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
+    fResVaried= randomizeWithinErr(r, respName);
+
+    TH1D* h1=copy(calcCrossSection(new_var,i));
+    rndCS.push_back(h1);
+    if (rndV_out) {
+      rndV_out->push_back(fResVaried);
+    }
+    else delete fResVaried;
+    fResVaried=NULL;
+  }
+  return 1;
+}
+
+// --------------------------------------------------------------
+
+int CrossSection_t::sampleRndRespVec(TVaried_t new_var,
+		     const std::vector<RooUnfoldResponse*> &rndRespV,
+				     std::vector<TH1D*> &rndCS)
+{
+  rndCS.clear();
+  rndCS.reserve(rndRespV.size());
+  if (!calcCrossSection()) return 0;
+
+  for (unsigned int i=0; i<rndRespV.size(); i++) {
+    const RooUnfoldResponse *r= rndRespV[i];
+    std::cout << "\n\nsampeRndRespV: i=" << i << ", " << variedVarName(new_var) << "\n";
+
+    TString respName= r->GetName() + variedVarName(new_var) + Form("_%d",i) + fTag;
+    fResVaried= randomizeWithinErr(r, respName);
+    TH1D* h1=copy(calcCrossSection(new_var,i));
+    rndCS.push_back(h1);
+    delete fResVaried;
+    fResVaried=NULL;
+  }
+  return 1;
+}
 
 // --------------------------------------------------------------
 
@@ -759,6 +909,7 @@ int CrossSection_t::save(TString fname) const
   if (fh1PreFsrCS) fh1PreFsrCS->Write("h1PreFSRCS");
   if (fh1Theory) fh1Theory->Write("h1Theory");
   if (fh1Varied) fh1Varied->Write("h1Varied");
+  if (fResVaried) fResVaried->Write("respVaried");
   if (fDetResBayes) fDetResBayes->Write("detResBayes");
   if (fFSRBayes) fFSRBayes->Write("fsrBayes");
 
@@ -815,6 +966,7 @@ int CrossSection_t::load(TString fname, TString setTag)
   fh1PreFsrCS=loadHisto(fin, "h1PreFSRCS","h1PreFSRCS" + fTag, 0, h1dummy);
   fh1Theory = loadHisto(fin, "h1Theory", "h1Theory" + fTag, 0, h1dummy);
   fh1Varied = loadHisto(fin, "h1Varied", "h1Varied" + fTag, 0, h1dummy);
+  fResVaried= loadRooUnfoldResponse(fin, "respVaried","respVaried"+fTag);
   fDetResBayes= loadRooUnfoldBayes(fin, "detResBayes", "detResBayes" + fTag);
   fFSRBayes = loadRooUnfoldBayes(fin, "fsrBayes", "fsrBayes" + fTag);
 
@@ -1180,28 +1332,17 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       std::cout << "case is not ready !!\n";
       return 0;
     }
+  }
 
-    if (res) {
-      for (int i=0; i<sampleSize; i++) {
-	TString useTag=Form("_rnd%d",i) + fTag;
-	TH1D *h1cs= this->calcPreFsrCS_sumAB(rndCSa[i],rndCSb[i],useTag);
-	rndCS.push_back(h1cs);
-
-	if (trackCSa) {
-	  rndCSa[i]->SetLineColor((i%9)+1);
-	  plotHistoSame(fCSa.copy(rndCSa[i],rndCSa[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a","hist");
-	}
-	if (trackCSb) {
-	  rndCSb[i]->SetLineColor((i%9)+1);
-	  plotHistoSame(fCSb.copy(rndCSb[i],rndCSb[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_b","hist");
-	}
-	if (trackCS) {
-	  h1cs->SetLineColor((i%9)+1);
-	  plotHistoSame(h1cs,"muCSVar","hist");
-	}
-      }
+  else if (new_var==_varDetRes) {
+    std::vector<RooUnfoldResponse*> rndRespV;
+    if (!fCSa.sampleRndResponse(new_var,sampleSize,rndCSa,&rndRespV) ||
+	!fCSb.sampleRndRespVec(new_var,rndRespV,rndCSb)) {
+      std::cout << " error in MuonCrossSection_t::sampleRndVec\n";
+      return 0;
     }
   }
+
   /*
   else if (new_var==_varBkg) {
     std::vector<TH1D*> rndBkgV;
@@ -1246,11 +1387,65 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
     if (rndVarVec_out) (*rndVarVec_out)= rndBkgV;
   }
   */
+  else if (new_var==_varFSRRes) {
+    double lumiTot= fCSa.lumi() + fCSb.lumi();
+    const TH1D *h1aCS= fCSa.h1UnfRhoEffAccCorr();
+    TH1D* h1postFSRYield= cloneHisto( h1aCS, "h1postFSRYield", "postFSR yield" );
+    h1postFSRYield->Scale( fCSa.lumi() );
+    h1postFSRYield->Add( fCSb.h1UnfRhoEffAccCorr(), fCSb.lumi() );
+    const RooUnfoldResponse *r= fCSa.fFSRRes;
+    for (int i=0; i<sampleSize; i++) {
+      TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
+      RooUnfoldResponse *rRnd= randomizeWithinErr(r, respName);
+      if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
+      TH1D* h1tmp= cloneHisto(h1postFSRYield,"h1postFSRYield" + respName, "h1postFSRYield"+respName);
+      fFSRBayes= new RooUnfoldBayes( rRnd, h1tmp, fCSa.fNIters, false);
+      TH1D* h1preFSRYield=
+	cloneHisto(fFSRBayes->Hreco(), "h1preFSRYield_" + respName,
+		   "h1preFSR_" + respName +
+		   TString(";") + fh1Bkg->GetXaxis()->GetTitle()
+		   +TString("; preFSR full space cs"), h1dummy);
+      TH1D* h1cs= perMassBinWidth(h1preFSRYield,0);
+      h1cs->Scale(1/lumiTot);
+      delete h1tmp;
+      delete h1preFSRYield;
+      rndCS.push_back(h1cs);
+
+      if (trackCS) {
+	h1cs->SetLineColor((i%9)+1);
+	plotHistoSame(h1cs,"muCSVar","hist");
+      }
+    }
+  }
   else {
     std::cout << "sampleRndVec is not ready for new_var="
 	      << variedVarName(new_var) << "\n";
     res=0;
   }
+
+
+  if (res && (new_var!=_varFSRRes)) {
+    for (int i=0; i<sampleSize; i++) {
+      TString useTag=Form("_rnd%d",i) + fTag;
+      TH1D *h1cs= this->calcPreFsrCS_sumAB(rndCSa[i],rndCSb[i],useTag);
+      rndCS.push_back(h1cs);
+
+      if (trackCSa) {
+	rndCSa[i]->SetLineColor((i%9)+1);
+	plotHistoSame(fCSa.copy(rndCSa[i],rndCSa[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a","hist");
+      }
+      if (trackCSb) {
+	rndCSb[i]->SetLineColor((i%9)+1);
+	plotHistoSame(fCSb.copy(rndCSb[i],rndCSb[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_b","hist");
+      }
+      if (trackCS) {
+	h1cs->SetLineColor((i%9)+1);
+	plotHistoSame(h1cs,"muCSVar","hist");
+      }
+    }
+  }
+
+
   if (rndCSa_out) (*rndCSa_out) = rndCSa;
   if (rndCSb_out) (*rndCSb_out) = rndCSb;
   if (!res) std::cout << "Error in MuonCrossSection_t::sampleRndVec\n";
@@ -1409,7 +1604,7 @@ TH1D* MuonCrossSection_t::calcPreFsrCS_sumAB(const TH1D *h1a,
   return h1CS_tmp;
 }
 
-
+// --------------------------------------------------------------
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 // --------------------------------------------------------------
