@@ -22,11 +22,21 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   std::cout << "processDYmm_RECO\n";
   std::cout << "DY range=" << DYtools::minMass << " .. " << DYtools::maxMass << "\n";
 
+  TVersion_t inpVersion=_verMu1;
+  inpVersion=_verMu76X;
+
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
+  TString fnameEff= srcPath + "Input5/ROOTFile_TagProbeEfficiency.root";
+  TString dataFName=srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root";
+
+  if (inpVersion==_verMu76X) {
+    srcPath="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
+    fnameEff= srcPath + "Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
+    dataFName=srcPath + "Input3/ROOTFile_Input_CovarianceMatrix.root";
+  }
 
   DYTnPEff_t tnpEff;
-  TString fnameEff= srcPath + "Input5/ROOTFile_TagProbeEfficiency.root";
   TFile finEff(fnameEff);
   if (!finEff.IsOpen()) {
     std::cout << "failed to open the file <" << fnameEff << ">\n";
@@ -48,9 +58,11 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   TH2D* h2EffBinDef= cloneHisto(tnpEff.h2Eff_RecoID_Data,"h2EffBinDef","h2EffBinDef");
   if (!h2EffBinDef) return;
 
-
-
-  DYmm13TeV_t data(srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root");
+  DYmm13TeV_t data(dataFName);
+  if (!data.fChain || (data.fChain->GetEntries()==0)) {
+    std::cout << "error opening the file\n";
+    return;
+  }
   data.DeactivateBranches();
   data.ActivateBranches("Momentum_Reco_Lead Momentum_Reco_Sub Momentum_postFSR_Lead  Momentum_postFSR_Sub  Weight_Norm  Weight_PU  Weight_Gen");
   data.ActivateBranches("Flag_EventSelection");
@@ -150,10 +162,10 @@ void processDYmm_RECO(Int_t maxEntries=-1)
       h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
       h1postFsrInAccSel_MW->Fill( mPostFsr, w );
       h1postFsrInAccSel_MWPU->Fill( mPostFsr, wPU );
-      std::cout << "\nadding mPostFsr=" << mPostFsr << " with wPU=" << wPU << "\n";
+      //std::cout << "\nadding mPostFsr=" << mPostFsr << " with wPU=" << wPU << "\n";
 
       if (!postFsrES.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU)) {
-	std::cout << "postFsrES: not added\n";
+	//std::cout << "postFsrES: not added\n";
       }
 
       double fi1= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Lead);
@@ -200,7 +212,7 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   h1UnfBinByBinCorr->SetTitle("Unf corr bin-by-bin;M_{#mu#mu} [GeV];postFSR_inAcc_Sel/recoSel");
   h1UnfBinByBinCorr->Divide(h1postFsrInAccSel_MW,h1recoSel_MW,1,1,"B");
 
-  TString fname="dymm_test_RECO.root";
+  TString fname="dymm_test_RECO_" + versionName(inpVersion) + TString(".root");
   if (maxEntries>0) fname.ReplaceAll(".root","_debug.root");
   TFile fout(fname,"RECREATE");
   tnpEff.save(fout);

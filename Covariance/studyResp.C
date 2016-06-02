@@ -7,7 +7,7 @@
 
 void studyResp()
 {
-  RooUnfoldResponse *detResResp= loadRooUnfoldResponse("dymm_test_RECO.root",
+  RooUnfoldResponse *detResResp= loadRooUnfoldResponse("dymm_test_RECO_Mu76X.root",
 						       "rooUnf_detResResp",
 						       "DRR");
   if (!detResResp) return;

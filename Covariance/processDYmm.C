@@ -19,9 +19,19 @@ void processDYmm(Int_t maxEntries=-1)
 {
   std::cout << "DY range=" << DYtools::minMass << " .. " << DYtools::maxMass << "\n";
 
+  TVersion_t inpVersion=_verMu1;
+  inpVersion=_verMu76X;
+
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
-  DYmm13TeV_t data(srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root");
+  TString dataFName=srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root";
+
+  if (inpVersion==_verMu76X) {
+    srcPath="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
+    dataFName=srcPath + "Input3/ROOTFile_Input_CovarianceMatrix.root";
+  }
+
+  DYmm13TeV_t data(dataFName);
   data.DeactivateBranches();
   data.ActivateBranches("Momentum_postFSR_Lead  Momentum_postFSR_Sub  Momentum_preFSR_Lead  Momentum_preFSR_Sub  Weight_Norm  Weight_Gen Weight_PU");
   data.ActivateBranches("Flag_EventSelection");
@@ -169,18 +179,25 @@ void processDYmm(Int_t maxEntries=-1)
   h1Acc->SetTitle("Acceptance;M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAcc/postFSR");
   h1Acc->Divide(h1postFsrInAcc_MW,h1postFsr_MW,1,1,"B");
 
+  TH1D* h1EffPUAcc=(TH1D*)h1postFsrInAccSel_MWPU->Clone("h1EffPUAcc");
+  h1EffPUAcc->SetDirectory(0);
+  if (!h1EffPUAcc->GetSumw2()) h1EffPUAcc->Sumw2();
+  h1EffPUAcc->SetTitle("Efficiency(wPU) x Acc;M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAccSel(wPU)/h1postFsr_MW(noPU)");
+  h1EffPUAcc->Divide(h1postFsrInAccSel_MWPU,h1postFsr_MW,1,1,"B");
+
   TH1D *h1FSRCorr_binByBin=(TH1D*)h1preFsr_MW->Clone("h1FSRCorr_binByBin");
   h1FSRCorr_binByBin->SetDirectory(0);
   if (!h1FSRCorr_binByBin->GetSumw2()) h1FSRCorr_binByBin->Sumw2();
   h1FSRCorr_binByBin->SetTitle("FSR correction bin-by-bin;M_{#mu#mu} [GeV];preFSR/postFSR");
   h1FSRCorr_binByBin->Divide(h1preFsr_MW,h1postFsr_MW,1.,1.,"B");
 
-  TString fname="dymm_test.root";
+  TString fname="dymm_test_" + versionName(inpVersion) + TString(".root");
   if (maxEntries>0) fname.ReplaceAll(".root","_debug.root");
   TFile fout(fname,"RECREATE");
   h1Eff->Write();
   h1EffPU->Write();
   h1Acc->Write();
+  h1EffPUAcc->Write();
   h1FSRCorr_binByBin->Write();
   fsrResp.Write();
   effAccFsrResp.Write();

@@ -1,6 +1,23 @@
 #include "inputs.h"
 #include <sstream>
 
+// --------------------------------------------------------------
+
+TString versionName(TVersion_t ver)
+{
+  TString name="versionNameUNKNOWN";
+  switch(ver) {
+  case _verUndef: name="UndefVer"; break;
+  case _verMu1: name="Mu1"; break;
+  case _verMu76X: name="Mu76X"; break;
+  case _verEl1: name="El1"; break;
+  default:
+    std::cout << "versionName is not ready for this version type\n";
+  }
+  return name;
+}
+
+// -----------------------------------------------------------
 // -----------------------------------------------------------
 
 TString DayAndTimeTag(int eliminateSigns)
@@ -18,12 +35,19 @@ TString DayAndTimeTag(int eliminateSigns)
 
 // -----------------------------------------------------------
 
-TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt)
+TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
+		   TString explain)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
   if (logX) cx->SetLogx();
   if (logY) cx->SetLogy();
   h1->Draw(drawOpt);
+  if (explain.Length()) {
+    TLegend *leg= new TLegend(0.15,0.15,0.40,0.22);
+    leg->SetName("myLegend");
+    leg->AddEntry(h1,explain);
+    leg->Draw();
+  }
   cx->Update();
   return cx;
 }
@@ -43,7 +67,7 @@ TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy)
 
 // ---------------------------------------------------------
 
-TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt)
+TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain)
 {
   TSeqCollection *seq=gROOT->GetListOfCanvases();
   TCanvas *cOut=NULL;
@@ -53,6 +77,16 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt)
     if (c->GetName() == canvName) {
       c->cd();
       h1->Draw(drawOpt + TString(" same"));
+
+      if (explain.Length()) {
+	TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
+	if (leg) {
+	  leg->SetY2NDC(leg->GetY2NDC() + 0.07);
+	  leg->AddEntry(h1,explain);
+	  leg->Draw();
+	}
+      }
+
       cOut=c;
     }
   }
@@ -95,8 +129,10 @@ void printHisto(const TH2D *h2) {
 void printRatio(const TH1D *h1a, const TH1D *h1b) {
   std::cout << "\nhisto A " << h1a->GetName() << " " << h1a->GetTitle()
 	    << " [" << h1a->GetNbinsX() << "]\n";
-  std::cout << "\nhisto B " << h1b->GetName() << " " << h1b->GetTitle()
+  std::cout << "histo B " << h1b->GetName() << " " << h1b->GetTitle()
 	    << " [" << h1b->GetNbinsX() << "]\n";
+  std::cout << std::string(5,' ') << h1a->GetName() << std::string(10,' ')
+	    << h1b->GetName() << std::string(10,' ') << "ratio\n";
   for (int ibin=1; ibin<=h1a->GetNbinsX(); ibin++) {
     if ( (h1a->GetBinLowEdge(ibin) != h1b->GetBinLowEdge(ibin)) ||
 	 (h1a->GetBinWidth(ibin) != h1b->GetBinWidth(ibin)) ) {
@@ -125,6 +161,19 @@ void printField(TString keyName)
     TObjString *str=(TObjString*)obj;
     if (str) std::cout << "value: " << str->String() << "\n";
   }
+}
+
+// ---------------------------------------------------------
+
+TH1D* errorAsCentral(const TH1D* h1) {
+  TH1D* h1err= cloneHisto(h1,
+			  h1->GetName() + TString("_err"),
+			  h1->GetTitle() + TString(" err"));
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    h1err->SetBinContent(ibin, h1->GetBinError(ibin) );
+    h1err->SetBinError (ibin, 0.);
+  }
+  return h1err;
 }
 
 // ---------------------------------------------------------
@@ -269,6 +318,65 @@ TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
+TMatrixD submatrix(const TMatrixD &M, int idxMin, int idxMax)
+{
+  TMatrixD mNew(idxMax-idxMin,idxMax-idxMin);
+  for (int i=0; i<idxMax-idxMin; i++) {
+    for (int j=0; j<idxMax-idxMin; j++) {
+      mNew(i,j) = M(i+idxMin,j+idxMin);
+    }
+  }
+  return mNew;
+}
+
+// ---------------------------------------------------------
+
+void printRatio(TString label1, const TVectorD &v1, TString label2, const TVectorD &v2)
+{
+  std::cout << "\nprintRatio " << std::string(5,' ')
+	    << label1 << Form(" [%d]",v1.GetNoElements())
+	    << std::string(5,' ')
+	    << label2 << Form(" [%d]",v2.GetNoElements())
+	    << std::string(5,' ') << "\n";
+  if (v1.GetNoElements() != v2.GetNoElements()) {
+    std::cout << "as the number of elements is different, the comparison is meaningless\n";
+    return;
+  }
+
+  for (int i=0; i<v1.GetNoElements(); i++) {
+    double r=v1[i]/v2[i];
+    std::cout << Form("%3d",i) << "  " << v1[i] << "  " << v2[i]
+	      << "  " << r << "\n";
+  }
+  return;
+}
+
+// ---------------------------------------------------------
+
+// chi^2_estimate= (vec1-vec2)^T Mcov^{-1} (vec1-vec2)
+double chi2estimate(const TVectorD &vec1, const TVectorD &vec2,
+		    const TMatrixD &Mcov)
+{
+  if ((vec1.GetNoElements()!=vec2.GetNoElements()) ||
+      (vec1.GetNoElements()!=Mcov.GetNrows()) ||
+      (vec1.GetNoElements()!=Mcov.GetNcols())) {
+    std::cout << "chi2estimate: size mismatch: "
+	      << Form("vec1[%d], vec2[%d], Mcov[%d,%d]",
+		      vec1.GetNoElements(),vec2.GetNoElements(),
+		      Mcov.GetNrows(),Mcov.GetNcols())
+	      << "\n";
+    return -9999.9999;
+  }
+  TVectorD vDiff( vec1 - vec2 );
+  TMatrixD mCovInv( TMatrixD::kInverted, Mcov );
+  double chi2= vDiff * ( mCovInv * vDiff );
+  return chi2;
+}
+
+
+
+// ---------------------------------------------------------
+
 int deriveCovariance(const std::vector<TH1D*> &rndCS,
 		     TString histoNameTag, TString histoTitle,
 		     TH1D **h1avgCS_out, TH2D **h2cov_out)
@@ -352,6 +460,36 @@ TH2D* cov2corr(const TH2D* h2cov)
     }
   }
   return h2corr;
+}
+
+// ---------------------------------------------------------
+
+TH1D *uncFromCov(const TH2D* h2cov, const TH1D *h1centralVal,
+		 int zeroCentralMeansZeroRelError)
+{
+  const TArrayD *xb= h2cov->GetXaxis()->GetXbins();
+  const Double_t *x= xb->GetArray();
+  std::cout << "h2cov : " << h2cov->GetName() << " " << h2cov->GetTitle() << ", dim=" << xb->GetSize() << "\n";
+  //printHisto(h2cov);
+  TString h1name= TString("h1unc_from_") + h2cov->GetName();
+  if (h1centralVal) h1name.ReplaceAll("h1unc","h1relUnc");
+  TH1D *h1= NULL;
+  if (xb->GetSize()>0) h1=new TH1D(h1name,h1name, xb->GetSize()-1,x );
+  else h1= new TH1D(h1name,h1name, h2cov->GetNbinsX(), 0, h2cov->GetNbinsX()-1);
+  h1->SetDirectory(0);
+  //h1->Sumw2();
+  for (int ibin=1; ibin<=h2cov->GetNbinsX(); ibin++) {
+    double valSqr= h2cov->GetBinContent(ibin,ibin);
+    double val= (valSqr<0) ? -100 : sqrt(valSqr);
+    if (h1centralVal) {
+      double c= h1centralVal->GetBinContent(ibin);
+      if (c!=double(0)) val/=c;
+      else { if (zeroCentralMeansZeroRelError) val=0.; else val=9999.; }
+    }
+    h1->SetBinContent(ibin, val);
+    h1->SetBinError(ibin, 0);
+  }
+  return h1;
 }
 
 // ---------------------------------------------------------

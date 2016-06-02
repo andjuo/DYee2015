@@ -63,6 +63,7 @@ TString csTypeName(TCSType_t cs)
   return name;
 }
 
+
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 
@@ -167,35 +168,39 @@ RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString tag)
 // --------------------------------------------------------------
 
 CrossSection_t::CrossSection_t(TString setName, TString setTag,
-			       TCSType_t set_csType) :
+			       TCSType_t set_csType, TVersion_t setVersion) :
   fName(setName), fTag(setTag),
+  fVersion(setVersion),
   fh1Yield(NULL), fh1Bkg(NULL),
   fDetRes(NULL), fFSRRes(NULL),
   fh1Eff(NULL), fh1Rho(NULL), fh1Acc(NULL),
   fh1EffAcc(NULL),
   fh1Theory(NULL),
   fVar(_varNone), fCSType(set_csType),
-  fNIters(4), fLumi(1.),
+  fNItersDetRes(4), fNItersFSR(4), fLumi(1.),
   fh1Signal(NULL), fh1Unf(NULL), fh1UnfRhoCorr(NULL),
   fh1UnfRhoEffCorr(NULL), fh1UnfRhoEffAccCorr(NULL),
   fh1PreFsr(NULL), fh1PreFsrCS(NULL),
   fh1Varied(NULL), fResVaried(NULL),
   fDetResBayes(NULL), fFSRBayes(NULL)
 {
+  this->setNIters_internal(fVersion);
 }
 
 // --------------------------------------------------------------
 
 CrossSection_t::CrossSection_t(const CrossSection_t &cs,
-			       TString setName, TString setTag) :
+			       TString setName, TString setTag,
+			       TVersion_t setVersion) :
   fName(setName), fTag(setTag),
+  fVersion(cs.fVersion),
   fh1Yield(NULL), fh1Bkg(NULL),
   fDetRes(NULL), fFSRRes(NULL),
   fh1Eff(NULL), fh1Rho(NULL), fh1Acc(NULL),
   fh1EffAcc(NULL),
   fh1Theory(NULL),
   fVar(_varNone), fCSType(cs.fCSType),
-  fNIters(4), fLumi(1.),
+  fNItersDetRes(4), fNItersFSR(4), fLumi(1.),
   fh1Signal(NULL), fh1Unf(NULL), fh1UnfRhoCorr(NULL),
   fh1UnfRhoEffCorr(NULL), fh1UnfRhoEffAccCorr(NULL),
   fh1PreFsr(NULL), fh1PreFsrCS(NULL),
@@ -205,6 +210,8 @@ CrossSection_t::CrossSection_t(const CrossSection_t &cs,
   if (!this->assign(cs)) {
     std::cout << "error in CrossSection_t::CrossSection_t(CrossSection_t)\n";
   }
+  if (setVersion!=_verUndef) fVersion=setVersion;
+  this->setNIters_internal(fVersion);
 }
 
 // --------------------------------------------------------------
@@ -232,6 +239,17 @@ void CrossSection_t::clearAllPtrs()
   if (fDetResBayes) { delete fDetResBayes; fDetResBayes=NULL; }
   if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
 }
+
+// --------------------------------------------------------------
+
+void CrossSection_t::setNIters_internal(TVersion_t)
+{
+  switch(fVersion) {
+  case _verMu76X: fNItersDetRes=17; fNItersFSR=100; break;
+  default: ; // nothing
+  }
+}
+
 
 // --------------------------------------------------------------
 
@@ -297,7 +315,8 @@ int CrossSection_t::assign(const CrossSection_t &cs)
   fh1EffAcc= copy(cs.fh1EffAcc);
   fh1Theory= copy(cs.fh1Theory);
   fVar= cs.fVar;
-  fNIters= cs.fNIters;
+  fNItersDetRes= cs.fNItersDetRes;
+  fNItersFSR= cs.fNItersFSR;
   fLumi= cs.fLumi;
   fh1Signal= copy(cs.fh1Signal);
   fh1Unf= copy(cs.fh1Unf);
@@ -325,7 +344,7 @@ TH1D* CrossSection_t::calcCrossSection()
   fh1Signal= copy(fh1Yield,"h1Signal",fTag);
   fh1Signal->Add(fh1Bkg,-1);
   if (fDetResBayes) delete fDetResBayes;
-  fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Signal, fNIters, false );
+  fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Signal, fNItersDetRes, false );
   fh1Unf= copy(fDetResBayes->Hreco(), "h1Unf_" + fTag,
 	       "h1Unf_" + fTag
 	       + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -357,8 +376,18 @@ TH1D* CrossSection_t::calcCrossSection()
   }
   else if (fCSType==_csPreFsrFullSp) {
     if (fFSRBayes) delete fFSRBayes;
-    fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr,fNIters,false);
-    fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + fTag,
+
+    TH1D *h1Unf_loc= cloneHisto(fh1Yield, "h1Unf_loc","h1Unf_loc");
+    if (fVersion!=_verMu76X) {
+      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr,fNItersFSR,false);
+      copyContents(h1Unf_loc,fDetResBayes->Hreco());
+    }
+    else {
+      RooUnfoldInvert *rooInv= new RooUnfoldInvert( fFSRRes, fh1UnfRhoEffAccCorr, "rooInv" );
+      copyContents(h1Unf_loc, rooInv->Hreco());
+    }
+
+    fh1PreFsr= copy(h1Unf_loc, "h1preFsr_" + fTag,
 		    "h1preFsr_" + fTag
 		    + TString(";") + fh1Yield->GetXaxis()->GetTitle()
 		    + TString(";pre-FSR full space yield")
@@ -413,7 +442,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
       fh1Signal->Add(fh1Varied,-1);
     }
     if (fDetResBayes) delete fDetResBayes;
-    fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Signal, fNIters, false );
+    fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Signal, fNItersDetRes, false );
     fh1Unf= copy(fDetResBayes->Hreco(), "h1Unf_" + useTag,
 		 "h1Unf_" + useTag
 		 + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -439,7 +468,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
     fh1UnfRhoEffAccCorr->Scale(1/fLumi);
     if (fCSType==_csPreFsrFullSp) {
       if (fFSRBayes) delete fFSRBayes;
-      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNIters, false);
+      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNItersFSR, false);
       fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
 		      "h1preFsr_" + useTag
 		      + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -454,10 +483,10 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
   if ((new_var == _varSig) || (new_var == _varDetRes)) {
     if (fDetResBayes) delete fDetResBayes;
     if (new_var == _varSig) {
-      fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Varied, fNIters, false );
+      fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Varied, fNItersDetRes, false );
     }
     else {
-      fDetResBayes= new RooUnfoldBayes( fResVaried, fh1Signal, fNIters, false );
+      fDetResBayes= new RooUnfoldBayes( fResVaried, fh1Signal, fNItersDetRes, false );
     }
     fh1Unf= copy(fDetResBayes->Hreco(), "h1Unf_" + useTag,
 		 "h1Unf_" + useTag
@@ -481,7 +510,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
     fh1UnfRhoEffAccCorr->Scale(1/fLumi);
     if (fCSType==_csPreFsrFullSp) {
       if (fFSRBayes) delete fFSRBayes;
-      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNIters, false);
+      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNItersFSR, false);
       fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
 		      "h1preFsr_" + useTag
 		      + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -510,7 +539,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
     fh1UnfRhoEffAccCorr->Scale(1/fLumi);
     if (fCSType==_csPreFsrFullSp) {
       if (fFSRBayes) delete fFSRBayes;
-      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNIters, false);
+      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNItersFSR, false);
       fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
 		      "h1preFsr_" + useTag
 		      + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -530,7 +559,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
     fh1UnfRhoEffAccCorr->Scale(1/fLumi);
     if (fCSType==_csPreFsrFullSp) {
       if (fFSRBayes) delete fFSRBayes;
-      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNIters, false);
+      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNItersFSR, false);
       fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
 		      "h1preFsr_" + useTag
 		      + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -551,7 +580,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
     fh1UnfRhoEffAccCorr->Scale(1/fLumi);
     if (fCSType==_csPreFsrFullSp) {
       if (fFSRBayes) delete fFSRBayes;
-      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNIters, false);
+      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNItersFSR, false);
       fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
 		      "h1preFsr_" + useTag
 		      + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -569,7 +598,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
     fh1UnfRhoEffAccCorr->Scale(1/fLumi);
     if (fCSType==_csPreFsrFullSp) {
       if (fFSRBayes) delete fFSRBayes;
-      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNIters, false);
+      fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr, fNItersFSR, false);
       fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
 		      "h1preFsr_" + useTag
 		      + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -589,7 +618,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
       return NULL;
     }
     if (fFSRBayes) delete fFSRBayes;
-    fFSRBayes= new RooUnfoldBayes( fResVaried, fh1UnfRhoEffAccCorr, fNIters, false);
+    fFSRBayes= new RooUnfoldBayes( fResVaried, fh1UnfRhoEffAccCorr, fNItersFSR, false);
     fh1PreFsr= copy(fFSRBayes->Hreco(), "h1preFsr_" + useTag,
 		    "h1preFsr_" + useTag
 		    + TString(";") + fh1Yield->GetXaxis()->GetTitle()
@@ -922,8 +951,10 @@ int CrossSection_t::save(TString fname) const
   TObjString infoCSType(Form("%d",fCSType));
   infoCSType.Write("CSType");
   infoCSType.Write(csTypeName(fCSType));
-  TObjString infoNIter(Form("%d",fNIters));
-  infoNIter.Write("infoNIter");
+  TObjString infoNIterDetRes(Form("%d",fNItersDetRes));
+  infoNIterDetRes.Write("infoNIterDetRes");
+  TObjString infoNIterFSR(Form("%d",fNItersFSR));
+  infoNIterFSR.Write("infoNIterFSR");
   TObjString infoLumi(Form("%lf",fLumi));
   infoLumi.Write("lumi");
   TObjString timeTag(DayAndTimeTag(0));
@@ -985,9 +1016,24 @@ int CrossSection_t::load(TString fname, TString setTag)
   TObjString *infoCSType=(TObjString*)fin.Get("CSType");
   if (!infoCSType) { res=0; HERE("infoCSType is null"); }
   else fCSType=TCSType_t(atoi(infoCSType->String().Data()));
-  TObjString *infoNIter=(TObjString*)fin.Get("infoNIter");
-  if (!infoNIter) { res=0; HERE("infoNIter is null"); }
-  else fNIters= atoi(infoNIter->String().Data());
+
+  int noNIter=0;
+  TObjString *infoNIterDetRes=(TObjString*)fin.Get("infoNIterDetRes");
+  if (!infoNIterDetRes) { noNIter=1; HERE("infoNIterDetRes is null"); }
+  else fNItersDetRes= atoi(infoNIterDetRes->String().Data());
+  TObjString *infoNIterFSR=(TObjString*)fin.Get("infoNIterFSR");
+  if (!infoNIterFSR) { noNIter+=2; HERE("infoNIterFSR is null"); }
+  else fNItersFSR= atoi(infoNIterFSR->String().Data());
+  if (noNIter) {
+    TObjString *infoNIter=(TObjString*)fin.Get("infoNIter");
+    if (!infoNIter) { res=0; HERE("infoNIter is null"); }
+    else {
+      fNItersDetRes= atoi(infoNIter->String().Data());
+      fNItersFSR= fNItersDetRes;
+      delete infoNIter;
+    }
+  }
+
   TObjString *infoLumi= (TObjString*)fin.Get("lumi");
   if (!infoLumi) { res=0; HERE("infoLumi is null"); }
   else fLumi= atof(infoLumi->String().Data());
@@ -997,7 +1043,8 @@ int CrossSection_t::load(TString fname, TString setTag)
     //delete infoTag;
     delete infoVar;
     delete infoCSType;
-    delete infoNIter;
+    if (infoNIterDetRes) delete infoNIterDetRes;
+    if (infoNIterFSR) delete infoNIterFSR;
     delete infoLumi;
   }
 
@@ -1072,12 +1119,15 @@ TH1D* CrossSection_t::copy(const TH1 *h1unf, TString newName, TString newTitle,
 // --------------------------------------------------------------
 
 MuonCrossSection_t::MuonCrossSection_t(TString setName, TString setTag,
-				       double lumiA, double lumiB) :
-  fCSa(setName + TString("a"), setTag + TString("a"), _csPostFsrFullSp),
-  fCSb(setName + TString("b"), setTag + TString("b"), _csPostFsrFullSp),
+				       double lumiA, double lumiB,
+				       TVersion_t setVersion) :
+  fCSa(setName + TString("a"), setTag + TString("a"), _csPostFsrFullSp, setVersion),
+  fCSb(setName + TString("b"), setTag + TString("b"), _csPostFsrFullSp, setVersion),
   fTag(setTag),
+  fVersion(setVersion),
   fh1BkgV(), fBkgWeightUnc(),
   fh1Bkg(NULL),
+  fh1PostFSR(NULL), fh1PreFSR(NULL),
   fh1CS(NULL),
   fh1Theory(NULL),
   fFSRBayes(NULL)
@@ -1095,12 +1145,12 @@ void MuonCrossSection_t::h1Bkg(const TH1D *h1, int clearVec)
     fBkgWeightUnc.Clear();
   }
 
-  double lumiTot= fCSa.lumi() + fCSb.lumi();
+  double loc_lumiTot= fCSa.lumi() + fCSb.lumi();
   TH1D *h1bkgA= fCSa.copy(h1);
-  h1bkgA->Scale( fCSa.lumi()/lumiTot );
+  h1bkgA->Scale( fCSa.lumi()/loc_lumiTot );
   fCSa.h1Bkg(h1bkgA);
   TH1D *h1bkgB= fCSb.copy(h1);
-  h1bkgB->Scale( fCSb.lumi()/lumiTot );
+  h1bkgB->Scale( fCSb.lumi()/loc_lumiTot );
   fCSb.h1Bkg(h1bkgB);
 
   fh1Bkg=fCSa.copy(h1, "h1BkgTot", fTag);
@@ -1179,7 +1229,7 @@ TH1D* MuonCrossSection_t::calcCrossSection()
   h1postFSR->Add(h1CSb);
 
   if (fFSRBayes) delete fFSRBayes;
-  fFSRBayes= new RooUnfoldBayes( fCSa.fFSRRes, h1postFSR, fCSa.fNIters, false);
+  fFSRBayes= new RooUnfoldBayes( fCSa.fFSRRes, h1postFSR, fCSa.fNItersFSR, false);
   TH1D* h1CS_raw= (TH1D*) fFSRBayes->Hreco()->Clone("h1preFSR_" + fTag);
   h1CS_raw->SetDirectory(0);
   h1CS_raw->SetTitle("h1preFSR_" + fTag +
@@ -1198,7 +1248,7 @@ TCanvas* MuonCrossSection_t::plotCrossSection(TString canvName,int recalculate)
 {
   TH1D *h1= NULL;
   if (recalculate && fh1CS) { delete fh1CS; fh1CS=NULL; }
-  if (!fh1CS) calcCrossSection();
+  if (!fh1CS) this->calcCrossSection();
   if (fh1CS) h1= cloneHisto(fh1CS, fh1CS->GetName() + canvName, fh1CS->GetTitle());
   if (!h1) {
     std::cout << "MuonCrossSection_t::plotCrossSection: "
@@ -1269,7 +1319,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
     else if (new_var==_varBkg) {
       std::vector<TH1D*> rndBkgVa, rndBkgVb;
       TH1D *h1rnd= NULL;
-      double lumiTot= fCSa.lumi() + fCSb.lumi();
+      double loc_lumiTot= fCSa.lumi() + fCSb.lumi();
       for (int i=0; i<sampleSize; i++) {
 	TString useTag= Form("_rnd%d",i) + fTag;
 	h1rnd=cloneHisto(fh1Bkg,
@@ -1278,9 +1328,9 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 	int nonNegative=0;
 	randomizeWithinErr(fh1Bkg,h1rnd,nonNegative);
 	TH1D* h1rndA= fCSa.copy(h1rnd);
-	h1rndA->Scale( fCSa.lumi()/lumiTot );
+	h1rndA->Scale( fCSa.lumi()/loc_lumiTot );
 	TH1D* h1rndB= fCSb.copy(h1rnd);
-	h1rndB->Scale( fCSb.lumi()/lumiTot );
+	h1rndB->Scale( fCSb.lumi()/loc_lumiTot );
 
 	if (rndVarVec_out) rndVarVec_out->push_back(h1rnd);
 	else delete h1rnd;
@@ -1297,7 +1347,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 
       std::vector<TH1D*> rndBkgVa, rndBkgVb;
       TH1D *h1rnd= NULL;
-      double lumiTot= fCSa.lumi() + fCSb.lumi();
+      double loc_lumiTot= fCSa.lumi() + fCSb.lumi();
       std::vector<double> rndV;
       for (int i=0; i<fBkgWeightUnc.GetNoElements(); i++) rndV.push_back(1.);
       for (int i=0; i<sampleSize; i++) {
@@ -1313,9 +1363,9 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 			 "h1rndBkg" + useTag,
 			 fh1Bkg->GetTitle());
 	TH1D* h1rndA= fCSa.copy(h1rnd);
-	h1rndA->Scale( fCSa.lumi()/lumiTot );
+	h1rndA->Scale( fCSa.lumi()/loc_lumiTot );
 	TH1D* h1rndB= fCSb.copy(h1rnd);
-	h1rndB->Scale( fCSb.lumi()/lumiTot );
+	h1rndB->Scale( fCSb.lumi()/loc_lumiTot );
 
 	if (rndVarVec_out) rndVarVec_out->push_back(h1rnd);
 	else delete h1rnd;
@@ -1388,7 +1438,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   }
   */
   else if (new_var==_varFSRRes) {
-    double lumiTot= fCSa.lumi() + fCSb.lumi();
+    double loc_lumiTot= fCSa.lumi() + fCSb.lumi();
     const TH1D *h1aCS= fCSa.h1UnfRhoEffAccCorr();
     TH1D* h1postFSRYield= cloneHisto( h1aCS, "h1postFSRYield", "postFSR yield" );
     h1postFSRYield->Scale( fCSa.lumi() );
@@ -1399,14 +1449,33 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       RooUnfoldResponse *rRnd= randomizeWithinErr(r, respName);
       if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
       TH1D* h1tmp= cloneHisto(h1postFSRYield,"h1postFSRYield" + respName, "h1postFSRYield"+respName);
-      fFSRBayes= new RooUnfoldBayes( rRnd, h1tmp, fCSa.fNIters, false);
-      TH1D* h1preFSRYield=
-	cloneHisto(fFSRBayes->Hreco(), "h1preFSRYield_" + respName,
-		   "h1preFSR_" + respName +
-		   TString(";") + fh1Bkg->GetXaxis()->GetTitle()
+
+      //fFSRBayes= new RooUnfoldBayes( rRnd, h1tmp, fCSa.fNItersFSR, false);
+      //TH1D* h1preFSRYield=
+      //cloneHisto(fFSRBayes->Hreco(), "h1preFSRYield_" + respName,
+      //	   "h1preFSR_" + respName +
+      //	   TString(";") + fh1Bkg->GetXaxis()->GetTitle()
+      //	   +TString("; preFSR full space cs"), h1dummy);
+
+      TH1D *h1preFSRYield= cloneHisto(h1postFSRYield,
+				      "h1preFSRYield_" + respName,
+				      "h1preFSR_" + respName +
+			      TString(";") + fh1Bkg->GetXaxis()->GetTitle()
 		   +TString("; preFSR full space cs"), h1dummy);
+      if (fVersion!=_verMu76X) {
+	//std::cout << "\n\taaaaa\n"; return 0;
+	fFSRBayes= new RooUnfoldBayes( rRnd, h1tmp, fCSa.fNItersFSR, false);
+	copyContents(h1preFSRYield, fFSRBayes->Hreco());
+      }
+      else {
+	if (i%1000==0) std::cout << "\tdoing matrix inversion (2). i=" << i << "\n";
+	RooUnfoldInvert *rooInv = new RooUnfoldInvert( rRnd, h1tmp );
+	copyContents(h1preFSRYield, rooInv->Hreco());
+	delete rooInv;
+      }
+
       TH1D* h1cs= perMassBinWidth(h1preFSRYield,0);
-      h1cs->Scale(1/lumiTot);
+      h1cs->Scale(1/loc_lumiTot);
       delete h1tmp;
       delete h1preFSRYield;
       rndCS.push_back(h1cs);
@@ -1491,6 +1560,8 @@ int MuonCrossSection_t::save(TString fnameBase)
   for (unsigned int i=0; i<fh1BkgV.size(); i++) fh1BkgV[i]->Write();
   fout.cd();
   if (fh1Bkg) fh1Bkg->Write("h1Bkg");
+  if (fh1PostFSR) fh1PostFSR->Write("h1PostFSR");
+  if (fh1PreFSR) fh1PreFSR->Write("h1PreFSR");
   if (fh1CS) fh1CS->Write("h1CS");
   if (fh1Theory) fh1Theory->Write("h1Theory");
   //HERE("save fsrBayes");
@@ -1498,6 +1569,12 @@ int MuonCrossSection_t::save(TString fnameBase)
 
   TObjString infoTag(fTag);
   infoTag.Write("tag");
+  TString strVersion(Form("%d ",int(fVersion)) + versionName(fVersion));
+  TObjString infoVersion(strVersion);
+  infoVersion.Write("version");
+  TString strLumiTot(Form("%8.6lf",this->lumiTot()));
+  TObjString lumi(strLumiTot);
+  lumi.Write("lumiTot");
   TObjString timeTag(DayAndTimeTag(0));
   timeTag.Write("timeTag");
   TObjString explain("productionTime");
@@ -1560,6 +1637,8 @@ int MuonCrossSection_t::load(TString fnameBase, TString setTag)
   fin.cd();
   TH1D* h1dummy=NULL;
   fh1Bkg= loadHisto(fin, "h1Bkg", "h1Bkg" + fTag, 1, h1dummy);
+  fh1PostFSR= loadHisto(fin, "h1PostFSR", "h1PostFSR" + fTag, 1, h1dummy);
+  fh1PreFSR= loadHisto(fin, "h1PreFSR", "h1PreFSR" + fTag, 1, h1dummy);
   fh1CS = loadHisto(fin, "h1CS", "h1CS" + fTag, 1, h1dummy);
   fh1Theory= loadHisto(fin, "h1Theory", "h1Theory"+fTag, 1, h1dummy);
   fFSRBayes= loadRooUnfoldBayes(fin, "fsrBayes","fsrBayes" + fTag);
@@ -1583,24 +1662,40 @@ TH1D* MuonCrossSection_t::calcPreFsrCS_sumAB(const TH1D *h1a,
     std::cout << "calcPreFsrCS_sumAB : null ptrs\n";
     return NULL;
   }
-  TH1D *h1postFSR= fCSa.copy(h1a,"h1postFSR",fTag);
-  h1postFSR->Scale( fCSa.lumi() );
-  h1postFSR->Add(h1b, fCSb.lumi());
+  if (fh1PostFSR) { delete fh1PostFSR; }
+  fh1PostFSR= fCSa.copy(h1a,"h1PostFSR",fTag);
+  fh1PostFSR->Scale( fCSa.lumi() );
+  fh1PostFSR->Add(h1b, fCSb.lumi());
   //printHisto(h1postFSR);
 
   if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
-  fFSRBayes= new RooUnfoldBayes( fCSa.fFSRRes, h1postFSR, fCSa.fNIters, false);
-  TH1D* h1CS_raw= (TH1D*) fFSRBayes->Hreco()->Clone("h1preFSR_" + useTag);
-  h1CS_raw->SetDirectory(0);
-  h1CS_raw->SetTitle("h1preFSR_" + useTag +
+  //fFSRBayes= new RooUnfoldBayes( fCSa.fFSRRes, h1postFSR, fCSa.fNItersFSR, false);
+  //TH1D* h1CS_raw= (TH1D*) fFSRBayes->Hreco()->Clone("h1preFSR_" + useTag);
+
+  if (fh1PreFSR) { delete fh1PreFSR; }
+  fh1PreFSR = cloneHisto(fh1PostFSR, "h1Unf_loc","h1Unf_loc");
+  if (fVersion!=_verMu76X) {
+    fFSRBayes= new RooUnfoldBayes( fCSa.fFSRRes, fh1PostFSR, fCSa.fNItersFSR, false);
+    copyContents(fh1PreFSR,fFSRBayes->Hreco());
+  }
+  else {
+    std::cout << "\n\tdoing matrix inversion\n\n";
+    RooUnfoldInvert *rooInv= new RooUnfoldInvert( fCSa.fFSRRes, fh1PostFSR, "rooInv" );
+    if (0) {
+      std::cout << "check whether fh1PostFSR has changed\n";
+      printRatio(fh1PreFSR,fh1PostFSR);
+    }
+    copyContents(fh1PreFSR, rooInv->Hreco());
+    delete rooInv;
+  }
+
+  fh1PreFSR->SetDirectory(0);
+  fh1PreFSR->SetTitle("h1preFSR_" + useTag +
 		     TString(";") + fh1Bkg->GetXaxis()->GetTitle()
 		     + TString("; pre-FSR full space cross section"));
-  double lumiTot= fCSa.lumi() + fCSb.lumi();
-  h1CS_raw->Scale(1/lumiTot);
-  TH1D *h1CS_tmp = perMassBinWidth(h1CS_raw,0);
+  TH1D *h1CS_tmp = perMassBinWidth(fh1PreFSR,0);
+  h1CS_tmp->Scale(1/this->lumiTot());
   //printHisto(h1CS_tmp);
-  delete h1postFSR;
-  delete h1CS_raw;
   return h1CS_tmp;
 }
 

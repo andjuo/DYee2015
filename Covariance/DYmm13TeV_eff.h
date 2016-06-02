@@ -211,7 +211,7 @@ public:
     const int allow_overflow=1;
     int fi1= DYtools::FlatIndex(fh2EffBinDef, v1, allow_overflow);
     int fi2= DYtools::FlatIndex(fh2EffBinDef, v2, allow_overflow);
-    std::cout << "fi1=" << fi1 << ", fi2=" << fi2 << "\n";
+    //std::cout << "fi1=" << fi1 << ", fi2=" << fi2 << "\n";
     if ((fi1<0) || (fi2<0)) return 0;
     fi1++; fi2++; // convert to bin number
     if ((fi1>DYtools::EtaPtFIMax) || (fi2>DYtools::EtaPtFIMax)) {
@@ -221,7 +221,7 @@ public:
     }
     double m= (*v1 + *v2).M();
     int iMass= DYtools::massIdx(m);
-    std::cout << "fill m=" << m << ", iMass=" << iMass << ", weight=" << weight << "\n";
+    //std::cout << "fill m=" << m << ", iMass=" << iMass << ", weight=" << weight << "\n";
     if (iMass==-1) return 0;
     fh2ESV[iMass]->Fill(fi1,fi2, weight);
     return 1;

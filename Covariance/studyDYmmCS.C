@@ -8,8 +8,14 @@ void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave);
 
 void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 {
-  MuonCrossSection_t muCS("muCS","v1");
-  if (!muCS.load("cs_DYmm_13TeV_v1","v1")) {
+  TVersion_t inpVer=_verMu1;
+  TString inpVerTag="_v1";
+  if (1) {
+    inpVer=_verMu76X;
+    inpVerTag="_76X";
+  }
+  MuonCrossSection_t muCS("muCS",inpVerTag,0,0,inpVer);
+  if (!muCS.load("cs_DYmm_13TeV" + inpVerTag, inpVerTag)) {
     std::cout << "loading failed\n";
     return;
   }
@@ -38,7 +44,8 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
     std::cout << "perform study\n";
     work(muCS,var,nSample,doSave);
   }
- 
+
+  std::cout << "macro ran with inpVerTag=" << inpVerTag << "\n";
 }
 
 

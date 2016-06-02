@@ -3,15 +3,25 @@
 
 // ---------------------------------------------------------
 
-TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle, int plotIt=0);
+// moved to inputs.h
+//TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle, int plotIt=0);
 
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
-void createCSInput_DYmm13TeV()
+void createCSInput_DYmm13TeV(int doSave=0)
 {
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
+  TVersion_t inpVer=_verMu1;
+  TString inpVerTag="_v1";
+  if (1) {
+    srcPath="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
+    inpVer=_verMu76X;
+    inpVerTag="_76X";
+  }
+
+  int checkBackgrounds=0;
 
   TH1D* h1Dummy=NULL;
   //TH2D* h2Dummy=NULL;
@@ -19,7 +29,9 @@ void createCSInput_DYmm13TeV()
   double lumi42= 848.104;
   double lumi43= 2765.229-lumi42;
   double lumiTot= lumi42 + lumi43;
+  std::cout << "lumi42=" << Form("%7.3lf",lumi42) << ", lumi43=" << Form("%7.3lf",lumi43) << "\n";
 
+  // ---------------- load observed yield and simulated signal yield
   TString fname1= srcPath + TString("Input1/ROOTFile_Histograms_Data.root");
   TFile fin1(fname1);
   if (!fin1.IsOpen()) {
@@ -30,6 +42,7 @@ void createCSInput_DYmm13TeV()
   TH1D* h1Yield_43= loadHisto(fin1, "h_data_HLTv4p3", "h1Yield_43",1,h1Dummy);
   if (!h1Yield_42) return;
   if (!h1Yield_43) return;
+  //printHisto(h1Yield_42);
   //plotHisto(h1Yield_42,"cYield42",1,1);
   //plotHisto(h1Yield_43,"cYield43",1,1);
 
@@ -41,7 +54,7 @@ void createCSInput_DYmm13TeV()
   //plotHisto(h1Signal_43,"cSignal43",1,1);
   fin1.Close();
 
-
+  // --------- Load backgrounds
   TString fname2= srcPath + TString("Input2/ROOTFile_Histograms_Bkg.root");
   TFile fin2(fname2);
   if (!fin2.IsOpen()) {
@@ -59,12 +72,36 @@ void createCSInput_DYmm13TeV()
     std::cout << "b=" << bkgName(b) << "\n";
     TH1D *h1= loadHisto(fin2, "h_"+bkgName(b), "h_"+bkgName(b),1,h1Dummy);
     if (!h1) return;
+
+    int hasNegative=0;
+    for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+      if (h1->GetBinContent(ibin)<0) {
+	std::cout << "histo " << h1->GetName() << " has negative entries\n";
+	break;
+      }
+    }
+    if (hasNegative) {
+      printHisto(h1);
+    }
+
     double w=1., dw=0.;
-    if (1) {
+    if (inpVer==_verMu1) {
       if (b==_bkgZZ) { w= 15.4/996944.; dw=0.11; }
       else if (b==_bkgWZ) { w= 66.1/978512.; dw= 0.40; }
       else if (b==_bkgWW) { w= 118.7/993640.; dw= 0.08; }
       if (w!=double(1.)) h1->Scale( w * lumiTot );
+    }
+    else if (inpVer==_verMu76X) {
+      switch(b) {
+      case _bkgZZ: dw=0.11; break;
+      case _bkgWZ: dw=0.40; break;
+      case _bkgWW: dw=0.08; break;
+      default: dw=0.;
+      }
+    }
+    else {
+      std::cout << "bkg cross section uncertainty is not defined for gInpVer="
+		<< int(inpVer) << "\n";
     }
     bkgWeightUnc.push_back(dw);
     hBkgV.push_back(h1);
@@ -74,13 +111,14 @@ void createCSInput_DYmm13TeV()
   plotHisto(h1BkgTot, "cBkgTot",1,1);
 
 
-  if (0) {
+  if (checkBackgrounds) {
     TH1D* h1Bkg42_chk= cloneHisto(h1Yield_42, "h1Bkg42_chk", "h1Bkg42_chk");
     h1Bkg42_chk->Add(h1Signal_42, -1);
     TH1D* h1Bkg43_chk= cloneHisto(h1Yield_43, "h1Bkg43_chk", "h1Bkg43_chk");
     h1Bkg43_chk->Add(h1Signal_43, -1);
     plotHistoSame(h1Bkg42_chk, "cBkgTot","hist");
-    plotHistoSame(h1Bkg43_chk, "cBkgTot","hist");
+    TCanvas *ctmp=plotHistoSame(h1Bkg43_chk, "cBkgTot","hist");
+    ctmp->SetTitle("cBkgTot - compare shapes of bkgs");
 
     TH1D *h1ratio42= cloneHisto(h1Bkg42_chk, "h1ratio42","ratio42");
     TH1D *h1ratio43= cloneHisto(h1Bkg43_chk, "h1ratio43","ratio43");
@@ -92,21 +130,32 @@ void createCSInput_DYmm13TeV()
       h1ratio43->Scale(lumiTot/lumi43);
     }
     h1ratio42->GetYaxis()->SetRangeUser(0,2.);
+    h1ratio42->SetTitle("ratio42 = (Nyield-Nsig)/NtotBkg");
     plotHisto(h1ratio42, "cRatio42",1);
-    plotHistoSame(h1ratio43, "cRatio42", "hist");
-    printHisto(h1ratio42);
-    TH1D *h1ratio43_to_42= cloneHisto(h1ratio43, "h1ratio43_to_42","ratio43_to_42");
-    h1ratio43_to_42->Divide(h1ratio42);
-    printHisto(h1ratio43_to_42);
+    ctmp=plotHistoSame(h1ratio43, "cRatio42", "hist");
+    ctmp->SetTitle("cRatio42 - ratio of backgrounds - expectation is 1");
+    //printHisto(h1ratio42);
+    //printHisto(h1ratio43);
+    //TH1D *h1ratio43_to_42= cloneHisto(h1ratio43, "h1ratio43_to_42","ratio43_to_42");
+    //h1ratio43_to_42->Divide(h1ratio42);
+    //printHisto(h1ratio43_to_42);
+    printRatio(h1ratio43,h1ratio42);
 
     if (1) {
       TH1D *h1BkgSum= cloneHisto(h1Bkg42_chk, "h1BkgSum", "BkgSum");
       h1BkgSum->Add(h1Bkg43_chk);
       TH1D *h1Bkg_ChkDiff= cloneHisto(h1BkgSum, "h1Bkg_ChkDiff", "Bkg_ChkDiff");
       h1Bkg_ChkDiff->Add(h1BkgTot, -1);
-      plotHisto(h1Bkg_ChkDiff, "cBkg_ChkDiff",1,0);
+      removeError(h1Bkg_ChkDiff);
+      h1Bkg_ChkDiff->GetYaxis()->SetRangeUser(-100,100);
+      ctmp=plotHisto(h1Bkg_ChkDiff, "cBkg_ChkDiff",1,0);
+      ctmp->SetTitle("cBkg_ChkDiff - difference in backgrounds - expectation is 0");
     }
+
+    return;
   }
+
+  // --------- Load corrections
 
   TString fname6= srcPath + TString("Input6/ROOTFile_Input6_CrossCheck.root");
   TFile fin6(fname6);
@@ -140,7 +189,7 @@ void createCSInput_DYmm13TeV()
   if (!h1SF43) return;
   
 
-  MuonCrossSection_t muCS("muCS","",lumi42,lumi43);
+  MuonCrossSection_t muCS("muCS",inpVerTag,lumi42,lumi43,inpVer);
   muCS.editCSa().h1Yield( h1Yield_42 );
   muCS.editCSa().h1Eff( h1Eff );
   muCS.editCSa().h1Acc( h1Acc );
@@ -161,7 +210,9 @@ void createCSInput_DYmm13TeV()
   muCS.setBkgV(hBkgV, bkgWeightUnc);
   muCS.h1Theory(h1_DiffXSec_data);
 
-  if (0) {
+  if (1) {
+    std::cout << "Number of iterations: detRes " << muCS.csA().nItersDetRes()
+	      << ", FSR " << muCS.csA().nItersFSR() << "\n";
     TH1D *h1preFSRcs= muCS.calcCrossSection();
     if (!h1preFSRcs) return;
     plotHisto(h1preFSRcs, "cPreFsrCS",1,1);
@@ -186,8 +237,9 @@ void createCSInput_DYmm13TeV()
     plotHistoSame(muCS.csB().copy(muCS.csB().h1Signal()),"cSignal43","LPE");
   }
 
+  if (!doSave) { HERE("not saving"); return; }
   HERE("calling muCS.save()");
-  if (!muCS.save("cs_DYmm_13TeV_v1")) {
+  if (!muCS.save("cs_DYmm_13TeV" + inpVerTag)) {
     std::cout << "saving failed\n";
     return;
   }
@@ -197,6 +249,7 @@ void createCSInput_DYmm13TeV()
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
+/*
 TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
 	      int plotIt)
 {
@@ -240,5 +293,5 @@ TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
 
   return h1;
 }
-
+*/
 // ---------------------------------------------------------

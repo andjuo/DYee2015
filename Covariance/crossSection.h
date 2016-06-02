@@ -4,6 +4,7 @@
 #include "inputs.h"
 #include "../RooUnfold/src/RooUnfoldResponse.h"
 #include "../RooUnfold/src/RooUnfoldBayes.h"
+#include "../RooUnfold/src/RooUnfoldInvert.h"
 
 // -----------------------------------------------------------
 
@@ -15,6 +16,7 @@ typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
 
 typedef enum { _csPostFsrInAcc=0, _csPostFsrFullSp,
 	       _csPreFsrInAcc, _csPreFsrFullSp } TCSType_t;
+
 
 TString variedVarName(TVaried_t);
 TString bkgName(TBkg_t);
@@ -42,6 +44,7 @@ class CrossSection_t {
   friend class MuonCrossSection_t;
  protected:
   TString fName, fTag;
+  TVersion_t fVersion;
   TH1D *fh1Yield, *fh1Bkg;
   RooUnfoldResponse *fDetRes, *fFSRRes;
   TH1D *fh1Eff, *fh1Rho, *fh1Acc;
@@ -49,7 +52,7 @@ class CrossSection_t {
   TH1D* fh1Theory;
   TVaried_t fVar;
   TCSType_t fCSType;
-  int fNIters;
+  int fNItersDetRes, fNItersFSR;
   double fLumi;
  protected:
   TH1D *fh1Signal, *fh1Unf, *fh1UnfRhoCorr, *fh1UnfRhoEffCorr;
@@ -59,9 +62,11 @@ class CrossSection_t {
   RooUnfoldBayes *fDetResBayes, *fFSRBayes;
  public:
   CrossSection_t(TString setName="xs", TString setTag="",
-		 TCSType_t setCSType=_csPreFsrFullSp);
+		 TCSType_t setCSType=_csPreFsrFullSp,
+		 TVersion_t setVersion=_verUndef);
   CrossSection_t(const CrossSection_t &cs,
-		 TString setName="xsNew", TString setTag="newTag");
+		 TString setName="xsNew", TString setTag="newTag",
+		 TVersion_t newVersion=_verUndef);
   void clearAllPtrs();
 
   const TH1D *h1Yield() const { return fh1Yield; }
@@ -87,12 +92,18 @@ class CrossSection_t {
   void name(TString new_name) { fName=new_name; }
   TString tag() const { return fTag; }
   void tag(TString new_tag) { fTag=new_tag; }
+  TVersion_t version() const { return fVersion; }
+  TString versionAsString() const { return versionName(fVersion); }
+  void version(TVersion_t setVersion) { fVersion=setVersion; }
   TVaried_t var() const { return fVar; }
   void var(TVaried_t new_var) { fVar=new_var; }
   TCSType_t csType() const { return fCSType; }
   void csType(TCSType_t setCS) { fCSType=setCS; }
-  int nIters() const { return fNIters; }
-  void nIters(int setIters) { fNIters=setIters; }
+  void setNIters_internal(TVersion_t);
+  int nItersDetRes() const { return fNItersDetRes; }
+  void nItersDetRes(int setIters) { fNItersDetRes=setIters; }
+  int nItersFSR() const { return fNItersFSR; }
+  void nItersFSR(int setIters) { fNItersFSR=setIters; }
   double lumi() const { return fLumi; }
   void lumi(double set_lumi) { fLumi=set_lumi; }
 
@@ -148,16 +159,19 @@ class MuonCrossSection_t {
  protected:
   CrossSection_t fCSa, fCSb;
   TString fTag;
+  TVersion_t fVersion;
   std::vector<TH1D*> fh1BkgV;
   TVectorD fBkgWeightUnc; // bkg weight uncertainty
   TH1D *fh1Bkg;
+  TH1D *fh1PostFSR, *fh1PreFSR;
   TH1D *fh1CS;
   TH1D *fh1Theory;
  protected:
   RooUnfoldBayes *fFSRBayes;
  public:
   MuonCrossSection_t(TString setName, TString setTag,
-		     double lumiA=0, double lumiB=0);
+		     double lumiA=0, double lumiB=0,
+		     TVersion_t setVersion=_verMu1);
 
   void clear() { fh1BkgV.clear(); }
 
@@ -167,7 +181,11 @@ class MuonCrossSection_t {
   CrossSection_t& editCSb() { return fCSb; }
 
   TString tag() const { return fTag; }
+  TVersion_t version() const { return fVersion; }
+  TString versionAsString() const { return versionName(fVersion); }
+  void version(TVersion_t setVersion) { fVersion=setVersion; }
   void lumi(double lumiA, double lumiB) { fCSa.lumi(lumiA); fCSb.lumi(lumiB); }
+  double lumiTot() const { return (fCSa.lumi() + fCSb.lumi()); }
 
   const TH1D* h1Bkg() const { return fh1Bkg; }
   void h1Bkg(const TH1D *h1, int clearVec=1);

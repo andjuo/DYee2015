@@ -6,13 +6,25 @@
 
 namespace DYtools {
 
-const Int_t nMassBins = 45;
-const Double_t massBinEdges[nMassBins+1] =
+const Int_t nMassBins45 = 45;
+const Double_t massBinEdges45[nMassBins45+1] =
   {15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
    64, 68, 72, 76, 81, 86, 91, 96, 101, 106,
    110, 115, 120, 126, 133, 141, 150, 160, 171, 185,
    200, 220, 243, 273, 320, 380, 440, 510, 600, 700,
    830, 1000, 1200, 1500, 2000, 3000};
+
+const Int_t nMassBins43 = 43;
+const Double_t massBinEdges43[nMassBins43+1] =
+  {15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
+   64, 68, 72, 76, 81, 86, 91, 96, 101, 106,
+   110, 115, 120, 126, 133, 141, 150, 160, 171, 185,
+   200, 220, 243, 273, 320, 380, 440, 510, 600, 700,
+   830, 1000, 1500, 3000};
+
+
+const Int_t nMassBins= nMassBins43;
+const Double_t *massBinEdges= massBinEdges43;
 
 const Double_t minMass= massBinEdges[0];
 const Double_t maxMass= massBinEdges[nMassBins];
