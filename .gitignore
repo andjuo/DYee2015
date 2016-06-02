@@ -6,5 +6,12 @@
 *.pyc
 __init__.py
 
-# do not track directories
+# latex
+*.aux
+*.log
+*.pdf
 
+# do not track directories
+RooUnfold/tmp
+RooUnfold/libRooUnfold.rootmap
+Doc/html
