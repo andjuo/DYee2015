@@ -1,0 +1,183 @@
+\documentclass[a4paper]{article}
+
+\pdfoutput=1
+%\usepackage{jheppub} 
+
+\usepackage{lineno}
+\usepackage[pdftex]{graphicx}
+\usepackage{xstring} % StrSubstitute
+%\graphicspath{{dir-figs/}}
+
+\usepackage{stmaryrd,xcolor}
+\newcommand{\textred}[1]{{\color{red!70!black}#1}}
+\newcommand{\textgreen}[1]{{\color{green!50!black}#1}}
+\newcommand{\textblue}[1]{{\color{blue!90!black}#1}}
+\newcommand{\lumi}[1]{{\cal L}_{\mathrm{#1}}}
+
+\def\myund#1{%
+  \saveexpandmode\expandarg
+  \IfSubStr{#1}{_}{%
+   \StrSubstitute{#1}{_}{\_}}{#1}%
+  \restoreexpandmode
+}
+
+
+\title{Calculation of the covariance matrix for the Drell-Yan measurement in the muon channel: Code sequence}
+\author{A.~Juodagalvis\\[2mm]
+\small
+Vilnius University, Institute of Theoretical Physics and Astronomy, \\
+\small Saul{\. e}tekio al.\ 3, Vilnius 10222, Lithuania}
+
+\begin{document}
+\linenumbers
+
+%\abstract{Information about the needed data structures.}
+\maketitle
+
+Explanation of the code sequence used to derive the covariance
+matrices of the 1D measurement in the muon channel. Explanation is
+based on the provided data with the tag ``76X''.
+
+The 1D Drell-Yan cross section measurement provides the cross section
+values in bins of mass
+
+\begin{equation}
+\frac{d\sigma}{dM}\ =\ {\cal F}^{-1}_\mathrm{FSR}
+\left\{
+\frac{
+  {\cal F}^{-1}_\mathrm{resol}\{ N_\mathrm{obs.yield} - N_\mathrm{bkg.yield} \}
+}{
+  A \varepsilon \rho \lumi{int}
+}
+\right\},
+\end{equation}
+where ${\cal F}^{-1}_\mathrm{X}$ denotes the unfolding correction for
+the detector ($X=\mathrm{resol}$) and FSR ($X=\mathrm{FSR}$) effects,
+$N_\mathrm{obs.yield}$ is the measured event yield,
+$N_\mathrm{bkg.yield}$ is the estimated background yield, $A$ is the
+event acceptance, $\varepsilon$ is the event efficiency, $\rho$ is
+the efficiency correction factor, and $\lumi{int}$ is the total
+integrated luminosity.
+
+Due to the differences in the HLT menus v.4.2 and v.4.3, the
+measurement in the muon channel is subdivided into two run periods.
+The background yield is estimated from all data, thus the cross
+section measurement is calculated as
+\begin{equation}
+\frac{d\sigma}{dM} =
+\frac{1}{\lumi{int.tot}}
+{\cal F}_{\mathrm{FSR}^{-1}}
+\left\{
+  \sum\limits_{\mathrm{HLTvX: X=4.2,4.3}}
+  \frac{%
+    {\cal F}_{\mathrm{resol}}^{-1}
+    \left\{
+    N_\mathrm{obs.yield,HLTvX} -
+    \frac{\lumi{int,HLTvX}}{\lumi{int,tot}} N_\mathrm{bkg.yield}
+    \right\}
+  }
+  {A\varepsilon \rho_{HLTvX}}
+\right\},
+\end{equation}
+where $\lumi{int,HLTv4.2}=848.104$~pb${}^{-1}$ and
+$\lumi{int,HLTv4.3}=1917.125$~pb${}^{-1}$.
+
+\medskip
+
+All relevant macros are placed in subdirectory {\sf Covariance}. The
+header file \myund{crossSection.h}\ contains main class definitions
+used when deriving the covariance matrix: \myund{CrossSection_t}\ and
+\myund{MuonCrossSection_t}. The header file \myund{inputs.h}\
+contains many auxiliary functions. The header file
+\myund{DYmm13TeV.h}\ defines class \myund{DYmm13TeV_t}\ that has a
+description of the Drell-Yan event file in the muon channel containing
+data in the ROOT format.
+
+\textbf{First, we need to convert the input files.} The macro is called
+\myund{createCSInput_DYmm13TeV.C}. One needs to specify the source
+path variable \myund{srcPath}\ to point to relevant location.
+The variables (inpVer and inpVerTag, defined in
+crossSection.h) have to be updated as well. The macro should be run
+with pre-compilation:
+\begin{verbatim}
+.x createCSInput_DYmm13TeV.C+(doSave)
+\end{verbatim}
+The variable doSave is 1 for saving the resulting ROOT file. The
+default value is 0 (no save).
+
+The first input file is
+\myund{Input1/ROOTFile_Histograms_Data.root}. The histograms are
+\myund{h_data_HLTv4pX}\ and \myund{h_yield_HLTv4pX}, where X=2 and
+3. They are loaded under names \myund{h1Yield_4X}\ and
+\myund{h1Signal_4X}. These histograms correspond to
+$N_\mathrm{obs.yield,HLTvX}$ and $(N_\mathrm{obs.yield,HLTvX} -
+      {\lumi{int,HLTvX}}/{\lumi{int,tot}} N_\mathrm{bkg.yield})$.
+% 
+Note that no events were registered in the mass range 1500-3000~GeV
+during the run period HLTv4.2.
+
+The second input file
+\myund{Input2/ROOTFile_Histograms_Bkg.root}\ contains several
+backgrounds. The expected ones are given in histograms \myund{h_XX},
+where 'XX' stands for ZZ, WZ, WW, ttbar (TTbar), DYtautau, tW (TW),
+WJets, QCD. Those backgrounds are listed as the enumerated type
+\myund{TBkg_t}\ in \myund{crossSection.h}. Their variable names are
+\myund{_bkgXX}, where 'XX' stands for the background name (note, that
+ttbar and tW are named \myund{_bkgTTbar}\ and \myund{_bkgTW}).
+
+If the variable \myund{checkBackgrounds}\ is set to 1, the code will
+try to verify whether the backgrounds are reasonable. The code takes
+the yield histogram and subtracts the signal histogram. This should
+yield the background distribution (after corrections for the run
+luminosities).
+Inputs v1 had
+improperly normalized ZZ, WZ, and WW backgrounds. This trouble is
+fixed in version 76X. However, here is a non-trivial mismatch between
+$(h_\mathrm{yield}-h_\mathrm{signal})/sum_{\mathrm{bkg}}(h_\mathrm{bkg})$. It
+varied between $-3\%$ in the first mass bin up to $+5\%$ in the mass
+bin 42, 1000-1500~GeV. The difference is the same in both versions
+HLTv4.X.
+
+The third input file is
+\myund{Input6/ROOTFile_Input6_CrossCheck.root}. It contains several
+objects of type \myund{TGraphAsymmErrors}: acceptance $A$
+(\myund{g_Acc}), efficiency $\varepsilon$ (\myund{g_Eff}),
+$A\times\varepsilon$ (\myund{g_AccEff}), efficiency correction scale
+factors $\rho$ (\myund{g_EffSF_HLTv4pX}, where X=2 and 3). Two objects
+of type \myund{RooUnfoldResponse}\ give the corrections of the
+detector resolution and the final-state radiation
+(\myund{UnfoldRes_DetectorResol}\ and \myund{UnfoldRes_FSR},
+respectively). The unfolded data is stored in the histogram
+\myund{h_DiffXsec_Data}. All graphs are converted to histograms with a
+symmetrized uncertainty.
+
+The loaded values are assigned to an instance of
+\myund{MuonCrossSection_t}\ and saved to a file
+\myund{``cs_DYmm_13TeV''+inpVerTag}. Actually, three files will be
+produced: \myund{cs_DYmm_13TeV_76X_csA.root},
+\myund{cs_DYmm_13TeV_76X_csB.root}, and\linebreak
+\myund{cs_DYmm_13TeV_76X_cs.root}. (Here the tag \myund{'_76X'}\ was
+used.)
+
+\textbf{Secondly, the covariances are being derived.} The macro is
+called \myund{studyDYmmCS.C}. This macro has several input parameters:
+the varied variable \myund{TVaried_t}\ (the enum type is defined in
+crossSection.h); the number of toy distributions nSample; and a flag
+whether the resulting ROOT file should be saved, doSave. Before first
+use, the macro has to be updated to indicate the correct version of
+the input files by specifying the right values of the variables inpVer
+and inpVerTag. Those are equivalent to the ones defined in
+\myund{createCSInput_DYmm13TeV.C}.
+
+Currently the macro \myund{studyDYmmCS.C}\ can vary \myund{_varYield},
+\myund{_varBkg}, \myund{_varBkgXS}, \myund{_varDetRes}\ (statistical
+uncertainty of the detector resolution response matrix),
+\myund{_varFSRRes}\ (statistical uncertainty of the FSR response
+matrix).
+The unimplemented variables are: \myund{_varSig}, \myund{_varEff},
+\myund{_varRho}, \myund{_varAcc}, \myund{_varEffAcc}.
+
+
+
+\end{document}
+
