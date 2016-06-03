@@ -6,6 +6,7 @@
 #include "../RooUnfold/src/RooUnfoldInvert.h"
 #include "crossSection.h"
 //#include <TMatrixD.h>
+#include <TDecompSVD.h>
 
 void study_FSRResp(int nSample)
 {
@@ -44,7 +45,6 @@ void study_FSRResp(int nSample)
   }
 
   RooUnfoldResponse *rooResp= loadRooUnfoldResponse(fname,nameResp,"DRR");
-  if (!rooResp) return;
   TH1D* h1measMC= loadHisto(fname,nameh1meas,"h1meas",h1dummy);
   TH1D* h1trueMC= loadHisto(fname,nameh1true,"h1true",h1dummy);
   if (!rooResp || !h1measMC || !h1trueMC) {
@@ -107,6 +107,7 @@ void study_FSRResp(int nSample)
 
   plotHisto(h1unfBayesMy, "cCmpData", 1,1, "LPE1");
   plotHistoSame(h1unfData, "cCmpData", "LPE");
+  plotHistoSame(h1measData, "cCmpData", "LPE");
   printRatio(h1unfBayesMy, h1unfData);
   //printHisto(h1unfBayesMy);
   //printHisto(h1unfData);
@@ -236,7 +237,19 @@ void study_FSRResp(int nSample)
   chi2_bottomline= chi2estimate( vMeas, vMeasMC, bayesMeasCov );
   std::cout << "chi2_bottomline=" << chi2_bottomline << " (using vMeasMC)\n";
 
+  TDecompSVD svd(mSmear);
+  svd.Decompose();
 
-  //TVectorD smearedModel= 
+  std::cout << "SVD info:\n";
+  std::cout << " - decomposed = " << svd.kDecomposed << "\n";
+  std::cout << " - singular = " << svd.kSingular << "\n";
+  std::cout << " - condition number= " << svd.Condition() << "\n";
+
+  TVectorD singVal( svd.GetSig() );
+  //singVal.Print();
+  std::cout << " svd.eigenvalues : " << singVal[0] << " .. " << singVal[singVal.GetNoElements()-1] << "\n";
+  double lowBound= singVal[singVal.GetNoElements()-1];
+  double condNumb= (lowBound<0) ? singVal[0]/1e-34 : singVal[0]/lowBound;
+  std::cout << " condition number sigma_max/max(0,sigma_min)=" << condNumb << "\n";
 
 }
