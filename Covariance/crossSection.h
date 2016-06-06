@@ -8,7 +8,8 @@
 
 // -----------------------------------------------------------
 
-typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes, _varFSRRes,
+typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes,
+	       _varFSRRes, _varFSRRes_Poisson,
 	       _varEff, _varRho, _varAcc, _varEffAcc, _varLast } TVaried_t;
 
 typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
@@ -32,7 +33,8 @@ RooUnfoldResponse* loadRooUnfoldResponse(TString fname, TString fieldName, TStri
 RooUnfoldResponse* loadRooUnfoldResponse(TFile &fin, TString fieldName, TString name);
 RooUnfoldBayes* loadRooUnfoldBayes(TFile &fin, TString fieldName, TString name);
 void plotHisto(RooUnfoldResponse &rs, TString cNameBase, int logx=0, int logy=0);
-RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString name);
+RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString name,
+				      int poissonRnd=0);
 
 // -----------------------------------------------------------
 

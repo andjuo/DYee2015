@@ -16,6 +16,7 @@ TString variedVarName(TVaried_t v)
   case _varSig: name="varSig"; break;
   case _varDetRes: name="varDetRes"; break;
   case _varFSRRes: name="varFSRRes"; break;
+  case _varFSRRes_Poisson: name="varFSRResPoisson"; break;
   case _varEff: name="varEff"; break;
   case _varRho: name="varRho"; break;
   case _varAcc: name="varAcc"; break;
@@ -118,7 +119,8 @@ void plotHisto(RooUnfoldResponse &rs, TString cNameBase, int logx, int logy)
 
 // --------------------------------------------------------------
 
-RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString tag)
+RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString tag,
+				      int poissonRnd)
 {
   TH2D *h2MigRnd= cloneHisto(R->Hresponse(), "h2MigRnd_"+tag, R->Hresponse()->GetTitle(),h2dummy);
   if (!h2MigRnd) {
@@ -126,11 +128,13 @@ RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString tag)
     return NULL;
   }
   int nonNegative=0;
-  randomizeWithinErr((TH2D*)R->Hresponse(), h2MigRnd, nonNegative);
+  randomizeWithinErr((TH2D*)R->Hresponse(), h2MigRnd, nonNegative, poissonRnd);
 
   TH1D* h1measRnd= cloneHisto(R->Hmeasured(),"h1measRnd"+tag,"h1measRnd",h1dummy);
-  h1measRnd->Reset();
   TH1D* h1trueRnd= cloneHisto(R->Htruth(),"h1trueRnd"+tag,"h1trueRnd",h1dummy);
+
+
+  h1measRnd->Reset();
   h1trueRnd->Reset();
 
   for (int ibin=1; ibin<= h2MigRnd->GetNbinsX(); ibin++) {
@@ -264,6 +268,7 @@ TH1D* CrossSection_t::getVariedHisto(TVaried_t new_var)
   case _varSig: h1=fh1Signal; break;
   case _varDetRes:
   case _varFSRRes:
+  case _varFSRRes_Poisson:
     std::cout << "getVariedHisto should not be called for "
 	      << variedVarName(new_var) << "\n";
     break;
@@ -612,7 +617,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
       fh1PreFsrCS->GetYaxis()->SetTitle("pre-FSR full space #sigma");
     }
   }
-  else if (new_var == _varFSRRes) {
+  else if ((new_var == _varFSRRes) || (new_var == _varFSRRes_Poisson)) {
     if (fCSType!=_csPreFsrFullSp) {
       std::cout << "varied varFSRRes, but the cross section is not csPreFsrFullSp\n";
       return NULL;
@@ -677,11 +682,13 @@ TCanvas* CrossSection_t::plotCrossSection(TString canvName)
 int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 				 std::vector<TH1D*> &rndCS)
 {
-  if ((new_var==_varDetRes) || (new_var==_varFSRRes)) {
+  if ((new_var==_varDetRes) || (new_var==_varFSRRes)
+      || (new_var==_varFSRRes_Poisson)) {
     if (!sampleRndResponse(new_var,sampleSize,rndCS,NULL)) {
       std::cout << " called from sampleRndVec(var,sampleSize,rndCS)\n";
       return 0;
     }
+    return 1;
   }
 
   rndCS.clear();
@@ -780,7 +787,7 @@ int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
   TH1D *hCS=calcCrossSection();
   if (!hCS) return 0;
 
-  int notRandom= ((new_var==_varFSRRes) &&
+  int notRandom= (((new_var==_varFSRRes) || (new_var==_varFSRRes_Poisson)) &&
 		  (fCSType!=_csPreFsrInAcc) &&
 		  (fCSType!=_csPreFsrFullSp)) ? 1:0;
   if (notRandom) {
@@ -797,10 +804,12 @@ int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
   }
   if (fResVaried) { delete fResVaried; fResVaried=NULL; }
 
+  int poissonRnd=0;
+  if (new_var==_varFSRRes_Poisson) poissonRnd=1;
   for (int i=0; i<sampleSize; i++) {
     std::cout << "\n\nrandomize: i=" << i << ", " << variedVarName(new_var) << "\n";
     TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
-    fResVaried= randomizeWithinErr(r, respName);
+    fResVaried= randomizeWithinErr(r, respName, poissonRnd);
 
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
@@ -823,12 +832,15 @@ int CrossSection_t::sampleRndRespVec(TVaried_t new_var,
   rndCS.reserve(rndRespV.size());
   if (!calcCrossSection()) return 0;
 
+  int poissonRnd=0;
+  if (new_var==_varFSRRes_Poisson) poissonRnd=1;
+
   for (unsigned int i=0; i<rndRespV.size(); i++) {
     const RooUnfoldResponse *r= rndRespV[i];
     std::cout << "\n\nsampeRndRespV: i=" << i << ", " << variedVarName(new_var) << "\n";
 
     TString respName= r->GetName() + variedVarName(new_var) + Form("_%d",i) + fTag;
-    fResVaried= randomizeWithinErr(r, respName);
+    fResVaried= randomizeWithinErr(r, respName, poissonRnd);
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
     delete fResVaried;
@@ -1437,16 +1449,18 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
     if (rndVarVec_out) (*rndVarVec_out)= rndBkgV;
   }
   */
-  else if (new_var==_varFSRRes) {
+  else if ((new_var==_varFSRRes) || (new_var==_varFSRRes_Poisson)) {
     double loc_lumiTot= fCSa.lumi() + fCSb.lumi();
     const TH1D *h1aCS= fCSa.h1UnfRhoEffAccCorr();
     TH1D* h1postFSRYield= cloneHisto( h1aCS, "h1postFSRYield", "postFSR yield" );
     h1postFSRYield->Scale( fCSa.lumi() );
     h1postFSRYield->Add( fCSb.h1UnfRhoEffAccCorr(), fCSb.lumi() );
     const RooUnfoldResponse *r= fCSa.fFSRRes;
+    int poissonRnd=0;
+    if (new_var==_varFSRRes_Poisson) poissonRnd=1;
     for (int i=0; i<sampleSize; i++) {
       TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
-      RooUnfoldResponse *rRnd= randomizeWithinErr(r, respName);
+      RooUnfoldResponse *rRnd= randomizeWithinErr(r, respName, poissonRnd);
       if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
       TH1D* h1tmp= cloneHisto(h1postFSRYield,"h1postFSRYield" + respName, "h1postFSRYield"+respName);
 
@@ -1493,9 +1507,10 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   }
 
 
-  if (res && (new_var!=_varFSRRes)) {
+  if (res && (new_var!=_varFSRRes) && (new_var!=_varFSRRes_Poisson)) {
     for (int i=0; i<sampleSize; i++) {
       TString useTag=Form("_rnd%d",i) + fTag;
+      std::cout << "iRnd=" << i << "\n";
       TH1D *h1cs= this->calcPreFsrCS_sumAB(rndCSa[i],rndCSb[i],useTag);
       rndCS.push_back(h1cs);
 
@@ -1657,7 +1672,8 @@ TH1D* MuonCrossSection_t::calcPreFsrCS_sumAB(const TH1D *h1a,
 					     const TH1D *h1b,
 					     TString useTag)
 {
-  HERE("entered calcPreFsrCS_sumAB");
+  //HERE("entered calcPreFsrCS_sumAB");
+  std::cout << "entered calcPreFSRCS_sumAB\n";
   if (!h1a || !h1b) {
     std::cout << "calcPreFsrCS_sumAB : null ptrs\n";
     return NULL;
@@ -1679,7 +1695,7 @@ TH1D* MuonCrossSection_t::calcPreFsrCS_sumAB(const TH1D *h1a,
     copyContents(fh1PreFSR,fFSRBayes->Hreco());
   }
   else {
-    std::cout << "\n\tdoing matrix inversion\n\n";
+    std::cout << "\tdoing matrix inversion\n";
     RooUnfoldInvert *rooInv= new RooUnfoldInvert( fCSa.fFSRRes, fh1PostFSR, "rooInv" );
     if (0) {
       std::cout << "check whether fh1PostFSR has changed\n";
