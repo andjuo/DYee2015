@@ -15,10 +15,14 @@ void createCSInput_DYmm13TeV(int doSave=0)
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
   TVersion_t inpVer=_verMu1;
   TString inpVerTag="_v1";
+  double lumi42= 848.104;
+  double lumiTot= 2765.229;
   if (1) {
     srcPath="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
     inpVer=_verMu76X;
     inpVerTag="_76X";
+    lumi42=865.919;
+    lumiTot=2832.673;
   }
 
   int checkBackgrounds=0;
@@ -26,9 +30,7 @@ void createCSInput_DYmm13TeV(int doSave=0)
   TH1D* h1Dummy=NULL;
   //TH2D* h2Dummy=NULL;
 
-  double lumi42= 848.104;
-  double lumi43= 2765.229-lumi42;
-  double lumiTot= lumi42 + lumi43;
+  double lumi43= lumiTot-lumi42;
   std::cout << "lumi42=" << Form("%7.3lf",lumi42) << ", lumi43=" << Form("%7.3lf",lumi43) << "\n";
 
   // ---------------- load observed yield and simulated signal yield
