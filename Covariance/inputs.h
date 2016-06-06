@@ -59,7 +59,7 @@ void removeError(th1_t *h1)
     h1->SetBinError(ibin,0);
 }
 
-TH1D* errorAsCentral(const TH1D* h1);
+TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 
 // -----------------------------------------------------------
 
@@ -222,14 +222,17 @@ void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative)
 // -----------------------------------------------------------
 
 inline
-void randomizeWithinErr(const TH2D *hSrc, TH2D *hDest, int nonNegative)
+void randomizeWithinErr(const TH2D *hSrc, TH2D *hDest, int nonNegative,
+			int poissonRnd=0)
 {
   if (!hSrc) { std::cout << "randomizeWithinErr(2D): hSrc is null\n"; return; }
   if (!hDest) { std::cout << "randomizeWithinErr(2D): hDest is null\n"; return; }
   for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
     for (int jbin=1; jbin<=hSrc->GetNbinsY(); jbin++) {
-      double val=  gRandom->Gaus(hSrc->GetBinContent(ibin,jbin),
-				 hSrc->GetBinError(ibin,jbin));
+      double val=  (poissonRnd) ?
+	gRandom->Poisson(hSrc->GetBinContent(ibin,jbin)) :
+	gRandom->Gaus(hSrc->GetBinContent(ibin,jbin),
+		      hSrc->GetBinError(ibin,jbin));
       if (nonNegative && (val<0)) val=0;
       hDest->SetBinContent(ibin,jbin,val);
       hDest->SetBinError  (ibin,jbin,0); //hSrc->GetBinError(ibin,jbin));

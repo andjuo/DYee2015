@@ -165,12 +165,22 @@ void printField(TString keyName)
 
 // ---------------------------------------------------------
 
-TH1D* errorAsCentral(const TH1D* h1) {
+TH1D* errorAsCentral(const TH1D* h1, int relative) {
   TH1D* h1err= cloneHisto(h1,
 			  h1->GetName() + TString("_err"),
 			  h1->GetTitle() + TString(" err"));
   for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
-    h1err->SetBinContent(ibin, h1->GetBinError(ibin) );
+    double err= h1->GetBinError(ibin);
+    if (relative) {
+      double val=h1->GetBinContent(ibin);
+      if (val==double(0)) {
+	if (err==double(0)) err=0;
+	else if (err<double(0)) err=-1e4;
+	else err=1e4;
+      }
+      else err/=val;
+    }
+    h1err->SetBinContent(ibin, err);
     h1err->SetBinError (ibin, 0.);
   }
   return h1err;
