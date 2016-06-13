@@ -86,6 +86,7 @@ class CrossSection_t {
   void h1Acc(const TH1D *h1) { fh1Acc=copy(h1,"h1Acc",fTag); }
   const TH1D *h1EffAcc() const { return fh1EffAcc; }
   void h1EffAcc(const TH1D *h1) { fh1EffAcc=copy(h1,"h1EffAcc",fTag); }
+  void removeEffAcc() { if (fh1EffAcc) { delete fh1EffAcc; fh1EffAcc=NULL; } }
   const RooUnfoldResponse* detRes() const { return fDetRes; }
   void detRes(const RooUnfoldResponse &rs) { fDetRes= new RooUnfoldResponse(rs); }
   const RooUnfoldResponse* fsrRes() const { return fFSRRes; }

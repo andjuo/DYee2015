@@ -410,6 +410,11 @@ TH1D* CrossSection_t::calcCrossSection()
 TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
 {
 
+  if ((!fh1Varied) && (new_var!=_varDetRes)) {
+    HERE("entered CrossSection_t::calcCrossSection(TVaried_t). fh1Varied is null");
+    return NULL;
+  }
+
   if (fh1UnfRhoEffAccCorr)
     { delete fh1UnfRhoEffAccCorr; fh1UnfRhoEffAccCorr=NULL; }
   if (fh1PreFsr) { delete fh1PreFsr; fh1PreFsr=NULL; }
@@ -578,7 +583,8 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
   }
   else if (new_var == _varAcc) {
     if (!fh1UnfRhoEffCorr || !fh1Varied) {
-      std::cout << "null ptr\n";
+      std::cout << "varAcc: either fh1UnfRhoEffCorr or fh1Varied are null ptr\n";
+      return NULL;
     }
     fh1UnfRhoEffAccCorr= copy(fh1UnfRhoEffCorr,"h1UnfRhoEffAcc",useTag);
     fh1UnfRhoEffAccCorr->Divide(fh1Varied);
@@ -1291,6 +1297,19 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 				     std::vector<TH1D*> *rndCSb_out,
 				     std::vector<TH1D*> *rndVarVec_out)
 {
+
+  if (new_var==_varAcc) {
+    int recalc=0;
+    if (fCSa.h1EffAcc()!=NULL) { fCSa.removeEffAcc(); recalc=1; }
+    if (fCSb.h1EffAcc()!=NULL) { fCSb.removeEffAcc(); recalc=1; }
+    if (recalc) {
+      if (!this->calcCrossSection()) {
+	std::cout << "MuonCrossSection_t::sampleRndVec: recalculation failed\n";
+	return 0;
+      }
+    }
+  }
+
   int trackCSa=1;
   if (trackCSa) {
     TH1D *h1a=fCSa.copy(fCSa.h1UnfRhoEffAccCorr(),fCSa.h1UnfRhoEffAccCorr()->GetName()+TString("tmp"),fTag + TString("tmp"));
@@ -1394,6 +1413,29 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       std::cout << "case is not ready !!\n";
       return 0;
     }
+  }
+
+  else if ((new_var==_varEff) || (new_var==_varAcc) || (new_var==_varEffAcc)) {
+    std::vector<TH1D*> rndVarVec;
+    TH1D *h1rnd= NULL;
+    TH1D *h1varied= fCSa.getVariedHisto(new_var);
+    if (!h1varied) {
+      std::cout << "failed to get the varied histo\n";
+      return 0;
+    }
+    for (int i=0; i<sampleSize; i++) {
+      TString useTag= Form("_rnd%d",i) + fTag;
+      h1rnd=cloneHisto(h1varied,
+		       "h1varied" + useTag,
+		       h1varied->GetTitle() + useTag);
+      int nonNegative=0;
+      randomizeWithinErr(h1varied,h1rnd,nonNegative);
+      rndVarVec.push_back(h1rnd);
+      if (rndVarVec_out) rndVarVec_out->push_back(h1rnd);
+    }
+
+    res= (fCSa.sampleRndVec(new_var, rndVarVec, rndCSa) &&
+	  fCSb.sampleRndVec(new_var, rndVarVec, rndCSb)) ? 1:0;
   }
 
   else if (new_var==_varDetRes) {
