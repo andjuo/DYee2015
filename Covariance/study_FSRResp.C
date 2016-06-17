@@ -17,7 +17,12 @@ typedef enum { _mu76Xfsr=0,
 	       _elRidhiFSR=6,
 	       _elRidhiDetRes=7 } TStudyCase_t;
 
-void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
+typedef enum { _unfoldBayes=0, _unfoldInvert } TUnfoldMethod_t;
+
+// --------------------------------------------------------------------
+
+void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0,
+		   int nIters_user=-1)
 {
   if (0) {
     TMatrixD A(5,5);
@@ -48,6 +53,7 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
   int hasOverflows=0;
   int nIters=20;
   double mcScale=1.;
+  TUnfoldMethod_t unfoldMethod=_unfoldBayes;
 
   // Covariance estimation due to randomized response matrix
   TString covFName="cov_mumu_varFSRRes_10000.root";
@@ -126,7 +132,7 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
     hasOverflows=0;
     nIters=17;
     //mcScale=2832.673;
-    covFName="";
+    covFName="cov_mumu_varFSRRes_10000.root" ;
     nameh2cov="h2Cov";
     outDirTag="_mu76XfsrKL";
   }
@@ -171,6 +177,11 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
     outDirTag="_elDetRes";
   }
 
+  if (nIters_user>0) {
+    std::cout << "overriding the number of iterations to "<<nIters_user << "\n";
+    nIters=nIters_user;
+  }
+
   // Load data
   TH1D *h1measData= loadHisto(fnameMain,nameh1preUnfData,"h1measData",h1dummy);
   TH1D *h1unfData= loadHisto(fnameMain,nameh1unfData,"h1unfData",h1dummy);
@@ -213,8 +224,14 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
   rooResp->UseOverflow(false);
 
   // Check MC unfolding on MC
-  RooUnfoldBayes fsrBayesMC( rooResp, h1measMC, nIters, false, "fsrBayesMC" );
-  TH1D *h1unfBayesMC= cloneHisto(fsrBayesMC.Hreco(),"h1UnfMC",
+  RooUnfold *fsrBayesMC=NULL;
+  if (unfoldMethod==_unfoldBayes) {
+    fsrBayesMC= new RooUnfoldBayes( rooResp, h1measMC, nIters, false, "fsrBayesMC" );
+  }
+  else {
+    fsrBayesMC= new RooUnfoldInvert( rooResp, h1measMC, "fsrBayesMC" );
+  }
+  TH1D *h1unfBayesMC= cloneHisto(fsrBayesMC->Hreco(),"h1UnfMC",
 				 TString("UnfMC;") +
 				 h1trueMC->GetXaxis()->GetTitle() + TString(";")
 				 + "unfolded", h1trueMC);
@@ -230,8 +247,14 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
   //return;
 
   // Compare data unfolding
-  RooUnfoldBayes fsrBayesDataMy( rooResp, h1measData, nIters, false, "fsrBayesDataMy" );
-  TMatrixD mBayesMeasCovAll(fsrBayesDataMy.GetMeasuredCov());
+  RooUnfold *fsrBayesDataMy=NULL;
+  if (unfoldMethod==_unfoldBayes) {
+    fsrBayesDataMy= new RooUnfoldBayes( rooResp, h1measData, nIters, false, "fsrBayesDataMy" );
+  }
+  else {
+    fsrBayesDataMy= new RooUnfoldInvert( rooResp, h1measData, "fsrBayesDataMy" );
+  }
+  TMatrixD mBayesMeasCovAll(fsrBayesDataMy->GetMeasuredCov());
   TMatrixD mBayesMeasCov(submatrix(mBayesMeasCovAll,hasOverflows,mBayesMeasCovAll.GetNrows()-hasOverflows));
   //TH2D *h2bayesMeasCov_byBinNum= new TH2D(mBayesMeasCov);
   //h2bayesMeasCov_byBinNum->SetDirectory(0);
@@ -239,7 +262,7 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
   TH2D *h2bayesMeasCov= convert2histo(mBayesMeasCov,h1measData,"h2bayesMeasCov",
 			      "bayesMeasCov;" + axisLabel_bmc + TString(";") + axisLabel_bmc);
   h2bayesMeasCov->GetYaxis()->SetTitleOffset(1.8);
-  TMatrixD mBayesRecoCovAll(fsrBayesDataMy.Ereco(RooUnfoldBayes::kCovariance));
+  TMatrixD mBayesRecoCovAll(fsrBayesDataMy->Ereco(RooUnfold::kCovariance));
   TMatrixD mBayesRecoCov(submatrix(mBayesRecoCovAll,hasOverflows,mBayesRecoCovAll.GetNrows()-hasOverflows));
   //TH2D *h2bayesRecoCov_byBinNum= new TH2D(mBayesRecoCov);
   //h2bayesRecoCov_byBinNum->SetDirectory(0);
@@ -249,7 +272,7 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
 				      "bayesRecoCov;" + cov_axisLabel_unf);
   h2bayesRecoCov->GetYaxis()->SetTitleOffset(1.8);
 
-  TH1D *h1unfBayesMy= cloneHisto(fsrBayesDataMy.Hreco(), "h1unfBayesMy",
+  TH1D *h1unfBayesMy= cloneHisto(fsrBayesDataMy->Hreco(), "h1unfBayesMy",
 				 TString("UnfDataMy;") +
 				 h1unfData->GetXaxis()->GetTitle() +
 				 TString("; unfolded(my)"), h1unfData);
@@ -268,12 +291,18 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0)
   TH2D *h2unfCov=NULL; // covariance from my toys
   if (baselineTest) {
     std::vector<TH1D*> vecPreFSR;
-    int nonNegative=0;
+    int nonNegative=1;
     for (int i=0; i<nSample; i++) {
       TString nameH1Var= TString("hVar") + Form("%d",i);
       TH1D *h1_in= cloneHisto(h1measData,nameH1Var,nameH1Var);
       randomizeWithinErr(h1measData, h1_in, nonNegative);
-      RooUnfoldBayes *fsrBayes= new RooUnfoldBayes( rooResp, h1_in, nIters, false, "bayes_"+TString(Form("%d",i)));
+      RooUnfold *fsrBayes= NULL;
+      if (unfoldMethod==_unfoldBayes) {
+	fsrBayes= new RooUnfoldBayes( rooResp, h1_in, nIters, false, "bayes_"+TString(Form("%d",i)));
+      }
+      else {
+	fsrBayes= new RooUnfoldInvert( rooResp, h1_in, "invert_"+TString(Form("%d",i)) );
+      }
       TString outTag=TString("h1_out_") + Form("%d",i);
       TH1D *h1_out= cloneHisto(fsrBayes->Hreco(),outTag,outTag, h1unfData);
       vecPreFSR.push_back(h1_out);
