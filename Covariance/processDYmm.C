@@ -22,6 +22,13 @@ void processDYmm(Int_t maxEntries=-1)
   TVersion_t inpVersion=_verMu1;
   inpVersion=_verMu76X;
 
+  if (inpVersion==_verMu76X) {
+    if (DYtools::nMassBins!=DYtools::nMassBins43) {
+      std::cout << "a potential DYbinning.h problem\n";
+      return;
+    }
+  }
+
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
   TString dataFName=srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root";
