@@ -816,6 +816,7 @@ int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
     std::cout << "\n\nrandomize: i=" << i << ", " << variedVarName(new_var) << "\n";
     TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
     fResVaried= randomizeWithinErr(r, respName, poissonRnd);
+    fResVaried->UseOverflow(false); // ensure correct behavior
 
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
@@ -845,8 +846,9 @@ int CrossSection_t::sampleRndRespVec(TVaried_t new_var,
     const RooUnfoldResponse *r= rndRespV[i];
     std::cout << "\n\nsampeRndRespV: i=" << i << ", " << variedVarName(new_var) << "\n";
 
-    TString respName= r->GetName() + variedVarName(new_var) + Form("_%d",i) + fTag;
-    fResVaried= randomizeWithinErr(r, respName, poissonRnd);
+    fResVaried= new RooUnfoldResponse(*r);
+    //TString respName= r->GetName() + variedVarName(new_var) + Form("_%d",i) + fTag;
+    //fResVaried= randomizeWithinErr(r, respName, poissonRnd);
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
     delete fResVaried;
@@ -1002,6 +1004,8 @@ int CrossSection_t::load(TString fname, TString setTag)
   fh1Bkg  = loadHisto(fin,"h1Bkg", "h1Bkg" + fTag, 1, h1dummy);
   fDetRes = loadRooUnfoldResponse(fin, "detRes", "detRes" + fTag );
   fFSRRes = loadRooUnfoldResponse(fin, "FSRRes", "FSRRes" + fTag );
+  if (fDetRes) fDetRes->UseOverflow(false);
+  if (fFSRRes) fFSRRes->UseOverflow(false);
   fh1Eff  = loadHisto(fin, "h1Eff", "h1Eff" + fTag, 0, h1dummy);
   fh1Rho  = loadHisto(fin, "h1Rho", "h1Rho" + fTag, 1, h1dummy);
   fh1Acc  = loadHisto(fin, "h1Acc", "h1Acc" + fTag, 0, h1dummy);
@@ -1016,6 +1020,7 @@ int CrossSection_t::load(TString fname, TString setTag)
   fh1Theory = loadHisto(fin, "h1Theory", "h1Theory" + fTag, 0, h1dummy);
   fh1Varied = loadHisto(fin, "h1Varied", "h1Varied" + fTag, 0, h1dummy);
   fResVaried= loadRooUnfoldResponse(fin, "respVaried","respVaried"+fTag);
+  if (fResVaried) fResVaried->UseOverflow(false);
   fDetResBayes= loadRooUnfoldBayes(fin, "detResBayes", "detResBayes" + fTag);
   fFSRBayes = loadRooUnfoldBayes(fin, "fsrBayes", "fsrBayes" + fTag);
 
@@ -1503,6 +1508,11 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
     for (int i=0; i<sampleSize; i++) {
       TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
       RooUnfoldResponse *rRnd= randomizeWithinErr(r, respName, poissonRnd);
+      if (!rRnd) {
+	std::cout << "failed to get randomized response\n";
+	return 0;
+      }
+      rRnd->UseOverflow(false); // ensure correct behavior
       if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
       TH1D* h1tmp= cloneHisto(h1postFSRYield,"h1postFSRYield" + respName, "h1postFSRYield"+respName);
 
@@ -1549,6 +1559,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   }
 
 
+  // calculate final cross section, if it was not the case of varFSRRes*
   if (res && (new_var!=_varFSRRes) && (new_var!=_varFSRRes_Poisson)) {
     for (int i=0; i<sampleSize; i++) {
       TString useTag=Form("_rnd%d",i) + fTag;
