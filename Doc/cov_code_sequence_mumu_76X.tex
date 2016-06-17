@@ -6,6 +6,7 @@
 \usepackage{lineno}
 \usepackage[pdftex]{graphicx}
 \usepackage{xstring} % StrSubstitute
+\usepackage{ulem} % sout
 %\graphicspath{{dir-figs/}}
 
 \usepackage{stmaryrd,xcolor}
@@ -132,11 +133,12 @@ yield the background distribution (after corrections for the run
 luminosities).
 Inputs v1 had
 improperly normalized ZZ, WZ, and WW backgrounds. This trouble is
-fixed in version 76X. However, here is a non-trivial mismatch between
+fixed in version 76X. (The following problem was fixed on June 3, 2016:
+\sout{However, here is a non-trivial mismatch between
 $(h_\mathrm{yield}-h_\mathrm{signal})/sum_{\mathrm{bkg}}(h_\mathrm{bkg})$. It
 varied between $-3\%$ in the first mass bin up to $+5\%$ in the mass
 bin 42, 1000-1500~GeV. The difference is the same in both versions
-HLTv4.X.
+HLTv4.X.})
 
 The third input file is
 \myund{Input6/ROOTFile_Input6_CrossCheck.root}. It contains several
@@ -159,6 +161,14 @@ produced: \myund{cs_DYmm_13TeV_76X_csA.root},
 \myund{cs_DYmm_13TeV_76X_cs.root}. (Here the tag \myund{'_76X'}\ was
 used.)
 
+Note from June 3, 2016. The current version of 76X set has fixed the
+background mismatch. However, the difference between the calculated
+cross section distribution and the distribution provided by Kyeongpil
+amounts to $2.439\%$. Since this difference is almost flat, it may be
+due to some unaccounted factor that has changed. The variation takes
+place only in the mass bins 830-1000~GeV (the relative difference is
+$2.567\%$ and 1000-1500~GeV ($1.135\%$).
+
 \textbf{Secondly, the covariances are being derived.} The macro is
 called \myund{studyDYmmCS.C}. This macro has several input parameters:
 the varied variable \myund{TVaried_t}\ (the enum type is defined in
@@ -173,10 +183,13 @@ Currently the macro \myund{studyDYmmCS.C}\ can vary \myund{_varYield},
 \myund{_varBkg}, \myund{_varBkgXS}, \myund{_varDetRes}\ (statistical
 uncertainty of the detector resolution response matrix),
 \myund{_varFSRRes}\ (statistical uncertainty of the FSR response
-matrix).
-The unimplemented variables are: \myund{_varSig}, \myund{_varEff},
-\myund{_varRho}, \myund{_varAcc}, \myund{_varEffAcc}.
+matrix), \myund{_varEff}, \myund{_varAcc}, and \myund{_varEffAcc}.
+The unimplemented variables are: \myund{_varSig}, \myund{_varRho}.
 
+Note June 8: It seems that the uncertainties from \myund{_varEff} and
+\myund{_varAcc} are smaller than the ones provided for
+\myund{_varEffAcc}. That is, the combined uncertainty of
+$\varepsilon\times A$ is smaller than provided by KL.
 
 
 \end{document}
