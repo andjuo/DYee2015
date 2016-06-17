@@ -189,7 +189,38 @@ void createCSInput_DYmm13TeV(int doSave=0)
   if (!h1SF42) return;
   TH1D *h1SF43= convert(grEffSF_HLTv4p3, "h1SF43","ScaleFactors 4.3;M_{#mu#mu} [GeV];eff.s.f. (v.4.3)", plotIt_sf);
   if (!h1SF43) return;
-  
+
+  if (1) {
+    TH1D *h1effAcc_check= cloneHisto(h1Eff,"h1effAcc_check","h1effAcc_check");
+    for (int ibin=1; ibin<=h1Acc->GetNbinsX(); ibin++) {
+      double a= h1Eff->GetBinContent(ibin);
+      double da= h1Eff->GetBinError(ibin);
+      double b= h1Acc->GetBinContent(ibin);
+      double db= h1Acc->GetBinError(ibin);
+      double val= a * b;
+      double unc= sqrt( b*b * da*da + a*a * db*db );
+      h1effAcc_check->SetBinContent( ibin, val );
+      h1effAcc_check->SetBinError( ibin, unc );
+
+      if (1) {
+	std::cout << "ibin=" << ibin << ", eff=" << a << " +- " << da
+		  << ", acc=" << b << " +- " << db
+		  << ", (eff x acc)=" << val << " +- " << unc << ", KL value ="
+		  << h1EffAcc->GetBinContent(ibin) << " +- " << h1EffAcc->GetBinError(ibin)
+		  << "\n";
+	if (1) {
+	  std::cout << "  relEff=" << da/a << ", relAcc=" << db/b << ", rel effxAcc=" << unc/val << "; rel KL=" << h1EffAcc->GetBinError(ibin)/h1EffAcc->GetBinContent(ibin) << "\n";
+	}
+	if (1) {
+	  std::cout << "  eff =" << grEff->GetY()[ibin-1] << " +" << grEff->GetEYhigh()[ibin-1] << " -" << grEff->GetEYlow()[ibin-1] << ", acc=" << grAcc->GetY()[ibin-1] << " +" << grAcc->GetEYhigh()[ibin-1] << " -" << grAcc->GetEYlow()[ibin-1] << ", eff x Acc = "<< grAccEff->GetY()[ibin-1] << " +" << grAccEff->GetEYhigh()[ibin-1] << " -" << grAccEff->GetEYlow()[ibin-1] << "\n";
+	}
+      }
+    }
+    plotHisto(h1EffAcc, "cEffAcc", 1,1, "LPE1", "origEffAcc");
+    plotHistoSame(h1effAcc_check, "cEffAcc", "LPE", "effAcc_check");
+    printRatio(h1EffAcc,h1effAcc_check);
+  }
+
 
   MuonCrossSection_t muCS("muCS",inpVerTag,lumi42,lumi43,inpVer);
   muCS.editCSa().h1Yield( h1Yield_42 );
@@ -197,6 +228,8 @@ void createCSInput_DYmm13TeV(int doSave=0)
   muCS.editCSa().h1Acc( h1Acc );
   muCS.editCSa().h1EffAcc( h1EffAcc );
   muCS.editCSa().h1Rho( h1SF42 );
+  rooUnfDetRes->UseOverflow(false);
+  rooFSRRes->UseOverflow(false);
   muCS.editCSa().detRes( *rooUnfDetRes );
   muCS.editCSa().fsrRes( *rooFSRRes );
 
