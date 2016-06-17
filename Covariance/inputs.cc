@@ -95,9 +95,10 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
 
 // ---------------------------------------------------------
 
-void printHisto(const TH1D *h1) {
+void printHisto(const TH1D *h1, int extraRange) {
   std::cout << "\nhisto " << h1->GetName() << " " << h1->GetTitle() << "\n";
-  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+  int d=(extraRange) ? 1 : 0;
+  for (int ibin=1-d; ibin<=h1->GetNbinsX()+d; ibin++) {
     std::cout << "ibin=" << ibin << " " << h1->GetBinLowEdge(ibin)
 	      << " " << (h1->GetBinLowEdge(ibin)+h1->GetBinWidth(ibin))
 	      << "  " << h1->GetBinContent(ibin) << " +- "
@@ -126,14 +127,15 @@ void printHisto(const TH2D *h2) {
 
 // ---------------------------------------------------------
 
-void printRatio(const TH1D *h1a, const TH1D *h1b) {
+void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange) {
+  int d=(extraRange) ? 1:0;
   std::cout << "\nhisto A " << h1a->GetName() << " " << h1a->GetTitle()
 	    << " [" << h1a->GetNbinsX() << "]\n";
   std::cout << "histo B " << h1b->GetName() << " " << h1b->GetTitle()
 	    << " [" << h1b->GetNbinsX() << "]\n";
   std::cout << std::string(5,' ') << h1a->GetName() << std::string(10,' ')
 	    << h1b->GetName() << std::string(10,' ') << "ratio\n";
-  for (int ibin=1; ibin<=h1a->GetNbinsX(); ibin++) {
+  for (int ibin=1-d; ibin<=h1a->GetNbinsX()+d; ibin++) {
     if ( (h1a->GetBinLowEdge(ibin) != h1b->GetBinLowEdge(ibin)) ||
 	 (h1a->GetBinWidth(ibin) != h1b->GetBinWidth(ibin)) ) {
       std::cout << "bining mismatch at ibin=" << ibin << "\n";
@@ -363,6 +365,65 @@ void printRatio(TString label1, const TVectorD &v1, TString label2, const TVecto
 
 // ---------------------------------------------------------
 
+TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
+		    TString h2name, TString h2title,
+		    const TMatrixD *mErr)
+{
+  if (m.GetNrows()!=m.GetNcols()) {
+    std::cout << "convert2histo: matrix is not square\n";
+    std::cout << "  dims: " << m.GetNrows() << " x " << m.GetNcols() << "\n";
+    return NULL;
+  }
+  if (m.GetNrows() != h1_for_axes->GetNbinsX()) {
+    std::cout << "convert2histo: matrix has different number of elements "
+	      << "than histogram provides bins\n";
+    std::cout << "m[" << m.GetNrows() << "," << m.GetNcols() << "], histo["
+	      << h1_for_axes->GetNbinsX() << "\n";
+    return NULL;
+  }
+  if (mErr) {
+    if (mErr->GetNrows()!=mErr->GetNcols()) {
+      std::cout << "convert2histo: mErr is provided, and the matrix is not square\n";
+      std::cout << "  dims: " << mErr->GetNrows() << " x "
+		<< mErr->GetNcols() << "\n";
+      return NULL;
+    }
+    if (mErr->GetNrows()!=m.GetNrows()) {
+      std::cout << "convert2histo: mErr is provided, and the matrix sizes are different\n";
+      std::cout << " dims: m[" << m.GetNrows() << "," << m.GetNcols() << "], "
+		<< "mErr[" << mErr->GetNrows() << "," << mErr->GetNcols() << "]\n";
+      return NULL;
+    }
+  }
+
+  const TArrayD *xb= h1_for_axes->GetXaxis()->GetXbins();
+  if (xb->GetSize()==0) {
+    std::cout << "convert2histo: histogram has fixed axis. This case"
+	      << " is not implemented\n";
+    return NULL;
+  }
+  const Double_t *x= xb->GetArray();
+  TH2D *h2= new TH2D(h2name,h2title, xb->GetSize()-1,x, xb->GetSize()-1,x);
+  h2->SetDirectory(0);
+  h2->Sumw2();
+  if (h2title.Index(";")==-1) {
+    TString label=h1_for_axes->GetXaxis()->GetTitle();
+    h2->GetXaxis()->SetTitle(label);
+    h2->GetYaxis()->SetTitle(label);
+  }
+
+  for (int ibin=1; ibin<xb->GetSize(); ibin++) {
+    for (int jbin=1; jbin<xb->GetSize(); jbin++) {
+      h2->SetBinContent( ibin, jbin, m(ibin-1,jbin-1) );
+      double err= (mErr) ? (*mErr)(ibin-1,jbin-1) : 0.;
+      h2->SetBinError( ibin, jbin, err );
+    }
+  }
+  return h2;
+}
+
+// ---------------------------------------------------------
+
 // chi^2_estimate= (vec1-vec2)^T Mcov^{-1} (vec1-vec2)
 double chi2estimate(const TVectorD &vec1, const TVectorD &vec2,
 		    const TMatrixD &Mcov)
@@ -487,6 +548,7 @@ TH1D *uncFromCov(const TH2D* h2cov, const TH1D *h1centralVal,
   if (xb->GetSize()>0) h1=new TH1D(h1name,h1name, xb->GetSize()-1,x );
   else h1= new TH1D(h1name,h1name, h2cov->GetNbinsX(), 0, h2cov->GetNbinsX()-1);
   h1->SetDirectory(0);
+  h1->SetStats(0);
   //h1->Sumw2();
   for (int ibin=1; ibin<=h2cov->GetNbinsX(); ibin++) {
     double valSqr= h2cov->GetBinContent(ibin,ibin);
@@ -517,12 +579,14 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
   cx->cd(1);
   gPad->SetLogx();
   gPad->SetLogy();
-  gPad->SetRightMargin(0.18);
+  gPad->SetRightMargin(0.15);
+  gPad->SetLeftMargin(0.15);
   h2Cov->Draw("COLZ");
   cx->cd(2);
   gPad->SetLogx();
   gPad->SetLogy();
-  gPad->SetRightMargin(0.18);
+  gPad->SetRightMargin(0.15);
+  gPad->SetLeftMargin(0.15);
   if (autoZRange) h2Corr->GetZaxis()->SetRangeUser(-1,1);
   h2Corr->Draw("COLZ");
   cx->Update();
@@ -552,12 +616,21 @@ TCanvas *findCanvas(TString canvName)
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV)
 {
   unsigned int iniSize=cV.size();
-  std::stringstream ss(canvNames.Data());
-  TString cName;
-  while (!ss.eof()) {
-    ss >> cName;
-    TCanvas *c= findCanvas(cName);
-    if (c) cV.push_back(c);
+  TSeqCollection *seq=gROOT->GetListOfCanvases();
+  for (int i=0; i<=seq->LastIndex(); i++) {
+    TCanvas *c= (TCanvas*) seq->At(i);
+    //std::cout << "i=" << i << " " << c->GetName() << "\n";
+    int keep=0;
+    if (canvNames.Length()==0) keep=1;
+    else {
+      std::stringstream ss(canvNames.Data());
+      TString cName;
+      while (!ss.eof()) {
+	ss >> cName;
+	if (cName.Length() && (c->GetName() == cName)) { keep=1; break; }
+      }
+    }
+    if (keep) cV.push_back(c);
   }
   return int(cV.size()-iniSize);
 }
@@ -579,6 +652,35 @@ void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir)
   canv->SaveAs(saveName);
   saveName.ReplaceAll("pdf","root");
   canv->SaveAs(saveName);
+  return;
+}
+
+// ---------------------------------------------------------
+
+void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout)
+{
+  if (cV.size()==0) {
+    std::cout << "SaveCanvases: vector is empty\n";
+    return;
+  }
+
+  gSystem->mkdir(destDir,kTRUE);
+  gSystem->mkdir(destDir+TString("/png"),kTRUE);
+  gSystem->mkdir(destDir+TString("/pdf"),kTRUE);
+  gSystem->mkdir(destDir+TString("/root"),kTRUE);
+
+  for (unsigned int i=0; i<cV.size(); i++) {
+    TCanvas *canv= cV[i];
+    TString saveName=destDir+TString("/png/");
+    saveName+=canv->GetName();
+    saveName+=".png";
+    canv->SaveAs(saveName);
+    saveName.ReplaceAll("png","pdf");
+    canv->SaveAs(saveName);
+    saveName.ReplaceAll("pdf","root");
+    canv->SaveAs(saveName);
+    if (fout) canv->Write();
+  }
   return;
 }
 

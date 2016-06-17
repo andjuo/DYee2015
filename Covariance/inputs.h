@@ -35,9 +35,9 @@ TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString draw
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain="");
 
-void printHisto(const TH1D* h1);
+void printHisto(const TH1D* h1, int extraRange=0);
 void printHisto(const TH2D* h1);
-void printRatio(const TH1D* h1a, const TH1D* h1b);
+void printRatio(const TH1D* h1a, const TH1D* h1b, int extraRange=0);
 void printField(TString keyName);
 
 inline void plotHisto(TH1* h1, TString cName, int logX=0, int logY=0, TString drawOpt="hist", TString explain="")
@@ -178,6 +178,24 @@ void histoStyle(TH1D* h1, int color, int markerStyle, int lineStyle=1)
 
 // -----------------------------------------------------------
 
+inline
+TString niceMassAxisLabel(int iLepton, TString extra)
+{
+  TString lepton;
+  if (iLepton==0) lepton="e";
+  else if (iLepton==1) lepton="\\mu";
+  else lepton="\\ell\\!";
+  TString sublabel=lepton+lepton;
+  TString label=sublabel;
+  if (extra.Length()) {
+    sublabel+=",\\,";
+    label= sublabel + TString("\\text{") + extra + TString("}");
+  }
+  return TString("M_{") + label + TString("}\\text{ [GeV]}");
+}
+
+// -----------------------------------------------------------
+
 template<class histo1D_t>
 inline
 int copyContents(TH1D *h1Dest, const histo1D_t *h1Src)
@@ -271,6 +289,10 @@ TMatrixD convert2mat(const histo2D_t* h2)
   return m;
 }
 
+TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
+		    TString h2name, TString h2title,
+		    const TMatrixD *mErr=NULL);
+
 // chi^2_estimate= (vec1-vec2)^T Mcov^{-1} (vec1-vec2)
 double chi2estimate(const TVectorD &vec1, const TVectorD &vec2,
 		    const TMatrixD &Mcov);
@@ -295,6 +317,7 @@ TCanvas *findCanvas(TString canvName);
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
+void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------
