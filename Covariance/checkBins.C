@@ -10,7 +10,7 @@ void work_checkMassBins();
 
 void checkBins()
 {
-  //work_checkEffBins();
+  work_checkEffBins();
   work_checkMassBins();
 }
 
@@ -37,6 +37,8 @@ void work_checkEffBins()
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
 
   TString fname= srcPath + "Input5/ROOTFile_TagProbeEfficiency.root";
+  fname="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
+
   TFile fin(fname);
   if (!fin.IsOpen()) {
     std::cout << "failed to open the file <" << fname << ">\n";
@@ -53,9 +55,14 @@ void work_checkEffBins()
       double pt= h2->GetYaxis()->GetBinCenter(jbin);
       std::cout << "ibin=" << ibin << ", jbin=" << jbin << ", eta=" << eta
 		<< ", pt=" << pt
-		<< ", flatIdx=" << DYtools::FlatIndex(h2,eta,pt)
+		<< ", flatIdx(val)=" << DYtools::FlatIndex(h2,eta,pt,1)
+		<< ", flatIdx(idx)=" << DYtools::FlatIndex(h2,ibin,jbin,1)
 		<< "\n";
       if (DYtools::GetValue(h2, eta,pt, v,dv, 1.,0.)) {
+	std::cout << " " << v << " +- " << dv << "\n";
+      }
+      else std::cout << " invalid values: " << v << " +- " << dv << "\n";
+      if (DYtools::GetValueIdx(h2, ibin,jbin, v,dv, 1.,0.)) {
 	std::cout << " " << v << " +- " << dv << "\n";
       }
       else std::cout << " invalid values: " << v << " +- " << dv << "\n";

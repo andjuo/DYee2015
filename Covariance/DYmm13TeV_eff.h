@@ -19,8 +19,34 @@ inline
   if ((ibin==0) || (jbin==0)) fi=-1;
   else if ((ibin==h2BinDefs->GetNbinsX()+1) ||
 	   (jbin==h2BinDefs->GetNbinsY()+1)) fi=-1;
+  if (0) {
+    std::cout << "eta=" << eta << ", pt=" << pt << ", ibin=" << ibin
+	      << ", jbin=" << jbin << ", fi=" << fi << "\n";
+  }
+  return fi;
+}
+
+// -------------------------------------------------------------
+
+inline
+  int FlatIndex(const TH2D* h2BinDefs, int iEta, int iPt, int allowOverflow) {
+  int ibin=iEta;
+  int jbin=iPt;
+  if (allowOverflow && (jbin==h2BinDefs->GetNbinsY()+1)) jbin=h2BinDefs->GetNbinsY();
+  int fi= (jbin-1) + (ibin-1)*h2BinDefs->GetNbinsY();
+  if ((ibin==0) || (jbin==0)) fi=-1;
+  else if ((ibin==h2BinDefs->GetNbinsX()+1) ||
+	   (jbin==h2BinDefs->GetNbinsY()+1)) fi=-1;
   //std::cout << "eta=" << eta << ", pt=" << pt << ", ibin=" << ibin
   //	    << ", jbin=" << jbin << ", fi=" << fi << "\n";
+
+  if (0) {
+    std::cout << " FlatIndex(iEta=" << iEta << ", iPt=" << iPt << ") "
+	      << " eta=" << h2BinDefs->GetXaxis()->GetBinCenter(iEta)
+	      << ", pT=" << h2BinDefs->GetYaxis()->GetBinCenter(iPt)
+	      << ", fi=" << fi
+	      << "\n";
+  }
   return fi;
 }
 
@@ -39,6 +65,33 @@ int GetValue(const TH2D* h2, double eta, double pt, double &v, double &err,
 {
   int ibin=h2->GetXaxis()->FindBin(eta);
   int jbin=h2->GetYaxis()->FindBin(pt);
+  int ok=1;
+  if ((ibin==0) || (jbin==0)) ok=0;
+  else if ((ibin==h2->GetNbinsX()+1) ||
+	   (jbin==h2->GetNbinsY()+1)) ok=0;
+  if (ok) {
+    v=  h2->GetBinContent(ibin,jbin);
+    err=h2->GetBinError  (ibin,jbin);
+  }
+  else {
+    v=defaultVal;
+    err=defaultErr;
+  }
+  //std::cout << "eta=" << eta << ", pt=" << pt << ", ibin=" << ibin
+  //	    << ", jbin=" << jbin << ", ok=" << ok
+  //	    << ": " << v << " +- " << err
+  //	    << "\n";
+  return ok;
+}
+
+// -------------------------------------------------------------
+
+inline
+int GetValueIdx(const TH2D* h2, int iEta, int iPt, double &v, double &err,
+	     double defaultVal=0., double defaultErr=0.)
+{
+  int ibin=iEta;
+  int jbin=iPt;
   int ok=1;
   if ((ibin==0) || (jbin==0)) ok=0;
   else if ((ibin==h2->GetNbinsX()+1) ||
@@ -108,8 +161,17 @@ public:
       h2VIso[mc]->GetBinContent(ibin2,jbin2);
     fEffHlt1= h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin1,jbin1);
     fEffHlt2= h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin2,jbin2);
-    double effHlt= fEffHlt1 + fEffHlt2 - fEffHlt1*fEffHlt2;
+    double effHlt= 1 - (1-fEffHlt1)*(1-fEffHlt2);
     double eff= fEffReco *fEffIso * effHlt;
+    std::cout << "totalEffIdx(" << ibin1 << "," << jbin1 << "; "
+	      << ibin2 << "," << jbin2 << "; "
+	      << h2VReco[mc]->GetBinContent(ibin1,jbin1) << " x "
+	      << h2VReco[mc]->GetBinContent(ibin2,jbin2) << "; "
+	      << h2VIso[mc]->GetBinContent(ibin1,jbin1) << " x "
+	      << h2VIso[mc]->GetBinContent(ibin2,jbin2) << "; "
+	      << h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin1,jbin1) << " x "
+	      << h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin2,jbin2) << "; "
+	      << "tot=" << eff << "\n";
     return eff;
   }
 
@@ -161,7 +223,7 @@ public:
     std::cout << " totalEffData=" << effData << "\n";
     double effMC= totalEffIdx(ibin1,jbin1,ibin2,jbin2, 1,hlt4p3);
     std::cout << " totalEffMC=" << effMC << "\n";
-    double rho= (effMC=0.) ? 0. : effData/effMC;
+    double rho= (effMC==0.) ? 0. : effData/effMC;
     std::cout << " rho=" << rho << "\n";
     return rho;
   }
@@ -170,6 +232,8 @@ public:
   int assign(const DYTnPEff_t &e, TString tag);
   int randomize(const DYTnPEff_t &e, TString tag);
 
+  int checkBinning() const;
+  void printNumbers() const;
 
   int save(TFile &fout);
   int load(TFile &fin, TString subdir="DYTnPEff", TString tag="");
