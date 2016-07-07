@@ -110,6 +110,18 @@ histo_t* loadHisto(TFile &fin, TString histoNameOnFile, TString histoName,
 // -----------------------------------------------------------
 
 template<class histo_t>
+histo_t* loadHisto(TFile &fin, TString histoNameOnFile,
+		   TString set_histoName, TString set_histoTitle,
+		   int absenceIsError, const histo_t *dummy)
+{
+  histo_t *h=loadHisto(fin,histoNameOnFile,set_histoName,absenceIsError,dummy);
+  if (h && set_histoTitle.Length()) h->SetTitle(set_histoTitle);
+  return h;
+}
+
+// -----------------------------------------------------------
+
+template<class histo_t>
 histo_t* loadHisto(TString fname, TString histoNameOnFile, TString histoName,
 		   const histo_t *dummy)
 {
@@ -134,6 +146,20 @@ histo_t* loadHisto(TString fname, TString histoNameOnFile, TString histoName,
   h->SetDirectory(0);
   fin.Close();
   return h;
+}
+
+// -----------------------------------------------------------
+
+template<class histo_t>
+histo_t* loadHisto(TString fname, TString histoNameOnFile, TString histoName,
+		   int absenceIsError, const histo_t *dummy)
+{
+  histo_t *h1=loadHisto(fname,histoNameOnFile,histoName,dummy);
+  if (!h1 && absenceIsError) {
+    std::cout << "failed to load histo with name=<" << histoNameOnFile << "> "
+	      << "from file <" << fname << ">\n";
+  }
+  return h1;
 }
 
 // -----------------------------------------------------------
@@ -318,6 +344,22 @@ int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
 void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
+
+// -----------------------------------------------------------
+
+inline
+TCanvas* plotHisto(const TH1D* h1, TString cName, int logX=0, int logY=0,
+		   TString drawOpt="LPE", TString explain="") {
+  TH1D *h1tmp=cloneHisto(h1,h1->GetName() + TString("_plotTmp"),h1->GetTitle());
+  return plotHisto(h1tmp,cName,logX,logY,drawOpt,explain);
+}
+
+inline
+TCanvas* plotHistoSame(const TH1D *h1, TString canvName, TString drawOpt,
+		       TString explain="") {
+  TH1D *h1tmp=cloneHisto(h1,h1->GetName() + TString("_plotTmp"),h1->GetTitle());
+  return plotHistoSame(h1tmp,canvName,drawOpt,explain);
+}
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------
