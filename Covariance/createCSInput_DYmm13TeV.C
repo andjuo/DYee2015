@@ -33,7 +33,7 @@ void createCSInput_DYmm13TeV(int doSave=0)
   double lumi43= lumiTot-lumi42;
   std::cout << "lumi42=" << Form("%7.3lf",lumi42) << ", lumi43=" << Form("%7.3lf",lumi43) << "\n";
 
-  // ---------------- load observed yield and simulated signal yield
+  // ---------------- load the observed and background-subracted (signal) yield
   TString fname1= srcPath + TString("Input1/ROOTFile_Histograms_Data.root");
   TFile fin1(fname1);
   if (!fin1.IsOpen()) {
