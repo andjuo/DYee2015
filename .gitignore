@@ -11,6 +11,13 @@ __init__.py
 *.log
 *.pdf
 
+# images
+*.png
+*.gif
+
+# temporary/output files
+*.out
+
 # do not track directories
 RooUnfold/tmp
 RooUnfold/libRooUnfold.rootmap
