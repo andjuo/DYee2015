@@ -55,7 +55,15 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
 {
   std::vector<TH1D*> rndCSVec, rndCSaVec, rndCSbVec;
-  int res=muCS.sampleRndVec(var,nSample,rndCSVec,&rndCSaVec,&rndCSbVec);
+  int res=1;
+  if (var!=_varRhoFile)
+    res=muCS.sampleRndVec(var,nSample,rndCSVec,&rndCSaVec,&rndCSbVec);
+  else {
+    RndVecInfo_t info(Form("dir-RhoMu76X/dymm_rhoRndVec_Mu76X_%d.root",nSample),
+		      "h1rho_4p2_var","h1rho_4p3_var");
+    res=muCS.sampleRndVec(var,nSample,info,
+			  rndCSVec,&rndCSaVec,&rndCSbVec);
+  }
   if (!res) return;
   TH1D* h1Avg=NULL;
   TH2D* h2Cov=NULL;

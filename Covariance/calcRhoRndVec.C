@@ -82,10 +82,19 @@ void calcRhoRndVec(int nSamples=100)
   TH1D* h1rho_4p3= esPostFsr.calculateScaleFactor(tnpEff,1,"h1rho_4p3","scale factor 4p3");
   //printHisto(h1rho_4p2); return;
 
+  if (1) {
+    h1rho_4p2->GetYaxis()->SetRangeUser(0.9,1.0);
+    h1rho_4p3->GetYaxis()->SetRangeUser(0.9,1.0);
+  }
+
+  h1rho_4p2->SetStats(0);
+  h1rho_4p3->SetStats(0);
+  histoStyle(h1rho_4p2,kBlack,5);
+  histoStyle(h1rho_4p3,kBlack,5);
   plotHisto(h1rho_4p2,"c4p2",1,0,"LPE","my code");
   plotHisto(h1rho_4p3,"c4p3",1,0,"LPE","my code");
 
-  if (0) {
+  if (1) {
     TFile finChk(fnameChk);
     if (!finChk.IsOpen()) {
       std::cout << "file <" << finChk.GetName() << "> could not be found\n";
@@ -104,7 +113,7 @@ void calcRhoRndVec(int nSamples=100)
     histoStyle(h1KP4p3,kBlue,24);
     plotHistoSame(h1KP4p2,"c4p2","LPE1","KL");
     plotHistoSame(h1KP4p3,"c4p3","LPE1","KL");
-    return;
+    //return;
   }
 
   TString outDir="dir-Rho" + versionName(inpVersion) + "/";
@@ -123,7 +132,12 @@ void calcRhoRndVec(int nSamples=100)
   TH1D* h1rho_4p3_avg= cloneHisto(h1rho_4p3,"h1rho_4p3_avg","h1rho_4p3_avg");
   h1rho_4p2_avg->Reset();
   h1rho_4p3_avg->Reset();
+  TH1D* h1rho_4p2_sqrAvg= cloneHisto(h1rho_4p2,"h1rho_4p2_sqrAvg","h1rho_4p2_sqrAvg");
+  TH1D* h1rho_4p3_sqrAvg= cloneHisto(h1rho_4p3,"h1rho_4p3_sqrAvg","h1rho_4p3_sqrAvg");
+  h1rho_4p2_sqrAvg->Reset();
+  h1rho_4p3_sqrAvg->Reset();
 
+  const int displayRnd4p3=0;
   for (int i=0; i<nSamples; i++) {
     TString tag=Form("_var%d",i);
     rndEff.randomize(tnpEff,tag);
@@ -134,12 +148,38 @@ void calcRhoRndVec(int nSamples=100)
     h1rho_4p3_rnd->Write();
     h1rho_4p2_avg->Add(h1rho_4p2_rnd,1/double(nSamples));
     h1rho_4p3_avg->Add(h1rho_4p3_rnd,1/double(nSamples));
-    histoStyle(h1rho_4p3_rnd,kGreen,24,2);
-    plotHistoSame(h1rho_4p3_rnd,"c4p3","LPE");
+    if (displayRnd4p3) {
+      histoStyle(h1rho_4p3_rnd,kGreen,24,2);
+      plotHistoSame(h1rho_4p3_rnd,"c4p3","LPE");
+    }
+
+    TH1D* h1rho_4p2_rndSqr= (TH1D*)h1rho_4p2_rnd->Clone("h1rho_4p2_rndSqr");
+    h1rho_4p2_rndSqr->Multiply(h1rho_4p2_rnd);
+    TH1D* h1rho_4p3_rndSqr= (TH1D*)h1rho_4p3_rnd->Clone("h1rho_4p3_rndSqr");
+    h1rho_4p3_rndSqr->Multiply(h1rho_4p3_rnd);
+    h1rho_4p2_sqrAvg->Add(h1rho_4p2_rndSqr, 1/double(nSamples));
+    h1rho_4p3_sqrAvg->Add(h1rho_4p3_rndSqr, 1/double(nSamples));
+    delete h1rho_4p2_rndSqr;
+    delete h1rho_4p3_rndSqr;
   }
   h1rho_4p2_avg->SetDirectory(0);
   h1rho_4p3_avg->SetDirectory(0);
+  h1rho_4p2_sqrAvg->SetDirectory(0);
+  h1rho_4p3_sqrAvg->SetDirectory(0);
   fout.Close();
+
+  for (int ibin=1; ibin<=h1rho_4p2_avg->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h1rho_4p2_avg->GetNbinsY(); jbin++) {
+      double err4p2=
+	h1rho_4p2_sqrAvg->GetBinContent(ibin,jbin) -
+	pow( h1rho_4p2_avg->GetBinContent(ibin,jbin), 2 );
+      h1rho_4p2_avg->SetBinError(ibin,jbin, sqrt(err4p2));
+      double err4p3=
+	h1rho_4p3_sqrAvg->GetBinContent(ibin,jbin) -
+	pow( h1rho_4p3_avg->GetBinContent(ibin,jbin), 2 );
+      h1rho_4p3_avg->SetBinError(ibin,jbin, sqrt(err4p3));
+    }
+  }
 
   histoStyle(h1rho_4p2_avg,kRed,24);
   histoStyle(h1rho_4p3_avg,kRed,24);

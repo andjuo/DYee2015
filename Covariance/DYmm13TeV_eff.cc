@@ -372,6 +372,10 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
   }
   h1rho->SetDirectory(0);
   h1rho->Sumw2();
+  h1rho->GetXaxis()->SetMoreLogLabels();
+  h1rho->GetXaxis()->SetNoExponent();
+  h1rho->GetXaxis()->SetTitle("M [Gev]");
+  //h1rho->GetYaxis()->SetTitle("average event scale factor");
   for (unsigned int im=0; im<fh2ESV.size(); im++) {
     //std::cout << "im=" << im << "\n";
     const TH2D* h2sp= fh2ESV[im];

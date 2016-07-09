@@ -3,6 +3,8 @@
 
 #include <TLorentzVector.h>
 #include <TH2D.h>
+#include <stdarg.h>
+#include <iostream>
 
 namespace DYtools {
 
@@ -78,6 +80,52 @@ int InAcceptance_mm(const TLorentzVector *v1, const TLorentzVector *v2) {
       return 1;
   }
   return 0;
+}
+
+// -------------------------------------------------------------
+
+inline
+int compareBinning(int count, const TH2D* h2a, ...) {
+  int ok=1;
+  va_list vl;
+  va_start(vl,h2a);
+  std::cout << "compareBinning of :\n";
+  for (int i=0; (i<count-1) && ok; ++i) {
+    typedef const TH2D* constTH2D_ptr;
+    const TH2D* h2b = (const TH2D*)(va_arg(vl,const TH2D*));
+    std::cout << " " << h2a->GetName() << " to " << h2b->GetName() << "\n";
+    if (h2a->GetNbinsX() != h2b->GetNbinsX()) {
+      std::cout << " x binning is different\n";
+      ok=0;
+    }
+    if (h2a->GetNbinsY() != h2b->GetNbinsY()) {
+      std::cout << " y binning is different\n";
+      ok=0;
+    }
+    if (ok) {
+      for (int ibin=1; ibin<=h2a->GetNbinsX()+1; ibin++) {
+	const double xa=h2a->GetXaxis()->GetBinLowEdge(ibin);
+	const double xb=h2b->GetXaxis()->GetBinLowEdge(ibin);
+	if (xa!=xb) {
+	  std::cout << " x bin at " << ibin << " is different "
+		    << xa << " vs " << xb << "\n";
+	  ok=0;
+	}
+      }
+
+      for (int jbin=1; jbin<=h2a->GetNbinsY()+1; jbin++) {
+	const double ya=h2a->GetYaxis()->GetBinLowEdge(jbin);
+	const double yb=h2b->GetYaxis()->GetBinLowEdge(jbin);
+	if (ya!=yb) {
+	  std::cout << " y bin at " << jbin << " is different "
+		    << ya << " vs " << yb << "\n";
+	}
+      }
+    }
+    if (ok) std::cout << " -- check ok\n";
+  }
+  va_end(vl);
+  return ok;
 }
 
 // -------------------------------------------------------------

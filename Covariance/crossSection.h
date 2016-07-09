@@ -10,7 +10,8 @@
 
 typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes,
 	       _varFSRRes, _varFSRRes_Poisson,
-	       _varEff, _varRho, _varAcc, _varEffAcc, _varLast } TVaried_t;
+	       _varEff, _varRho, _varRhoFile,
+	       _varAcc, _varEffAcc, _varLast } TVaried_t;
 
 typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
 	       _bkgWJets, _bkgQCD, _bkgLast } TBkg_t;
@@ -39,6 +40,36 @@ RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString name,
 // -----------------------------------------------------------
 
 class MuonCrossSection_t;
+
+// -----------------------------------------------------------
+
+struct RndVecInfo_t {
+  TString fFName, fHistoNameBase, fHistoNameBaseV2;
+public:
+  RndVecInfo_t(TString setFName="",
+	       TString setHistoNameBase="",
+	       TString setHistoNameBaseV2="") :
+      fFName(setFName),
+      fHistoNameBase(setHistoNameBase),
+      fHistoNameBaseV2(setHistoNameBaseV2)
+  {}
+  TString fname() const { return fFName; }
+  TString histoNameBase() const { return fHistoNameBase; }
+  TString histoNameBaseV2() const { return fHistoNameBaseV2; }
+
+  void assign(TString setFName,
+	      TString setHistoNameBase, TString setHistoNameBaseV2)
+  {
+    fFName=setFName;
+    fHistoNameBase=setHistoNameBase;
+    fHistoNameBaseV2=setHistoNameBaseV2;
+  }
+
+  TString histoName(int iVar) const
+  { return fHistoNameBase + Form("%d",iVar); }
+  TString histoNameV2(int iVar) const
+  { return fHistoNameBaseV2 + Form("%d",iVar); }
+};
 
 // -----------------------------------------------------------
 
@@ -211,6 +242,15 @@ class MuonCrossSection_t {
 		   std::vector<TH1D*> *rndCSa_out=NULL,
 		   std::vector<TH1D*> *rndCSb_out=NULL,
 		   std::vector<TH1D*> *rndVarVec_out=NULL);
+
+  int sampleRndVec(TVaried_t new_var, int sampleSize,
+		   const RndVecInfo_t &info,
+		   std::vector<TH1D*> &rndCS,
+		   std::vector<TH1D*> *rndCSa_out=NULL,
+		   std::vector<TH1D*> *rndCSb_out=NULL,
+		   std::vector<TH1D*> *rndVarVec1_out=NULL,
+		   std::vector<TH1D*> *rndVarVec2_out=NULL);
+
   int deriveCov(const std::vector<TH1D*> &rndCS, TVaried_t var,
 		TH1D **h1avgCS_out, TH2D **h2cov_out);
 

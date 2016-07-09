@@ -19,6 +19,7 @@ TString variedVarName(TVaried_t v)
   case _varFSRRes_Poisson: name="varFSRResPoisson"; break;
   case _varEff: name="varEff"; break;
   case _varRho: name="varRho"; break;
+  case _varRhoFile: name="varRhoFile"; break;
   case _varAcc: name="varAcc"; break;
   case _varEffAcc: name="varEffAcc"; break;
   case _varLast: name="varLast"; break;
@@ -274,6 +275,7 @@ TH1D* CrossSection_t::getVariedHisto(TVaried_t new_var)
     break;
   case _varEff: h1=fh1Eff; break;
   case _varRho: h1=fh1Rho; break;
+  case _varRhoFile: h1=fh1Rho; break;
   case _varAcc: h1=fh1Acc; break;
   case _varEffAcc: h1=fh1EffAcc; break;
   default:
@@ -538,7 +540,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
       fh1PreFsrCS= perMassBinWidth(h1PreFsrCS_raw);
     }
   }
-  else if (new_var == _varRho) {
+  else if ((new_var == _varRho) || (new_var == _varRhoFile)) {
     fh1UnfRhoCorr= copy(fh1Unf,"h1UnfRho",useTag);
     fh1UnfRhoCorr->Divide(fh1Varied);
     if (!fh1EffAcc) {
@@ -1351,9 +1353,11 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   rndCSb.reserve(sampleSize);
   if ((new_var==_varYield) ||
       (new_var==_varBkg) ||
-      (new_var==_varBkgXS)) {
+      (new_var==_varBkgXS) ||
+      (new_var==_varRho)) {
+    if (new_var==_varRho) std::cout << "\n\tIt is not good to use _varRho int the muon channel\n";
     // Prepare post-FSR cross sections
-    if (new_var==_varYield) {
+    if ((new_var==_varYield) || (new_var==_varRho)) {
       res= (fCSa.sampleRndVec(new_var,sampleSize,rndCSa)
 	    && fCSb.sampleRndVec(new_var,sampleSize,rndCSb)
 	    ) ? 1:0;
@@ -1592,6 +1596,122 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   if (rndCSa_out) (*rndCSa_out) = rndCSa;
   if (rndCSb_out) (*rndCSb_out) = rndCSb;
   if (!res) std::cout << "Error in MuonCrossSection_t::sampleRndVec\n";
+  return res;
+}
+
+// --------------------------------------------------------------
+
+int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
+				     const RndVecInfo_t &info,
+				     std::vector<TH1D*> &rndCS,
+				     std::vector<TH1D*> *rndCSa_out,
+				     std::vector<TH1D*> *rndCSb_out,
+				     std::vector<TH1D*> *rndVarVec1_out,
+				     std::vector<TH1D*> *rndVarVec2_out)
+{
+
+  if (info.histoNameBaseV2().Length()==0) {
+    std::cout << "MuonCrossSection_t::sampleRndVec requires two histoNameBases\n";
+    return 0;
+  }
+
+  if (new_var==_varAcc) {
+    int recalc=0;
+    if (fCSa.h1EffAcc()!=NULL) { fCSa.removeEffAcc(); recalc=1; }
+    if (fCSb.h1EffAcc()!=NULL) { fCSb.removeEffAcc(); recalc=1; }
+    if (recalc) {
+      if (!this->calcCrossSection()) {
+	std::cout << "MuonCrossSection_t::sampleRndVec: recalculation failed\n";
+	return 0;
+      }
+    }
+  }
+
+  int trackCSa=1;
+  if (trackCSa) {
+    TH1D *h1a=fCSa.copy(fCSa.h1UnfRhoEffAccCorr(),fCSa.h1UnfRhoEffAccCorr()->GetName()+TString("tmp"),fTag + TString("tmp"));
+    h1a->SetTitle("UnfRhoEffAccCorr " + fCSa.tag() + " (postFSR cs)");
+    h1a->GetXaxis()->SetNoExponent();
+    h1a->GetXaxis()->SetMoreLogLabels();
+    plotHisto(h1a, "muCS_a",1,1,"LPE");
+  }
+  int trackCSb=1;
+  if (trackCSb) {
+    TH1D *h1b=fCSb.copy(fCSb.h1UnfRhoEffAccCorr(),fCSb.h1UnfRhoEffAccCorr()->GetName()+TString("tmp"),fTag + TString("tmp"));
+    h1b->SetTitle("UnfRhoEffAccCorr " + fCSb.tag() + " (postFSR cs)");
+    h1b->GetXaxis()->SetNoExponent();
+    h1b->GetXaxis()->SetMoreLogLabels();
+    plotHisto(h1b, "muCS_b",1,1,"LPE");
+  }
+
+  int trackCS=1;
+  if (trackCS) {
+    plotHisto(fh1CS,"muCSVar",1,1,"LPE");
+  }
+
+  int res=1;
+  rndCS.clear();
+  std::vector<TH1D*> rndVarA,rndVarB;
+  std::vector<TH1D*> rndCSa, rndCSb;
+  rndVarA.reserve(sampleSize);
+  rndVarB.reserve(sampleSize);
+  rndCS.reserve(sampleSize);
+  rndCSa.reserve(sampleSize);
+  rndCSb.reserve(sampleSize);
+  TH1D *h1a=NULL, *h1b=NULL;
+
+  TFile fin(info.fname());
+  if (!fin.IsOpen()) {
+    std::cout << "failed to open the file <" << fin.GetName() << ">\n";
+    return 0;
+  }
+
+  for (int iRnd=0; iRnd<sampleSize; iRnd++) {
+    h1a= loadHisto(fin,info.histoName(iRnd),info.histoName(iRnd),
+		   1,h1dummy);
+    rndVarA.push_back(h1a);
+    h1b= loadHisto(fin,info.histoNameV2(iRnd),info.histoNameV2(iRnd),
+		   1,h1dummy);
+    rndVarB.push_back(h1b);
+    if (!h1a || !h1b) return 0;
+  }
+  fin.Close();
+
+  res= (fCSa.sampleRndVec(new_var, rndVarA, rndCSa) &&
+	fCSb.sampleRndVec(new_var, rndVarB, rndCSb)) ? 1 : 0;
+
+  if (rndVarVec1_out) *rndVarVec1_out= rndVarA;
+  else clearVec(rndVarA);
+  if (rndVarVec2_out) *rndVarVec2_out= rndVarB;
+  else clearVec(rndVarB);
+
+  // calculate final cross section, if it was not the case of varFSRRes*
+  if (res) {
+    for (int i=0; i<sampleSize; i++) {
+      TString useTag=Form("_rnd%d",i) + fTag;
+      std::cout << "iRnd=" << i << "\n";
+      TH1D *h1cs= this->calcPreFsrCS_sumAB(rndCSa[i],rndCSb[i],useTag);
+      rndCS.push_back(h1cs);
+
+      if (trackCSa) {
+	rndCSa[i]->SetLineColor((i%9)+1);
+	plotHistoSame(fCSa.copy(rndCSa[i],rndCSa[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_a","hist");
+      }
+      if (trackCSb) {
+	rndCSb[i]->SetLineColor((i%9)+1);
+	plotHistoSame(fCSb.copy(rndCSb[i],rndCSb[i]->GetName()+TString("tmp"),fTag + TString("tmp")),"muCS_b","hist");
+      }
+      if (trackCS) {
+	h1cs->SetLineColor((i%9)+1);
+	plotHistoSame(h1cs,"muCSVar","hist");
+      }
+    }
+  }
+
+
+  if (rndCSa_out) (*rndCSa_out) = rndCSa;
+  if (rndCSb_out) (*rndCSb_out) = rndCSb;
+  if (!res) std::cout << "Error in MuonCrossSection_t::sampleRndVec(RndVecInfo)\n";
   return res;
 }
 

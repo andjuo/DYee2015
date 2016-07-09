@@ -189,21 +189,22 @@ void processDYmm_RECO(Int_t maxEntries=-1)
       h2DetResMig->Fill( mReco, mPostFsr, w );
     }
 
-    if (DYtools::InsideMassRange(mPostFsr)) {
-      h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
-      h1postFsrInAccSel_MW->Fill( mPostFsr, w );
-      h1postFsrInAccSel_MWPU->Fill( mPostFsr, wPU );
-      //std::cout << "\nadding mPostFsr=" << mPostFsr << " with wPU=" << wPU << "\n";
-    }
 
     if (DYtools::InAcceptance_mm(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub)) {
+      if (DYtools::InsideMassRange(mPostFsr)) {
+	h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
+	h1postFsrInAccSel_MW->Fill( mPostFsr, w );
+	h1postFsrInAccSel_MWPU->Fill( mPostFsr, wPU );
+	//std::cout << "\nadding mPostFsr=" << mPostFsr << " with wPU=" << wPU << "\n";
+      }
+
       //std::cout << "mPostFsr=" << mPostFsr << "\n";
       if (!postFsrES.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU)) {
 	//std::cout << "postFsrES: not added\n";
       }
 
-      double fi1= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Lead,1);
-      double fi2= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Sub,1);
+      int fi1= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Lead,1);
+      int fi2= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Sub,1);
       if ((fi1>=0) && (fi2>=0)) {
 	int idx= DYtools::massIdx(mPostFsr);
 	if (idx!=-1)
