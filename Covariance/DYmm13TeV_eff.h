@@ -277,7 +277,6 @@ public:
     int fi2= DYtools::FlatIndex(fh2EffBinDef, v2, allow_overflow);
     //std::cout << "fi1=" << fi1 << ", fi2=" << fi2 << "\n";
     if ((fi1<0) || (fi2<0)) return 0;
-    fi1++; fi2++; // convert to bin number
     if ((fi1>DYtools::EtaPtFIMax) || (fi2>DYtools::EtaPtFIMax)) {
       std::cout << "EtaPtFIMax=" << DYtools::EtaPtFIMax
 		<< ", fi1=" << fi1 << ", fi2=" << fi2 << "\n";
