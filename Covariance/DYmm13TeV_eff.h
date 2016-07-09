@@ -163,15 +163,17 @@ public:
     fEffHlt2= h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin2,jbin2);
     double effHlt= 1 - (1-fEffHlt1)*(1-fEffHlt2);
     double eff= fEffReco *fEffIso * effHlt;
-    std::cout << "totalEffIdx(" << ibin1 << "," << jbin1 << "; "
-	      << ibin2 << "," << jbin2 << "; "
-	      << h2VReco[mc]->GetBinContent(ibin1,jbin1) << " x "
-	      << h2VReco[mc]->GetBinContent(ibin2,jbin2) << "; "
-	      << h2VIso[mc]->GetBinContent(ibin1,jbin1) << " x "
-	      << h2VIso[mc]->GetBinContent(ibin2,jbin2) << "; "
-	      << h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin1,jbin1) << " x "
-	      << h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin2,jbin2) << "; "
-	      << "tot=" << eff << "\n";
+    if (0) {
+      std::cout << "totalEffIdx(" << ibin1 << "," << jbin1 << "; "
+		<< ibin2 << "," << jbin2 << "; "
+		<< h2VReco[mc]->GetBinContent(ibin1,jbin1) << " x "
+		<< h2VReco[mc]->GetBinContent(ibin2,jbin2) << "; "
+		<< h2VIso[mc]->GetBinContent(ibin1,jbin1) << " x "
+		<< h2VIso[mc]->GetBinContent(ibin2,jbin2) << "; "
+		<< h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin1,jbin1) << " x "
+		<< h2VHLT[mc+2*hlt4p3]->GetBinContent(ibin2,jbin2) << "; "
+		<< "tot=" << eff << "\n";
+    }
     return eff;
   }
 
@@ -198,15 +200,15 @@ public:
   double scaleFactor(double eta1, double pt1, double eta2, double pt2,
 		     int hlt4p3) const
   {
-    std::cout << "scaleFactor( " << Form(" (%2.2lf,%2.0lf)", eta1,pt1)
-	      << Form(" (%2.2lf,%2.0lf)", eta2,pt2)
-	      << " hlt4p3=" << hlt4p3 << "\n";
+    //std::cout << "scaleFactor( " << Form(" (%2.2lf,%2.0lf)", eta1,pt1)
+    //	      << Form(" (%2.2lf,%2.0lf)", eta2,pt2)
+    //	      << " hlt4p3=" << hlt4p3 << "\n";
     double effData= totalEff(eta1,pt1,eta2,pt2, 0,hlt4p3);
-    std::cout << " totalEffData=" << effData << "\n";
+    //std::cout << " totalEffData=" << effData << "\n";
     double effMC= totalEff(eta1,pt1,eta2,pt2, 1,hlt4p3);
-    std::cout << " totalEffMC=" << effMC << "\n";
+    //std::cout << " totalEffMC=" << effMC << "\n";
     double rho= (effMC==0.) ? 0. : effData/effMC;
-    std::cout << " rho=" << rho << "\n";
+    //std::cout << " rho=" << rho << "\n";
     return rho;
   }
 
@@ -216,15 +218,15 @@ public:
 
   double scaleFactorIdx(int ibin1, int jbin1, int ibin2, int jbin2, int hlt4p3) const
   {
-    std::cout << "scaleFactorIdx( " << Form(" (%2d,%2d)", ibin1,jbin1)
-	      << Form(" (%2d,%2d)", ibin2,jbin2)
-	      << " hlt4p3=" << hlt4p3 << "\n";
+    //std::cout << "scaleFactorIdx( " << Form(" (%2d,%2d)", ibin1,jbin1)
+    //	      << Form(" (%2d,%2d)", ibin2,jbin2)
+    //	      << " hlt4p3=" << hlt4p3 << "\n";
     double effData= totalEffIdx(ibin1,jbin1,ibin2,jbin2, 0,hlt4p3);
-    std::cout << " totalEffData=" << effData << "\n";
+    //std::cout << " totalEffData=" << effData << "\n";
     double effMC= totalEffIdx(ibin1,jbin1,ibin2,jbin2, 1,hlt4p3);
-    std::cout << " totalEffMC=" << effMC << "\n";
+    //std::cout << " totalEffMC=" << effMC << "\n";
     double rho= (effMC==0.) ? 0. : effData/effMC;
-    std::cout << " rho=" << rho << "\n";
+    //std::cout << " rho=" << rho << "\n";
     return rho;
   }
 

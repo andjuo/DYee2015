@@ -373,9 +373,9 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
   h1rho->SetDirectory(0);
   h1rho->Sumw2();
   for (unsigned int im=0; im<fh2ESV.size(); im++) {
-    std::cout << "im=" << im << "\n";
+    //std::cout << "im=" << im << "\n";
     const TH2D* h2sp= fh2ESV[im];
-    if (!h2sp) HERE("h2sp is null");
+    if (!h2sp) { HERE("h2sp is null"); return NULL; }
     double sum=0, sumRho=0;
 
     if (0) {
@@ -384,19 +384,19 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
       for (int jbin1=1; jbin1<=fh2EffBinDef->GetNbinsY(); jbin1++) {
 	const double pt1= fh2EffBinDef->GetYaxis()->GetBinCenter(jbin1);
 	const int fi1= DYtools::FlatIndex(fh2EffBinDef,eta1,pt1,1) + 1;
-	std::cout << "ibin1=" << ibin1 << ", eta1=" << eta1 << ", jbin1=" << jbin1 << ", pt1=" << pt1 << ", fi1=" << fi1 << "\n";
+	//std::cout << "ibin1=" << ibin1 << ", eta1=" << eta1 << ", jbin1=" << jbin1 << ", pt1=" << pt1 << ", fi1=" << fi1 << "\n";
 	for (int ibin2=1; ibin2<=fh2EffBinDef->GetNbinsX(); ibin2++) {
 	  const double eta2= fh2EffBinDef->GetXaxis()->GetBinCenter(ibin2);
 	  for (int jbin2=1; jbin2<=fh2EffBinDef->GetNbinsY(); jbin2++) {
 	    const double pt2= fh2EffBinDef->GetYaxis()->GetBinCenter(jbin2);
 	    const int fi2= DYtools::FlatIndex(fh2EffBinDef,eta2,pt2,1) + 1;
-	    std::cout << "ibin2=" << ibin2 << ", eta2=" << eta2 << ", jbin2=" << jbin2 << ", pt2=" << pt2 << ", fi2=" << fi2 << "\n";
-	    if (!h2sp) HERE("h2sp is null"); else HERE("h2sp ok");
-	    std::cout << " eSpace bin content=" << h2sp->GetBinContent(fi1,fi2) << std::endl;
+	    //std::cout << "ibin2=" << ibin2 << ", eta2=" << eta2 << ", jbin2=" << jbin2 << ", pt2=" << pt2 << ", fi2=" << fi2 << "\n";
+	    //if (!h2sp) HERE("h2sp is null"); else HERE("h2sp ok");
+	    //std::cout << " eSpace bin content=" << h2sp->GetBinContent(fi1,fi2) << std::endl;
 	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
-	    std::cout << "requesting scale factor\n";
+	    //std::cout << "requesting scale factor\n";
 	    double rho= eff.scaleFactor(eta1,pt1,eta2,pt2,hlt4p3);
-	    std::cout << "got rho=" << rho << "\n";
+	    //std::cout << "got rho=" << rho << "\n";
 	    sumRho += rho* h2sp->GetBinContent(fi1,fi2);
 	    sum += h2sp->GetBinContent(fi1,fi2);
 	  }
@@ -408,17 +408,17 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
     for (int ibin1=1; ibin1<=fh2EffBinDef->GetNbinsX(); ibin1++) {
       for (int jbin1=1; jbin1<=fh2EffBinDef->GetNbinsY(); jbin1++) {
 	const int fi1= DYtools::FlatIndex(fh2EffBinDef,ibin1,jbin1,1) + 1;
-	std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "\n";
+	//std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "\n";
 	for (int ibin2=1; ibin2<=fh2EffBinDef->GetNbinsX(); ibin2++) {
 	  for (int jbin2=1; jbin2<=fh2EffBinDef->GetNbinsY(); jbin2++) {
 	    const int fi2= DYtools::FlatIndex(fh2EffBinDef,ibin2,jbin2,1) + 1;
-	    std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "\n";
-	    if (!h2sp) HERE("h2sp is null"); else HERE("h2sp ok");
-	    std::cout << " eSpace bin content=" << h2sp->GetBinContent(fi1,fi2) << std::endl;
+	    //std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "\n";
+	    //if (!h2sp) HERE("h2sp is null"); else HERE("h2sp ok");
+	    //std::cout << " eSpace bin content=" << h2sp->GetBinContent(fi1,fi2) << std::endl;
 	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
-	    std::cout << "requesting scale factor\n";
+	    //std::cout << "requesting scale factor\n";
 	    double rho= eff.scaleFactorIdx(ibin1,jbin1,ibin2,jbin2, hlt4p3);
-	    std::cout << "got rho=" << rho << "\n";
+	    //std::cout << "got rho=" << rho << "\n";
 	    sumRho += rho* h2sp->GetBinContent(fi1,fi2);
 	    sum += h2sp->GetBinContent(fi1,fi2);
 	  }
@@ -428,7 +428,7 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
     }
 
     double avgRho= (sum==0.) ? 0. : sumRho/sum;
-    std::cout << "im=" << im << ", avgRho=" << avgRho << "\n";
+    //std::cout << "im=" << im << ", avgRho=" << avgRho << "\n";
     h1rho->SetBinContent( im+1, avgRho );
     h1rho->SetBinError( im+1, 0. );
   }
