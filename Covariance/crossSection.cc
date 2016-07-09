@@ -374,25 +374,30 @@ TH1D* CrossSection_t::calcCrossSection()
     fh1UnfRhoEffAccCorr->Divide(fh1EffAcc);
   }
   //HERE("divide by lumi");
-  fh1UnfRhoEffAccCorr->Scale(1/fLumi);
   TH1D* h1Out=NULL;
   if (fCSType==_csPostFsrFullSp) {
+    fh1UnfRhoEffAccCorr->Scale(1/fLumi);
     h1Out= fh1UnfRhoEffAccCorr;
   }
   else if (fCSType==_csPreFsrFullSp) {
     if (fFSRBayes) delete fFSRBayes;
 
-    TH1D *h1Unf_loc= cloneHisto(fh1Yield, "h1Unf_loc","h1Unf_loc");
+    TH1D *h1UnfFSR_loc= cloneHisto(fh1Yield, "h1UnfFSR_loc","h1UnfFSR_loc");
+    h1UnfFSR_loc->Reset();
     if (fVersion!=_verMu76X) {
+      std::cout << "fsr unfold Bayes\n";
       fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr,fNItersFSR,false);
-      copyContents(h1Unf_loc,fDetResBayes->Hreco());
+      copyContents(h1UnfFSR_loc,fDetResBayes->Hreco());
     }
     else {
+      std::cout << "fsr unfold Invert\n";
       RooUnfoldInvert *rooInv= new RooUnfoldInvert( fFSRRes, fh1UnfRhoEffAccCorr, "rooInv" );
-      copyContents(h1Unf_loc, rooInv->Hreco());
+      copyContents(h1UnfFSR_loc, rooInv->Hreco());
     }
 
-    fh1PreFsr= copy(h1Unf_loc, "h1preFsr_" + fTag,
+    printRatio(fh1UnfRhoEffAccCorr,h1UnfFSR_loc);
+
+    fh1PreFsr= copy(h1UnfFSR_loc, "h1preFsr_" + fTag,
 		    "h1preFsr_" + fTag
 		    + TString(";") + fh1Yield->GetXaxis()->GetTitle()
 		    + TString(";pre-FSR full space yield")
@@ -400,6 +405,7 @@ TH1D* CrossSection_t::calcCrossSection()
 		    fh1Yield); // set x binning
     TH1D* h1PreFsrCS_raw= copy(fh1PreFsr,"h1PreFsrCS",fTag);
     fh1PreFsrCS= perMassBinWidth(h1PreFsrCS_raw);
+    fh1PreFsrCS->Scale(1/fLumi);
     h1Out= fh1PreFsrCS;
   }
   return h1Out;
