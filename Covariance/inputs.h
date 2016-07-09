@@ -31,6 +31,17 @@ TString versionName(TVersion_t);
 
 TString DayAndTimeTag(int eliminateSigns=1);
 
+
+template<class ptr_t>
+inline
+void clearVec(std::vector<ptr_t*> &vec)
+{
+  for (unsigned int i=0; i<vec.size(); i++)
+    if (vec[i]) delete vec[i];
+  vec.clear();
+}
+
+
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="");
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain="");
