@@ -480,6 +480,145 @@ int EventSpace_t::load(TFile &fin, TString subdir)
 
 // -------------------------------------------------------------
 
+std::vector<TH1D*> EventSpace_t::avgAxisValues
+        (std::vector<TH2D*> *h2ptSpace, std::vector<TH2D*> *h2etaSpace) const
+{
+
+  std::vector<TH1D*> h1V;
+  h1V.reserve(4);
+
+  if (int(fh2ESV.size())!=DYtools::nMassBins) {
+    std::cout << "EventSpace::avgAxisValues -- nMassBins are different:"
+	      << " object has "
+	      << fh2ESV.size() << " bins, the code uses nMassBins="
+	      << DYtools::nMassBins << "\n";
+    return h1V;
+  }
+
+ if (h2ptSpace) {
+    const TArrayD* ptb= fh2EffBinDef->GetYaxis()->GetXbins();
+    if (ptb->GetSize()==0) {
+      std::cout << "Yaxis has equal binning. This case is not implemented\n";
+      return h1V;
+    }
+    const Double_t *pt= ptb->GetArray();
+
+    for (int im=0; im<DYtools::nMassBins; im++) {
+      TString mStr= DYtools::massStr(im);
+      TString hname="h2ptSpace_" + mStr;
+      TH2D *h2pt = new TH2D(hname,hname+";p_{1,T} [GeV];p_{2,T} [GeV]",
+			    ptb->GetSize()-1,pt,ptb->GetSize()-1,pt);
+      h2pt->SetDirectory(0);
+      h2pt->SetStats(0);
+      h2pt->Sumw2();
+      h2ptSpace->push_back(h2pt);
+    }
+  }
+
+  if (h2etaSpace) {
+    const TArrayD* etab= fh2EffBinDef->GetXaxis()->GetXbins();
+    if (etab->GetSize()==0) {
+      std::cout << "Xaxis has equal binning. This case is not implemented\n";
+      return h1V;
+    }
+    const Double_t *eta= etab->GetArray();
+
+    for (int im=0; im<DYtools::nMassBins; im++) {
+      TString mStr= DYtools::massStr(im);
+      TString hname="h2etaSpace_" + mStr;
+      TH2D *h2eta = new TH2D(hname,hname+";#eta_{1};#eta_{2,T}",
+			     etab->GetSize()-1,eta,etab->GetSize()-1,eta);
+      h2eta->SetDirectory(0);
+      h2eta->SetStats(0);
+      h2eta->Sumw2();
+      h2etaSpace->push_back(h2eta);
+    }
+  }
+
+  for (int idxLepton=0; idxLepton<2; idxLepton++) {
+    for (int isPt=0; isPt<2; isPt++) {
+      TString hname=Form((isPt) ? "avgPt%d" : "avgAbsEta%d", idxLepton);
+      TString htitle= hname + TString(";M [GeV];") +
+	TString((isPt) ? "<p_{T}> [GeV]" : "|#eta|");
+      TH1D* h1avg= new TH1D(hname,htitle,
+			    DYtools::nMassBins,DYtools::massBinEdges);
+      h1V.push_back(h1avg);
+    }
+  }
+
+
+  for (unsigned int im=0; im<fh2ESV.size(); im++) {
+    const TH2D* h2sp= fh2ESV[im];
+    double sumWPt[2], sumWAbsEta[2];
+    double sumWPtSqr[2], sumWAbsEtaSqr[2];
+    sumWPt[0]=0.; sumWPt[1]=0.;
+    sumWAbsEta[0]=0.; sumWAbsEta[1]=0.;
+    sumWPtSqr[0]=0.; sumWPtSqr[1]=0.;
+    sumWAbsEtaSqr[0]=0.; sumWAbsEtaSqr[1]=0.;
+    double sumW=0.;
+    for (int ibin1=1; ibin1<=fh2EffBinDef->GetNbinsX(); ibin1++) {
+      const double eta1= fh2EffBinDef->GetXaxis()->GetBinCenter(ibin1);
+      for (int jbin1=1; jbin1<=fh2EffBinDef->GetNbinsY(); jbin1++) {
+	const double pt1= fh2EffBinDef->GetYaxis()->GetBinCenter(jbin1);
+	const int fi1= DYtools::FlatIndex(fh2EffBinDef, ibin1,jbin1,1) + 1;
+	for (int ibin2=1; ibin2<=fh2EffBinDef->GetNbinsX(); ibin2++) {
+	  const double eta2= fh2EffBinDef->GetXaxis()->GetBinCenter(ibin2);
+	  for (int jbin2=1; jbin2<=fh2EffBinDef->GetNbinsY(); jbin2++) {
+	    const double pt2= fh2EffBinDef->GetYaxis()->GetBinCenter(jbin2);
+	    const int fi2= DYtools::FlatIndex(fh2EffBinDef, ibin2,jbin2,1) + 1;
+	    const double w=h2sp->GetBinContent(fi1,fi2);
+	    sumW += w;
+	    sumWPt[0] += w * pt1;
+	    sumWPt[1] += w * pt2;
+	    sumWAbsEta[0] += w * fabs(eta1);
+	    sumWAbsEta[1] += w * fabs(eta2);
+	    sumWPtSqr[0] += w * pt1 * pt1;
+	    sumWPtSqr[1] += w * pt2 * pt2;
+	    sumWAbsEtaSqr[0] += w * eta1 * eta1;
+	    sumWAbsEtaSqr[1] += w * eta2 * eta2;
+	    if (w!=double(0)) {
+	      std::cout << Form("(%lf,%lf), (%lf,%lf) ",pt1,eta1,pt2,eta2)
+			<< " w=" << w << "\n";
+	    }
+	    if (h2ptSpace) h2ptSpace->at(im)->Fill(pt1,pt2, w);
+	    if (h2etaSpace) h2etaSpace->at(im)->Fill(eta1,eta2, w);
+	  }
+	}
+      }
+    }
+
+    for (int idxLepton=0, ih=0; idxLepton<2; idxLepton++) {
+      for (int isPt=0; isPt<2; isPt++, ih++) {
+	double avgVal=0, avgSqrVal=0, avgValVariance=0;
+	if (sumW!=double(0)) {
+	  if (isPt==1) {
+	    avgVal= sumWPt[idxLepton]/sumW;
+	    avgSqrVal= sumWPtSqr[idxLepton]/sumW;
+	  }
+	  else {
+	    avgVal= sumWAbsEta[idxLepton]/sumW;
+	    avgSqrVal= sumWAbsEtaSqr[idxLepton]/sumW;
+	  }
+	}
+	if (avgSqrVal < avgVal*avgVal) {
+	  std::cout << "cannot evaluate variance\n";
+	}
+	else {
+	  avgValVariance = sqrt( avgSqrVal - avgVal * avgVal );
+	}
+
+	h1V[ih]->SetBinContent(im+1, avgVal);
+	h1V[ih]->SetBinError(im+1, avgValVariance);
+      }
+    }
+  }
+  return h1V;
+}
+
+// -------------------------------------------------------------
+
+// -------------------------------------------------------------
+
 int EventSpace_t::prepareVector() {
   if (fh2ESV.size()) fh2ESV.clear();
   fh2ESV.reserve(DYtools::nMassBins);

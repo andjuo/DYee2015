@@ -2,6 +2,12 @@
 #include "DYbinning.h"
 #include "DYmm13TeV_eff.h"
 
+// ------------------------------------------------------
+
+void studyAvgValues(const EventSpace_t &es);
+
+// ------------------------------------------------------
+
 void calcRhoRndVec(int nSamples=100)
 {
 
@@ -91,8 +97,8 @@ void calcRhoRndVec(int nSamples=100)
   h1rho_4p3->SetStats(0);
   histoStyle(h1rho_4p2,kBlack,5);
   histoStyle(h1rho_4p3,kBlack,5);
-  plotHisto(h1rho_4p2,"c4p2",1,0,"LPE","my code");
-  plotHisto(h1rho_4p3,"c4p3",1,0,"LPE","my code");
+  plotHisto(h1rho_4p2,"c4p2",1,0,"LPE1","my code");
+  plotHisto(h1rho_4p3,"c4p3",1,0,"LPE1","my code");
 
   if (1) {
     TFile finChk(fnameChk);
@@ -114,6 +120,10 @@ void calcRhoRndVec(int nSamples=100)
     plotHistoSame(h1KP4p2,"c4p2","LPE1","KL");
     plotHistoSame(h1KP4p3,"c4p3","LPE1","KL");
     //return;
+  }
+
+  if (1 && (nSamples==1)) {
+    studyAvgValues(esPostFsr);
   }
 
   TString outDir="dir-Rho" + versionName(inpVersion) + "/";
@@ -183,7 +193,47 @@ void calcRhoRndVec(int nSamples=100)
 
   histoStyle(h1rho_4p2_avg,kRed,24);
   histoStyle(h1rho_4p3_avg,kRed,24);
-  plotHistoSame(h1rho_4p2_avg,"c4p2","LPE","avg");
-  plotHistoSame(h1rho_4p3_avg,"c4p3","LPE","avg");
+  plotHistoSame(h1rho_4p2_avg,"c4p2","LPE1","avg");
+  plotHistoSame(h1rho_4p3_avg,"c4p3","LPE1","avg");
   return;
 }
+
+// ------------------------------------------------------
+
+void studyAvgValues(const EventSpace_t &es) {
+
+  std::cout << "\nStudyAvgValues\n";
+
+  plotHisto(es.h2EffBinDef(),"cEffBinDef",0,0);
+
+  std::vector<TH2D*> h2ptSpace, h2etaSpace;
+  std::vector<TH1D*> avgH1V=es.avgAxisValues(&h2ptSpace,&h2etaSpace);
+
+  for (unsigned int im=0; im<h2ptSpace.size(); im++) {
+    if (h2ptSpace[im]->Integral()!=0) {
+      plotHisto(h2ptSpace[im],"cPtSpace"+DYtools::massStr(im),0,0);
+    }
+  }
+  for (unsigned int im=0; im<h2etaSpace.size(); im++) {
+    if (h2etaSpace[im]->Integral()!=0) {
+      plotHisto(h2etaSpace[im],"cEtaSpace"+DYtools::massStr(im),0,0);
+    }
+  }
+
+  histoStyle(avgH1V[0],kGreen+1,5);
+  histoStyle(avgH1V[1],kGreen+1,5);
+  histoStyle(avgH1V[2],kBlue,24);
+  histoStyle(avgH1V[3],kBlue,24);
+  plotHisto(avgH1V[1],"cAvgPt",1,0,"LPE","avgPt1");
+  plotHistoSame(avgH1V[3],"cAvgPt","LPE","avgPt2");
+  plotHisto(avgH1V[0],"cAvgEta",1,0,"LPE","avg|Eta1|");
+  plotHistoSame(avgH1V[2],"cAvgEta","LPE","avg|Eta2|");
+
+  if (1) {
+    for (unsigned int ih=0; ih<avgH1V.size(); ih++) {
+      printHisto(avgH1V[ih]);
+    }
+  }
+}
+
+// ------------------------------------------------------

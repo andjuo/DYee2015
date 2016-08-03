@@ -278,9 +278,12 @@ public:
     int fi1= DYtools::FlatIndex(fh2EffBinDef, v1, allow_overflow);
     int fi2= DYtools::FlatIndex(fh2EffBinDef, v2, allow_overflow);
     //std::cout << "fi1=" << fi1 << ", fi2=" << fi2 << "\n";
-    if ((fi1<0) || (fi2<0)) return 0;
+    if ((fi1<0) || (fi2<0)) {
+      std::cout << "negative fi\n";
+      return 0;
+    }
     if ((fi1>DYtools::EtaPtFIMax) || (fi2>DYtools::EtaPtFIMax)) {
-      std::cout << "EtaPtFIMax=" << DYtools::EtaPtFIMax
+      std::cout << "too small EtaPtFIMax=" << DYtools::EtaPtFIMax
 		<< ", fi1=" << fi1 << ", fi2=" << fi2 << "\n";
       return 0;
     }
@@ -294,6 +297,9 @@ public:
 
   TH1D* calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 			     TString hName, TString hTitle) const;
+
+  std::vector<TH1D*> avgAxisValues(std::vector<TH2D*> *h2ptSpace=NULL,
+				   std::vector<TH2D*> *h2etaSpace=NULL) const;
 
   int save(TFile &fout);
   int load(TFile &fin, TString subdir);
