@@ -67,6 +67,15 @@ TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy)
 
 // ---------------------------------------------------------
 
+TCanvas* plotHisto(const TH2D* h2_orig, TString cName, int logx, int logy)
+{
+  TH2D *h2=cloneHisto(h2_orig,h2_orig->GetName() + TString("__clone_plotHisto"),
+		      h2_orig->GetTitle());
+  return plotHisto(h2,cName,logx,logy);
+}
+
+// ---------------------------------------------------------
+
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain)
 {
   TSeqCollection *seq=gROOT->GetListOfCanvases();

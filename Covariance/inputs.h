@@ -44,6 +44,7 @@ void clearVec(std::vector<ptr_t*> &vec)
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="");
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
+TCanvas* plotHisto(const TH2D* h2, TString cName, int logX=0, int logY=0);
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain="");
 
 void printHisto(const TH1D* h1, int extraRange=0);
@@ -261,13 +262,32 @@ TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
 // -----------------------------------------------------------
 
 inline
-void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative)
+void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative,
+			int poissonRnd=0)
 {
   if (!hSrc) { std::cout << "randomizeWithinErr(1D): hSrc is null\n"; return; }
   if (!hDest) { std::cout << "randomizeWithinErr(1D): hDest is null\n"; return; }
   for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+    double val=	(poissonRnd) ?
+      gRandom->Poisson(hSrc->GetBinContent(ibin)) :
+      gRandom->Gaus(hSrc->GetBinContent(ibin),
+		    hSrc->GetBinError(ibin));
+    if (nonNegative && (val<0)) val=0;
+    hDest->SetBinContent(ibin,val);
+    hDest->SetBinError  (ibin,0); //hSrc->GetBinError(ibin));
+  }
+}
+// -----------------------------------------------------------
+
+inline
+void randomizeWithinRelErr(const TH1D *hSrc, TH1D *hDest, double relErr,
+			   int nonNegative)
+{
+  if (!hSrc) { std::cout << "randomizeWithinRelErr(1D): hSrc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinRelErr(1D): hDest is null\n"; return; }
+  for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
     double val=	gRandom->Gaus(hSrc->GetBinContent(ibin),
-			      hSrc->GetBinError(ibin));
+			      relErr*hSrc->GetBinContent(ibin));
     if (nonNegative && (val<0)) val=0;
     hDest->SetBinContent(ibin,val);
     hDest->SetBinError  (ibin,0); //hSrc->GetBinError(ibin));
