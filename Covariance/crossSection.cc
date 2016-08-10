@@ -389,7 +389,7 @@ TH1D* CrossSection_t::calcCrossSection()
     if (fVersion!=_verMu76X) {
       std::cout << "fsr unfold Bayes\n";
       fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr,fNItersFSR,false);
-      copyContents(h1UnfFSR_loc,fDetResBayes->Hreco());
+      copyContents(h1UnfFSR_loc,fFSRBayes->Hreco());
     }
     else {
       std::cout << "fsr unfold Invert\n";
