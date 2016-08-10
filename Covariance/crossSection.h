@@ -162,6 +162,7 @@ class CrossSection_t {
   TH1D* calcCrossSection();
   TH1D* calcCrossSection(TVaried_t new_var, int idx);
   TCanvas* plotCrossSection(TString canvName="cs");
+  TCanvas* plotCrossSection_StepByStep(TString canvName="csStep");
 
   int sampleRndVec(TVaried_t new_var, int sampleSize,
 		   std::vector<TH1D*> &rndCS);

@@ -397,7 +397,7 @@ TH1D* CrossSection_t::calcCrossSection()
       copyContents(h1UnfFSR_loc, rooInv->Hreco());
     }
 
-    printRatio(fh1UnfRhoEffAccCorr,h1UnfFSR_loc);
+    //printRatio(fh1UnfRhoEffAccCorr,h1UnfFSR_loc);
 
     fh1PreFsr= copy(h1UnfFSR_loc, "h1preFsr_" + fTag,
 		    "h1preFsr_" + fTag
@@ -688,6 +688,47 @@ TCanvas* CrossSection_t::plotCrossSection(TString canvName)
   h1->SetMarkerStyle(24);
   h1->Draw(drawOpt);
   c->Update();
+  std::cout << "plotCrossSection: theory is blue, calculation is circles\n";
+  return c;
+}
+
+// --------------------------------------------------------------
+
+TCanvas* CrossSection_t::plotCrossSection_StepByStep(TString canvNameBase)
+{
+  TH1D *h1=NULL;
+  if (fCSType==_csPreFsrFullSp) h1=fh1PreFsrCS;
+  else if (fCSType==_csPostFsrFullSp) h1=fh1UnfRhoEffAccCorr;
+  if (!h1) h1=calcCrossSection();
+  if (!h1) {
+    std::cout << "plotCrossSection_StepByStep: pre-calculated cross-section "
+	      << "of type " << csTypeName(fCSType)
+	      << "is not available and could not be computed\n";
+    return NULL;
+  }
+
+  histoStyle(fh1Yield,46,5,2);
+  histoStyle(fh1Bkg,kRed,26,2);
+  histoStyle(fh1Signal,kBlack,27,2);
+  histoStyle(fh1Unf,kBlue,24,2);
+  TString cn= canvNameBase + "_signalUnf";
+  plotHisto(fh1Yield,cn,1,1,"LPE","yield");
+  plotHistoSame(fh1Bkg,cn,"LPE","bkg");
+  plotHistoSame(fh1Signal,cn,"LPE","signal");
+  plotHistoSame(fh1Unf,cn,"LPE","unf.signal");
+
+  histoStyle(fh1UnfRhoCorr,kGreen+1,32,3);
+  histoStyle(fh1UnfRhoEffAccCorr,kRed,26,2);
+  cn= canvNameBase + "_preFSR";
+  plotHisto(fh1Unf,cn,1,1,"LPE","unf.signal");
+  plotHistoSame(fh1UnfRhoCorr,cn,"LPE","unf. x #rho");
+  plotHistoSame(fh1UnfRhoEffAccCorr,cn,"LPE","unf. x #rho x #epsilon x A");
+  plotHistoSame(fh1PreFsr,cn,"LPE","pre-FSR");
+
+  histoStyle(fh1PreFsrCS,kBlue,24,1);
+  cn= canvNameBase + "_final";
+  plotHisto(fh1PreFsr,cn,1,1,"LPE","pre-FSR");
+  TCanvas *c=plotHistoSame(fh1PreFsrCS,cn,"LPE","pre-FSR cs");
   return c;
 }
 
@@ -992,6 +1033,7 @@ int CrossSection_t::save(TString fname) const
 
   fout.Close();
 
+  std::cout << "file <" << fout.GetName() << "> created\n";
   return 1;
 }
 
