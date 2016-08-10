@@ -8,11 +8,22 @@
 void createCSInput_DYee13TeV(int doSave=0)
 {
   TString srcPath="/mnt/sdb/andriusj/v1_31052016_CovarianceMatrixInputs/";
-  TVersion_t inpVer=_verEl1;
-  TString inpVerTag= versionName(inpVer);
-  double lumiTot= 2300.; // approximate
+  double lumiTot= 2316.97; // approximate
   int setNiters_detRes=4;
   int setNiters_FSR=4;
+
+  TVersion_t inpVer=_verEl1;
+  inpVer=_verEl2;
+
+  if (inpVer==_verEl2) {
+    srcPath="/mnt/sdb/andriusj/v2_08082016_CovarianceMatrixInputs/";
+    lumiTot=2316.97; // approximate
+    setNiters_detRes=15;
+    setNiters_FSR=15;
+  }
+
+  TString inpVerTag= versionName(inpVer);
+  std::cout << "inpVerTag=" << inpVerTag << "\n";
 
   int checkBackgrounds=1;
 
@@ -26,6 +37,8 @@ void createCSInput_DYee13TeV(int doSave=0)
     histoStyle(h1Signal,kBlue,5,2);
     plotHisto(h1Yield,"cData",1,1,"LPE","Observed");
     plotHistoSame(h1Signal,"cData","LPE","Signal");
+    std::cout << "\nNote about the next check: "
+	      << "yield and signal does not necesarily match\n";
     printRatio(h1Yield,h1Signal);
   }
 
@@ -38,20 +51,46 @@ void createCSInput_DYee13TeV(int doSave=0)
   TH1D* h1Dijet= loadHisto(fname2, "h_Dijet", "h1QCD", 1,h1dummy);
   TH1D* h1Wjet= loadHisto(fname2, "h_Wjet", "h1Wjet", 1,h1dummy);
   if (!h1Emu || !h1Dijet || !h1Wjet) return;
+  // d) version 2 has also h_WZ and h_ZZ
+  TH1D *h1WZ=NULL, *h1ZZ=NULL;
+  if (inpVer==_verEl1) {
+    h1WZ= cloneHisto(h1Emu,"h1WZ","h1WZ");
+    h1ZZ= cloneHisto(h1Emu,"h1ZZ","h1ZZ");
+    h1WZ->Reset();
+    h1ZZ->Reset();
+  }
+  else if (inpVer==_verEl2) {
+    h1WZ= loadHisto(fname2, "h_WZ", "h1WZ", 1,h1dummy);
+    h1ZZ= loadHisto(fname2, "h_ZZ", "h1ZZ", 1,h1dummy);
+    if (!h1WZ || !h1ZZ) {
+      std::cout << "failed to obtain h_WZ,h_ZZ\n";
+      return;
+    }
+  }
+  else {
+    std::cout << "the code is not ready for this inpVer (h1WZ,h1ZZ)\n";
+    return;
+  }
 
   TString massAxisLabel= niceMassAxisLabel(0,"");
   TH1D* h1BkgTot= cloneHisto(h1Emu, "h1BkgTot","h1BkgTot;" + massAxisLabel + TString(";bkg.yield"));
   h1BkgTot->Add(h1Dijet);
   h1BkgTot->Add(h1Wjet);
+  h1BkgTot->Add(h1WZ);
+  h1BkgTot->Add(h1ZZ);
 
   if (1) {
     histoStyle(h1Emu,kBlue,5,2);
     histoStyle(h1Dijet,kRed,24,2);
     histoStyle(h1Wjet,kGreen+1,27,2);
+    histoStyle(h1WZ,6,32,3);
+    histoStyle(h1ZZ,46,26,3);
     plotHisto(h1BkgTot,"cBkg",1,1,"LPE","bkgTot");
     plotHistoSame(h1Emu,"cBkg","LPE","e-#mu");
     plotHistoSame(h1Dijet,"cBkg","LPE","QCD");
     plotHistoSame(h1Wjet,"cBkg","LPE","W+Jets");
+    plotHistoSame(h1WZ,"cBkg","LPE","WZ");
+    plotHistoSame(h1ZZ,"cBkg","LPE","ZZ");
   }
 
   if (checkBackgrounds) {
@@ -61,6 +100,7 @@ void createCSInput_DYee13TeV(int doSave=0)
     plotHisto(h1BkgTot,"cBkgCheck",1,1,"LPE","bkgTot");
     plotHistoSame(h1BkgFromSignal,"cBkgCheck","LPE","bkg from signal");
     printRatio(h1BkgTot,h1BkgFromSignal);
+    std::cout << "background check end\n\n";
   }
 
   // --------- Load corrections
@@ -72,19 +112,43 @@ void createCSInput_DYee13TeV(int doSave=0)
   //d) h_EffSF: efficiency scale factor for data for each mass bin.
   //e) h_diffXsec_Meas: differential cross section distribution with all corrections applied.
 
+  std::map<TVaried_t,TString> hNameMap;
+  if (inpVer==_verEl1) {
+    hNameMap[_varDetRes]= "UnfoldRes_DetectorRes";
+    hNameMap[_varFSRRes]= "UnfoldRes_FSR";
+    hNameMap[_varEff]= "h_Eff";
+    hNameMap[_varRho]= "h_EffSF";
+    hNameMap[_varAcc]= "h_Acc";
+    hNameMap[_varEffAcc]= "h_AccEff";
+    hNameMap[_varLast]= "h_diffXsec_Meas";
+  }
+  else if (inpVer==_verEl2) {
+    hNameMap[_varDetRes]= "UnfoldRes_DetectorRes";
+    hNameMap[_varFSRRes]= "Unfold_FSRCorr";
+    hNameMap[_varEff]= "h_EffCorr";
+    hNameMap[_varRho]= "h_EfficiencySF";
+    hNameMap[_varAcc]= "h_AccCorr";
+    hNameMap[_varEffAcc]= "h_AccEff";
+    hNameMap[_varLast]= "h_diffXsec_Meas";
+  }
+  else {
+    std::cout << "code (hNameMap) is not ready for this inpVer\n";
+    return;
+  }
+
   TString fname6= srcPath + "ROOTFile_Input6_CrossCheck.root";
   TFile fin6(fname6);
   if (!fin6.IsOpen()) {
     std::cout << "failed to open the file <" << fin6.GetName() << ">\n";
     return;
   }
-  RooUnfoldResponse *rooUnfDetRes= loadRooUnfoldResponse(fin6,"UnfoldRes_DetectorRes","rooUnfDetRes");
-  RooUnfoldResponse *rooUnfFSRRes= loadRooUnfoldResponse(fin6,"UnfoldRes_FSR","rooUnfFSR");
-  TH1D *h1Acc= loadHisto(fin6,"h_Acc","h1Acc", "Acceptance;" + massAxisLabel + TString(";A"), 1,h1dummy);
-  TH1D *h1Eff= loadHisto(fin6,"h_Eff","h1Eff", "Efficiency;" + massAxisLabel + TString(";#epsilon"), 1,h1dummy);
-  TH1D *h1EffAcc= loadHisto(fin6,"h_AccEff","h1_EffAcc", "Acc #times Eff;" + massAxisLabel + TString(";A #times #epsilon"), 1,h1dummy);
-  TH1D *h1Rho= loadHisto(fin6,"h_EffSF","h1Rho","Scale factor;" + massAxisLabel+ TString(";#rho"), 1,h1dummy);
-  TH1D *h1_DiffXSec_data= loadHisto(fin6,"h_diffXsec_Meas","h1RC_xsec", 1,h1dummy);
+  RooUnfoldResponse *rooUnfDetRes= loadRooUnfoldResponse(fin6,hNameMap[_varDetRes],"rooUnfDetRes");
+  RooUnfoldResponse *rooUnfFSRRes= loadRooUnfoldResponse(fin6,hNameMap[_varFSRRes],"rooUnfFSR");
+  TH1D *h1Acc= loadHisto(fin6,hNameMap[_varAcc],"h1Acc", "Acceptance;" + massAxisLabel + TString(";A"), 1,h1dummy);
+  TH1D *h1Eff= loadHisto(fin6,hNameMap[_varEff],"h1Eff", "Efficiency;" + massAxisLabel + TString(";#epsilon"), 1,h1dummy);
+  TH1D *h1EffAcc= loadHisto(fin6,hNameMap[_varEffAcc],"h1_EffAcc", "Acc #times Eff;" + massAxisLabel + TString(";A #times #epsilon"), 1,h1dummy);
+  TH1D *h1Rho= loadHisto(fin6,hNameMap[_varRho],"h1Rho","Scale factor;" + massAxisLabel+ TString(";#rho"), 1,h1dummy);
+  TH1D *h1_DiffXSec_data= loadHisto(fin6,hNameMap[_varLast],"h1RC_xsec", 1,h1dummy);
   fin6.Close();
   if (!rooUnfDetRes || !rooUnfFSRRes) return;
   if (!h1Acc || !h1Eff || !h1EffAcc || !h1Rho || !h1_DiffXSec_data) return;
@@ -138,10 +202,11 @@ void createCSInput_DYee13TeV(int doSave=0)
 
   if (1) {
     TH1D* h1cs= cs.calcCrossSection();
-    printRatio(h1cs, h1_DiffXSec_data);
+    if (h1cs) printRatio(h1cs, h1_DiffXSec_data);
   }
 
   cs.plotCrossSection();
+  //cs.plotCrossSection_StepByStep("cCalcTest");
 
   //return;
 
@@ -149,7 +214,7 @@ void createCSInput_DYee13TeV(int doSave=0)
 
   if (!doSave) { std::cout << "not saving" << std::endl; return; }
   std::cout << "calling cs.save()" << std::endl;
-  if (!cs.save("cs_DYee_13TeV" + inpVerTag)) {
+  if (!cs.save("cs_DYee_13TeV_" + inpVerTag + ".root")) {
     std::cout << "saving failed\n";
     return;
   }
