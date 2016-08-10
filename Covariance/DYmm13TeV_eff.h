@@ -117,7 +117,8 @@ int GetValueIdx(const TH2D* h2, int iEta, int iPt, double &v, double &err,
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 
-struct DYTnPEff_t {
+class DYTnPEff_t {
+public:
   TH2D *h2Eff_RecoID_Data, *h2Eff_Iso_Data;
   TH2D *h2Eff_HLT4p2_Data, *h2Eff_HLT4p3_Data;
   TH2D *h2Eff_RecoID_MC, *h2Eff_Iso_MC;
@@ -233,12 +234,20 @@ public:
   int updateVectors(); // copy TH2D* pointers to arrays
   int assign(const DYTnPEff_t &e, TString tag);
   int randomize(const DYTnPEff_t &e, TString tag);
+  int randomize(const DYTnPEff_t &e_errPos, const DYTnPEff_t &e_errNeg,
+		TString tag);
 
   int checkBinning() const;
   void printNumbers() const;
+  void printEffRatios(const DYTnPEff_t &e, int compareErrs=0) const;
 
-  int save(TFile &fout);
+  // internal save/load
+  int save(TFile &fout, TString subdirTag="");
   int load(TFile &fin, TString subdir="DYTnPEff", TString tag="");
+
+  // load from Kyeongpil's files
+  int load_DYMM_TnP(TFile &fin, int version, TString tag="");
+  int load_DYMM_TnP_asymmEff(TFile &fin, int version, int posErr, TString tag="");
 
 };
 

@@ -136,7 +136,8 @@ void printHisto(const TH2D *h2) {
 
 // ---------------------------------------------------------
 
-void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange) {
+void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange,
+		int includeErr) {
   int d=(extraRange) ? 1:0;
   std::cout << "\nhisto A " << h1a->GetName() << " " << h1a->GetTitle()
 	    << " [" << h1a->GetNbinsX() << "]\n";
@@ -156,8 +157,59 @@ void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange) {
 	      << h1a->GetBinError(ibin)
 	      << "  " << h1b->GetBinContent(ibin) << " +- "
 	      << h1b->GetBinError(ibin)
-	      << "  " << h1a->GetBinContent(ibin)/h1b->GetBinContent(ibin)
-	      << "\n";
+	      << "  " << h1a->GetBinContent(ibin)/h1b->GetBinContent(ibin);
+    if (includeErr)
+      std::cout << " " << h1a->GetBinError(ibin)/h1b->GetBinError(ibin);
+    std::cout << "\n";
+  }
+}
+
+
+// ---------------------------------------------------------
+
+void printRatio(const TH2D *h2a, const TH2D *h2b, int extraRange,
+		int includeErr) {
+  int d=(extraRange) ? 1:0;
+  std::cout << "\nhisto A " << h2a->GetName() << " " << h2a->GetTitle()
+	    << " [" << h2a->GetNbinsX() << "]\n";
+  std::cout << "histo B " << h2b->GetName() << " " << h2b->GetTitle()
+	    << " [" << h2b->GetNbinsX() << "]\n";
+  std::cout << std::string(5,' ') << h2a->GetName() << std::string(10,' ')
+	    << h2b->GetName() << std::string(10,' ') << "ratio\n";
+  for (int ibin=1-d; ibin<=h2a->GetNbinsX()+d; ibin++) {
+    if ( (h2a->GetXaxis()->GetBinLowEdge(ibin) !=
+	  h2b->GetXaxis()->GetBinLowEdge(ibin)) ||
+	 (h2a->GetXaxis()->GetBinWidth(ibin) !=
+	  h2b->GetXaxis()->GetBinWidth(ibin)) ) {
+      std::cout << "x-bining mismatch at ibin=" << ibin << "\n";
+      return;
+    }
+    for (int jbin=1-d; jbin<=h2a->GetNbinsY()+d; jbin++) {
+      if ( (h2a->GetYaxis()->GetBinLowEdge(jbin) !=
+	    h2b->GetYaxis()->GetBinLowEdge(jbin)) ||
+	   (h2a->GetYaxis()->GetBinWidth(jbin) !=
+	    h2b->GetYaxis()->GetBinWidth(jbin)) ) {
+	std::cout << "y-bining mismatch at jbin=" << jbin << "\n";
+	return;
+      }
+
+      std::cout << "xybin=(" << ibin << "," << jbin << ")"
+		<< " (" << h2a->GetXaxis()->GetBinLowEdge(ibin)
+		<< " " << (h2a->GetXaxis()->GetBinLowEdge(ibin)+
+			   h2a->GetXaxis()->GetBinWidth(ibin))
+		<< " ; " << h2a->GetYaxis()->GetBinLowEdge(jbin)
+		<< " " << (h2a->GetYaxis()->GetBinLowEdge(jbin)+
+			   h2a->GetYaxis()->GetBinWidth(jbin))
+		<< ")  " << h2a->GetBinContent(ibin,jbin) << " +- "
+		<< h2a->GetBinError(ibin,jbin)
+		<< "  " << h2b->GetBinContent(ibin,jbin) << " +- "
+		<< h2b->GetBinError(ibin,jbin)
+		<< "  " << h2a->GetBinContent(ibin,jbin)/h2b->GetBinContent(ibin,jbin);
+      if (includeErr) {
+	std::cout << " " << h2a->GetBinError(ibin,jbin)/h2b->GetBinError(ibin,jbin);
+      }
+      std::cout << "\n";
+    }
   }
 }
 
@@ -237,7 +289,7 @@ TH1D* flattenHisto(const TH2D *h2, TString setName)
 // ---------------------------------------------------------
 
 TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
-	      int plotIt)
+	      int plotIt, int posNegErrs)
 {
   Double_t *xLow= gr->GetEXlow();
   Double_t *xHigh= gr->GetEXhigh();
@@ -264,7 +316,10 @@ TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
   h1->SetDirectory(0);
   for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
     h1->SetBinContent(ibin, y[ibin-1]);
-    h1->SetBinError  (ibin, 0.5*(yLow[ibin-1] + yHigh[ibin-1]));
+    double w=0.5;
+    if (posNegErrs==-1) w=1.;
+    else if (posNegErrs==1) w=0;
+    h1->SetBinError  (ibin, w*yLow[ibin-1] + (1.-w)*yHigh[ibin-1]);
   }
 
   if (plotIt) {

@@ -94,35 +94,69 @@ int DYTnPEff_t::randomize(const DYTnPEff_t &e, TString tag)
 
 // -------------------------------------------------------------
 
+int DYTnPEff_t::randomize(const DYTnPEff_t &e_errPos,
+			  const DYTnPEff_t &e_errNeg, TString tag)
+{
+  if (!assign(e_errPos,tag)) {
+    std::cout << "error in DYTnPEff_t::randomize with tag=" << tag << "\n";
+    return 0;
+  }
+  int bound01=1;
+  int res=1;
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_RecoID_Data,e_errNeg.h2Eff_RecoID_Data, this->h2Eff_RecoID_Data, bound01);
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_Iso_Data,e_errNeg.h2Eff_Iso_Data, this->h2Eff_Iso_Data, bound01);
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_HLT4p2_Data,e_errNeg.h2Eff_HLT4p2_Data, this->h2Eff_HLT4p2_Data, bound01);
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_HLT4p3_Data,e_errNeg.h2Eff_HLT4p3_Data, this->h2Eff_HLT4p3_Data, bound01);
+
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_RecoID_MC,e_errNeg.h2Eff_RecoID_MC, this->h2Eff_RecoID_MC, bound01);
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_Iso_MC,e_errNeg.h2Eff_Iso_MC, this->h2Eff_Iso_MC, bound01);
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_HLT4p2_MC,e_errNeg.h2Eff_HLT4p2_MC, this->h2Eff_HLT4p2_MC, bound01);
+  res=res && randomizeWithinPosNegErr(e_errPos.h2Eff_HLT4p3_MC,e_errNeg.h2Eff_HLT4p3_MC, this->h2Eff_HLT4p3_MC, bound01);
+
+  return res;
+}
+
+// -------------------------------------------------------------
+
 int DYTnPEff_helper_compareArrays(const TArrayD *xa, const TArrayD *ya,
-				  const TArrayD *xb, const TArrayD *yb)
+				  const TArrayD *xb, const TArrayD *yb,
+				  int axis_difference_detected=0)
 {
   int ok=1;
-  std::cout << "  " << xa->GetSize() << "x" << ya->GetSize() << ", "
-	    << xb->GetSize() << "x" << yb->GetSize() << "\n";
-  if (xa->GetSize()!=xb->GetSize()) {
-    std::cout << " x size difference: " << xa->GetSize() << " vs "
-	      << xb->GetSize() << "\n";
+
+  if ((xa->GetSize()!=xb->GetSize()) || (ya->GetSize()!=yb->GetSize())) {
     ok=0;
   }
-  if (ya->GetSize()!=yb->GetSize()) {
-    std::cout << " y size difference: " << ya->GetSize() << " vs "
-	      << yb->GetSize() << "\n";
-    ok=0;
+  if (axis_difference_detected) {
+    std::cout << "  " << xa->GetSize() << "x" << ya->GetSize() << ", "
+	      << xb->GetSize() << "x" << yb->GetSize() << "\n";
+    if (xa->GetSize()!=xb->GetSize())
+      std::cout << " x size difference: " << xa->GetSize() << " vs "
+		<< xb->GetSize() << "\n";
+    if (ya->GetSize()!=yb->GetSize())
+      std::cout << " y size difference: " << ya->GetSize() << " vs "
+		<< yb->GetSize() << "\n";
   }
 
   for (int iOrd=0; iOrd<2; iOrd++) {
     const TArrayD *oa = (iOrd==0) ? xa : ya;
     const TArrayD *ob = (iOrd==0) ? xb : yb;
-    std::cout << " axis iOrd=" << iOrd << "\n";
+    if (axis_difference_detected) std::cout << " axis iOrd=" << iOrd << "\n";
     for (int i=0; i < oa->GetSize(); i++) {
       if ( oa->At(i) != ob->At(i) ) {
-	std::cout << "value different: " << oa->At(i) << " vs "
-		  << ob->At(i) << "\n";
 	ok=0;
+	if (axis_difference_detected) {
+	  std::cout << "value different: " << oa->At(i) << " vs "
+		    << ob->At(i) << "\n";
+	}
       }
     }
   }
+
+  if (!ok && !axis_difference_detected) {
+    DYTnPEff_helper_compareArrays(xa,ya,xb,yb,1);
+  }
+
   return ok;
 }
 
@@ -161,6 +195,7 @@ int DYTnPEff_t::checkBinning() const
 		<< " vs ih2=" << ih2 << ", h2Va->GetName="
 		<< h2Va[ih2]->GetName() << "\n";
       if (!DYTnPEff_helper_compareArrays(xa,ya,xb,yb)) ok=0;
+      else std::cout << " .. compareArrays ok\n";
     }
   }
   return ok;
@@ -262,7 +297,36 @@ void DYTnPEff_t::printNumbers() const
 
 // -------------------------------------------------------------
 
-int DYTnPEff_t::save(TFile &fout)
+void DYTnPEff_t::printEffRatios(const DYTnPEff_t &e, int compareErrs) const
+{
+  if (!h2Eff_RecoID_Data || !e.h2Eff_RecoID_Data) {
+    std::cout << "printEffRatios: initial check failed\n";
+    return;
+  }
+  std::cout << "comparing Effs : e.g. "
+	    << this->h2Eff_RecoID_Data->GetName() << " vs "
+	    << e.h2Eff_RecoID_Data->GetName() << "\n";
+  for (int iv=0; iv<3; iv++) {
+    const std::vector<TH2D*> *h2va, *h2vb;
+    switch(iv) {
+    case 0: h2va= &h2VReco; h2vb= &e.h2VReco; break;
+    case 1: h2va= &h2VIso; h2vb= &e.h2VIso; break;
+    case 2: h2va= &h2VHLT; h2vb= &e.h2VHLT; break;
+    default: std::cout << "code error\n"; return;
+    }
+    if (!h2va || !h2vb) {
+      std::cout << "h2va or h2vb are null\n";
+      return;
+    }
+    for (unsigned int i=0; i<h2va->size(); i++) {
+      printRatio(h2va->at(i),h2vb->at(i),0,compareErrs);
+    }
+  }
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::save(TFile &fout, TString subdirTag)
 {
   if (!fout.IsOpen()) {
     std::cout << "DYTnPEff_t::save(fout): file is not open\n";
@@ -273,8 +337,8 @@ int DYTnPEff_t::save(TFile &fout)
     return 0;
   }
   fout.cd();
-  fout.mkdir("DYTnPEff");
-  fout.cd("DYTnPEff");
+  fout.mkdir("DYTnPEff"+subdirTag);
+  fout.cd("DYTnPEff"+subdirTag);
   for (unsigned int i=0; i<h2VReco.size(); i++) h2VReco[i]->Write();
   for (unsigned int i=0; i<h2VIso.size(); i++) h2VIso[i]->Write();
   for (unsigned int i=0; i<h2VHLT.size(); i++) h2VHLT[i]->Write();
@@ -311,6 +375,127 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
   if (subdir.Length()) fin.cd();
 
   return updateVectors();
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::load_DYMM_TnP(TFile &fin, int version, TString tag)
+{
+  std::cout << "DYTnPEff_T::load_DYMM_TnP(" << fin.GetName() << ", version="
+	    << version << "\n";
+  if (!fin.IsOpen()) {
+    std::cout << "DYTnPEff_t::load_DYMM_TnP: file is not open\n";
+    return 0;
+  }
+  const int nH2Names=8;
+  const TString h2names_ver1[nH2Names] = {
+    "h_2D_Eff_RecoID_Data", "h_2D_Eff_Iso_Data",
+    "h_2D_Eff_HLTv4p2_Data", "h_2D_Eff_HLTv4p3_Data",
+    "h_2D_Eff_RecoID_MC", "h_2D_Eff_Iso_MC",
+    "h_2D_Eff_HLTv4p2_MC", "h_2D_Eff_HLTv4p3_MC" };
+  const TString h2intNames[nH2Names] = {
+    "h2Eff_RecoID_Data", "h2Eff_Iso_Data",
+    "h2Eff_HLT4p2_Data", "h2Eff_HLT4p3_Data",
+    "h2Eff_RecoID_MC", "h2Eff_Iso_MC",
+    "h2Eff_HLT4p2_MC", "h2Eff_HLT4p3_MC" };
+  const TString *h2names=h2names_ver1;
+
+  h2Eff_RecoID_Data= loadHisto(fin, h2names[0], h2intNames[0]+tag,1,h2dummy);
+  h2Eff_Iso_Data= loadHisto(fin, h2names[1], h2intNames[1]+tag,1,h2dummy);
+  h2Eff_HLT4p2_Data=loadHisto(fin, h2names[2], h2intNames[2]+tag,1,h2dummy);
+  h2Eff_HLT4p3_Data=loadHisto(fin, h2names[3], h2intNames[3]+tag,1,h2dummy);
+  h2Eff_RecoID_MC= loadHisto(fin, h2names[4], h2intNames[4]+tag,1,h2dummy);
+  h2Eff_Iso_MC= loadHisto(fin, h2names[5], h2intNames[5]+tag,1,h2dummy);
+  h2Eff_HLT4p2_MC= loadHisto(fin, h2names[6], h2intNames[6]+tag,1,h2dummy);
+  h2Eff_HLT4p3_MC= loadHisto(fin, h2names[7], h2intNames[7]+tag,1,h2dummy);
+
+  if (!this->updateVectors()) {
+    std::cout << "updateVectors failed\n";
+    return 0;
+  }
+
+  if (!this->ptrsOk()) {
+    std::cout << "pointers failed the check\n";
+    return 0;
+  }
+
+  if (!this->checkBinning()) {
+    std::cout << "unforeseen binning problem\n";
+    return 0;
+  }
+
+  return 1;
+}
+
+// -------------------------------------------------------------
+
+TH2D *LoadAsymmErrGraphAsHisto_ver1(TFile &fin, TString base, int posErr,
+				    TString tag)
+{
+  TH2D* h2=(TH2D*)fin.Get("h_2D_" + base);
+  h2->Reset();
+  h2->SetDirectory(0);
+  if (tag.Length()) {
+    TString oldName=h2->GetName();
+    h2->SetName(oldName+tag);
+  }
+  for (int iEta=0; iEta<5; iEta++) {
+    TString grName= "g_" + base + Form("_EtaBin%d",iEta);
+    TGraphAsymmErrors *gr=(TGraphAsymmErrors*)fin.Get(grName);
+    if (!gr) {
+      std::cout << "failed to load graph " << grName << "\n";
+      return NULL;
+    }
+    TString h1name= grName + tag;
+    h1name.ReplaceAll("g_","h1_");
+    const int plotIt=0;
+    TH1D *h1= convert(gr,h1name,h1name,plotIt,(posErr==1) ? 1 : -1);
+    if (!h1) {
+      std::cout << "failed to convert gr to h1\n";
+      return NULL;
+    }
+    for (int pTbin=1; pTbin<=h1->GetNbinsX(); pTbin++) {
+      h2->SetBinContent(iEta+1, pTbin, h1->GetBinContent(pTbin));
+      h2->SetBinError  (iEta+1, pTbin, h1->GetBinError(pTbin));
+    }
+  }
+  return h2;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::load_DYMM_TnP_asymmEff(TFile &fin, int version, int posErr,
+				       TString tag)
+{
+  int ok=0;
+  if (version==1) {
+    h2Eff_RecoID_Data= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_RecoID_Data",posErr,tag);
+    h2Eff_Iso_Data= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_Iso_Data",posErr,tag);
+    h2Eff_HLT4p2_Data= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_HLTv4p2_Data",posErr,tag);
+    h2Eff_HLT4p3_Data= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_HLTv4p3_Data",posErr,tag);
+
+    h2Eff_RecoID_MC= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_RecoID_MC",posErr,tag);
+    h2Eff_Iso_MC= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_Iso_MC",posErr,tag);
+    h2Eff_HLT4p2_MC= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_HLTv4p2_MC",posErr,tag);
+    h2Eff_HLT4p3_MC= LoadAsymmErrGraphAsHisto_ver1(fin,"Eff_HLTv4p3_MC",posErr,tag);
+    ok=1;
+  }
+
+  if (ok) {
+    if (!this->updateVectors()) {
+      std::cout << "updateVectors failed\n";
+      return 0;
+    }
+    if (!this->ptrsOk()) {
+      std::cout << "pointers failed the check\n";
+      return 0;
+    }
+    if (!this->checkBinning()) {
+      std::cout << "unforeseen binning problem\n";
+      return 0;
+    }
+  }
+  return ok;
 }
 
 // -------------------------------------------------------------

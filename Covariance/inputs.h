@@ -49,7 +49,10 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
 
 void printHisto(const TH1D* h1, int extraRange=0);
 void printHisto(const TH2D* h1);
-void printRatio(const TH1D* h1a, const TH1D* h1b, int extraRange=0);
+void printRatio(const TH1D* h1a, const TH1D* h1b, int extraRange=0,
+		int includeErr=0);
+void printRatio(const TH2D* h2a, const TH2D* h2b, int extraRange=0,
+		int includeErr=0);
 void printField(TString keyName);
 
 inline void plotHisto(TH1* h1, TString cName, int logX=0, int logY=0, TString drawOpt="hist", TString explain="")
@@ -79,7 +82,7 @@ TH1D* perMassBinWidth(const TH1D* h1, int prnBinW=0);
 TH1D* flattenHisto(const TH2D *h2, TString setName);
 
 TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
-	      int plotIt=0);
+	      int plotIt=0, int posNegErrs=0);
 
 // -----------------------------------------------------------
 
@@ -315,6 +318,34 @@ void randomizeWithinErr(const TH2D *hSrc, TH2D *hDest, int nonNegative,
   }
 }
 
+// -----------------------------------------------------------
+
+inline
+int randomizeWithinPosNegErr(const TH2D *h2_errPos,
+			      const TH2D *h2_errNeg,
+			      TH2D *h2Dest, int bound01=0)
+{
+  if (!h2_errPos || !h2_errNeg || !h2Dest) {
+    std::cout << "randomizeWithinPosNegErr: Null ptrs detected\n";
+    return 0;
+  }
+  for (int ibin=1; ibin<=h2Dest->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2Dest->GetNbinsY(); jbin++) {
+      double r=gRandom->Gaus(0.,1.);
+      double err=0;
+      if (r<0) err= h2_errNeg->GetBinError(ibin,jbin);
+      else if (r>0) err= h2_errPos->GetBinError(ibin,jbin);
+      double v= h2_errPos->GetBinContent(ibin,jbin) + r * err;
+      if (bound01) {
+	if (v<0.) v=0.;
+	else if (v>1.) v=1.;
+      }
+      h2Dest->SetBinContent(ibin,jbin, v);
+      h2Dest->SetBinError  (ibin,jbin, 0.);
+    }
+  }
+  return 1;
+}
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------
