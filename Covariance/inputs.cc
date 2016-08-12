@@ -1,5 +1,6 @@
 #include "inputs.h"
 #include <sstream>
+#include <algorithm>
 
 // --------------------------------------------------------------
 
@@ -750,5 +751,44 @@ void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout)
 }
 
 // ---------------------------------------------------------
+// ---------------------------------------------------------
+
+template<class T>
+struct CompareIndicesByVectorValues {
+  const std::vector<T> *_values;
+  CompareIndicesByVectorValues(const std::vector<T> *v) : _values(v) {}
+  bool operator()(const int &i, const int &j)
+  { return _values->at(i) > _values->at(j); }
+};
+
+// ----------------------------
+
+template<class T>
+std::vector<int> getSortDescendingIdxT(const std::vector<T> &vec)
+{
+  std::vector<int> idx;
+  for (unsigned int i=0; i<vec.size(); i++) idx.push_back(i);
+  CompareIndicesByVectorValues<T> vecCmp(&vec);
+  std::sort(idx.begin(),idx.end(),vecCmp);
+  return idx;
+}
+
+// ---------------------------------------------------------
+
+std::vector<int> getSortDescendingIdx(const std::vector<double> &vec)
+{ return getSortDescendingIdxT(vec); }
+std::vector<int> getSortDescendingIdx(const std::vector<float> &vec)
+{ return getSortDescendingIdxT(vec); }
+
+// ---------------------------------------------------------
+
+int orderChanged(const std::vector<int> &idx) {
+  int yes=0;
+  for (unsigned int i=1; !yes && (i<idx.size()); i++) {
+    if (idx[i-1]+1!=idx[i]) yes=1;
+  }
+  return yes;
+}
+
 // ---------------------------------------------------------
 

@@ -427,6 +427,35 @@ TCanvas* plotHistoSame(const TH1D *h1, TString canvName, TString drawOpt,
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
+template<class T>
+inline
+void printVec(const char *msg, const std::vector<T> &vec)
+{
+  std::cout << msg << " [" << vec.size() << "]: ";
+  for (unsigned int i=0; i<vec.size(); i++) std::cout << " " << vec[i];
+  std::cout << "\n";
+}
+
+// -----------------------------------
+
+template<class T>
+inline
+void printVec(const char *msg, const std::vector<T> &vec, const std::vector<int> &idx)
+{
+  std::cout << msg << " (sorted) [" << vec.size() << "]: ";
+  for (unsigned int i=0; i<vec.size(); i++) std::cout << " " << vec[idx[i]];
+  std::cout << "\n";
+}
+
+// -----------------------------------
+
+std::vector<int> getSortDescendingIdx(const std::vector<double> &vec);
+std::vector<int> getSortDescendingIdx(const std::vector<float> &vec);
+int orderChanged(const std::vector<int> &idx);
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
 
 inline
 void HERE(const char *msg)
