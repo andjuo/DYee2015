@@ -25,7 +25,9 @@ class DYmm13TeV_t {
 public :
   //TTree          *fChain;   //!pointer to the analyzed TTree or TChain
   TChain           *fChain;
-   Int_t           fCurrent; //!current Tree number in a TChain
+  TTree            *fOutTree; // output tree
+  TFile            *fOutFile; // output file
+  Int_t           fCurrent; //!current Tree number in a TChain
 
    // Declaration of leaf types
    TLorentzVector  *Momentum_Reco_Lead_BeforeMomCorr;
@@ -73,6 +75,11 @@ public :
    virtual Bool_t   Notify();
    virtual void     Show(Long64_t entry = -1);
 
+   // Methods for file creation
+   void Zero();
+   int CreateNew(TString fname, TString treeName);
+   void Fill() { fOutTree->Fill(); }
+
    // Added methods
    UInt_t GetEntries() { return fChain->GetEntries(); }
    void DeactivateBranches();
@@ -81,11 +88,7 @@ public :
    void ActivateBranches(TString brNames);
 
    friend
-     std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj) {
-     if (out==std::cout) obj.Show();
-     else out << "cannot print pf_gjet_v3\n";
-     return out;
-   }
+     std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj);
 };
 
 #endif
@@ -93,18 +96,26 @@ public :
 #ifdef DYmm13TeV_t_cxx
 DYmm13TeV_t::DYmm13TeV_t(TString fname, TString treeName) :
   fChain(new TChain(treeName)),
+  fOutTree(NULL), fOutFile(NULL),
   fCurrent(-1)
 {
   if (fname.Length()==0) return;
-  if (!this->Init(fname)) {
+  if (fname.Index("<new>")!=-1) {
+    if (!this->CreateNew(fname,treeName)) {
+      std::cout << "CreateNew failed in constructor" << std::endl;
+    }
+  }
+  else if (!this->Init(fname)) {
     std::cout << "Initialization failed in constructor" << std::endl;
   }
 }
 
 DYmm13TeV_t::~DYmm13TeV_t()
 {
-   if (!fChain) return;
-   delete fChain->GetCurrentFile();
+  if (fOutTree) fOutTree->Write();
+  if (fOutFile && fOutFile->IsOpen()) fOutFile->Close();
+  if (!fChain) return;
+  delete fChain->GetCurrentFile();
 }
 
 Int_t DYmm13TeV_t::GetEntry(Long64_t entry)
@@ -142,6 +153,10 @@ int DYmm13TeV_t::Init(TString fname)
     while (!ss.eof()) {
       ss >> fn;
       std::cout << "adding file <" << fn << ">\n";
+      if (fn=="<new>") {
+	std::cout << "keyword 'new' detected. Should call CreateNew(fname)\n";
+	return 0;
+      }
       fChain->Add(fn);
     }
   }
