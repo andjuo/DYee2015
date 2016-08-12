@@ -4,7 +4,9 @@
 #include <TLorentzVector.h>
 #include <TH2D.h>
 #include <stdarg.h>
+#include <TMath.h>
 #include <iostream>
+#include <cmath>
 
 namespace DYtools {
 
@@ -126,6 +128,26 @@ int compareBinning(int count, const TH2D* h2a, ...) {
   }
   va_end(vl);
   return ok;
+}
+
+// -------------------------------------------------------------
+
+inline
+double deltaPhi(double phi1, double phi2) {
+  double dphi = fabs(phi1 - phi2);
+  if(dphi >= TMath::Pi()) dphi = TMath::TwoPi() - dphi;
+  return dphi;
+}
+
+// -------------------------------------------------------------
+
+inline
+double deltaR(double eta1, double phi1, double eta2, double phi2)
+{
+  double dEta = fabs(eta1-eta2);
+  double dPhi = deltaPhi(phi1, phi2);
+  double dr = sqrt(dEta*dEta + dPhi*dPhi);
+  return dr;
 }
 
 // -------------------------------------------------------------
