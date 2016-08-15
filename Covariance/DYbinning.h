@@ -34,6 +34,10 @@ const Double_t minMass= massBinEdges[0];
 const Double_t maxMass= massBinEdges[nMassBins];
 
 
+// electron data samples
+const int nEEDatasetMassBins=11;
+const int eeDatasetMass[nEEDatasetMassBins+1] = {10,50,100,200,400,500,700,800,
+						 1000,1500,2000,3000};
 
 // -------------------------------------------------------------
 
@@ -79,6 +83,26 @@ int InAcceptance_mm(const TLorentzVector *v1, const TLorentzVector *v2) {
   if ((fabs(v1->Eta())<2.4) && (fabs(v2->Eta())<2.4)) {
     if (((v1->Pt() > 22.) && (v2->Pt() > 10.)) ||
 	((v1->Pt() > 10.) && (v2->Pt() > 22.)))
+      return 1;
+  }
+  return 0;
+}
+
+// -------------------------------------------------------------
+
+inline
+int InECALSCGap(double eta)
+{ return ((fabs(eta)>1.4442) && (fabs(eta)<1.566)) ? 1:0; }
+
+// -------------------------------------------------------------
+
+inline
+int InAcceptance_ee(const TLorentzVector *v1, const TLorentzVector *v2,
+		    int testSCGap=0) {
+  if ((fabs(v1->Eta())<2.5) && (fabs(v2->Eta())<2.5) &&
+      (!testSCGap || (!InECALSCGap(v1->Eta()) && !InECALSCGap(v1->Eta())))) {
+    if (((v1->Pt() > 30.) && (v2->Pt() > 10.)) ||
+	((v1->Pt() > 10.) && (v2->Pt() > 30.)))
       return 1;
   }
   return 0;

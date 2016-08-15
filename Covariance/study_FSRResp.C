@@ -15,13 +15,16 @@ typedef enum { _mu76Xfsr=0,
 	       _mu76XdetRes4p2KL=4,
 	       _mu76XdetRes4p3KL=5,
 	       _elRidhiFSR=6,
-	       _elRidhiDetRes=7 } TStudyCase_t;
+	       _elRidhiDetRes=7,
+	       _elV2SkimFSR=8,
+	       _elV2SkimDetRes=9
+} TStudyCase_t;
 
 typedef enum { _unfoldBayes=0, _unfoldInvert } TUnfoldMethod_t;
 
 // --------------------------------------------------------------------
 
-void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0,
+void study_FSRResp(int nSample, int studyCase=_elV2SkimFSR, int doSave=0,
 		   int nIters_user=-1)
 {
   if (0) {
@@ -176,6 +179,66 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0,
     nameh2cov="";
     outDirTag="_elDetRes";
   }
+  else if (studyCase==_elV2SkimFSR) {
+    iLepton=1;
+    std::cout << "studyCase= _elV2SkimFSR\n";
+    baselineTest=0;
+    mcScale=2316.97;
+    // measured postFSR and preFSR distributions
+    fnameMain="cs_DYee_13TeV_El2.root";
+    nameh1preUnfData="h1UnfRhoEffAcc";
+    nameh1unfData="h1PreFSR";
+    // FSR response matrix
+    fnameResp=fnameMain;
+    nameResp="FSRRes";
+    TString simFName="dyee_test_El2skim.root";
+    simFName="dyee_test_El2skim_excludeGap.root";
+    if (0) { // closure
+      mcScale=1.;
+      fnameResp=simFName;
+      nameResp="rooUnf_fsrResp";
+    }
+    nIters=15;
+    // simulated distributions
+    fnameMC=simFName;
+    nameh1measMC="h1_postFsr_Mweighted";
+    nameh1trueMC="h1_preFsr_Mweighted";
+    nameh2migrationMatrix="";
+    hasOverflows=0;
+    // response matrix randomization
+    covFName="";
+    nameh2cov="";
+    outDirTag="_elV2SkimFSR";
+  }
+  else if (studyCase==_elV2SkimDetRes) {
+    iLepton=1;
+    std::cout << "studyCase= _elV2SkimDetRes\n";
+    baselineTest=0;
+    mcScale=2316.97;
+    // measured postFSR and preFSR distributions
+    fnameMain="cs_DYee_13TeV_El2.root";
+    nameh1preUnfData="h1Signal";
+    nameh1unfData="h1Unf";
+    // FSR response matrix
+    fnameResp=fnameMain;
+    nameResp="detRes";
+    if (0) { // closure
+      mcScale=1.;
+      fnameResp="dyee_test_RECO_El2skim.root";
+      nameResp="rooUnf_detResRespPU";
+    }
+    nIters=15;
+    // simulated distributions
+    fnameMC="dyee_test_RECO_El2skim.root";
+    nameh1measMC="h1recoSel_MWPU";
+    nameh1trueMC="h1_postFsrInAccSel_MWPU";
+    nameh2migrationMatrix="";
+    hasOverflows=0;
+    // response matrix randomization
+    covFName="";
+    nameh2cov="";
+    outDirTag="_elV2SkimDetRes";
+  }
 
   if (nIters_user>0) {
     std::cout << "overriding the number of iterations to "<<nIters_user << "\n";
@@ -222,6 +285,24 @@ void study_FSRResp(int nSample, int studyCase=_mu76Xfsr, int doSave=0,
     return;
   }
   rooResp->UseOverflow(false);
+
+  // Check distributions of the response objects
+  if (1) {
+    TH1D *h1measResp= cloneHisto((TH1D*)rooResp->Hmeasured(),"h1measResp","measResp");
+    TH1D *h1trueResp= cloneHisto((TH1D*)rooResp->Htruth(),"h1trueResp","trueResp");
+    histoStyle(h1measResp,kBlue,5,1);
+    histoStyle(h1trueResp,kBlue,5,1);
+    plotHisto(h1measMC,"cMeasMCCheck",1,1,"LPE","h1measMC");
+    plotHistoSame(h1measResp,"cMeasMCCheck","LPE","h1measResp");
+    plotHisto(h1trueMC,"cTrueMCCheck",1,1,"LPE","h1trueMC");
+    plotHistoSame(h1trueResp,"cTrueMCCheck","LPE","h1trueResp");
+    std::cout << "integrals of measMC and measResp: " << h1measMC->Integral()
+	      << " " << h1measResp->Integral() << "\n";
+    printRatio(h1measMC,h1measResp);
+    std::cout << "integrals of trueMC and trueResp: " << h1trueMC->Integral()
+	      << " " << h1trueResp->Integral() << "\n";
+    printRatio(h1trueMC,h1trueResp);
+  }
 
   // Check MC unfolding on MC
   RooUnfold *fsrBayesMC=NULL;

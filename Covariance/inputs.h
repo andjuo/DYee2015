@@ -24,7 +24,7 @@
 // -----------------------------------------------------------
 
 typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verEl1=200,
-	       _verEl2=201 } TVersion_t;
+	       _verEl2=201, _verEl2skim=202 } TVersion_t;
 
 TString versionName(TVersion_t);
 

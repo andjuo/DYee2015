@@ -4,14 +4,15 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 
-DYTnPEff_t::DYTnPEff_t() :
+DYTnPEff_t::DYTnPEff_t(int setElChannel) :
 	     h2Eff_RecoID_Data(NULL), h2Eff_Iso_Data(NULL),
 	     h2Eff_HLT4p2_Data(NULL), h2Eff_HLT4p3_Data(NULL),
 	     h2Eff_RecoID_MC(NULL), h2Eff_Iso_MC(NULL),
 	     h2Eff_HLT4p2_MC(NULL), h2Eff_HLT4p3_MC(NULL),
 	     h2VReco(), h2VIso(), h2VHLT(),
 	     //fDefVal(1.), fDefErr(0.),
-	     fEffReco(0.), fEffIso(0.), fEffHlt1(0.), fEffHlt2(0.)
+	     fEffReco(0.), fEffIso(0.), fEffHlt1(0.), fEffHlt2(0.),
+	     fElChannel(setElChannel)
 {
 }
 
@@ -24,7 +25,8 @@ DYTnPEff_t::DYTnPEff_t(const DYTnPEff_t &e, TString tag) :
 	     h2Eff_HLT4p2_MC(NULL), h2Eff_HLT4p3_MC(NULL),
 	     h2VReco(), h2VIso(), h2VHLT(),
 	     //fDefVal(e.fDefVal), fDefErr(e.fDefErr),
-	     fEffReco(0.), fEffIso(0.), fEffHlt1(0.), fEffHlt2(0.)
+	     fEffReco(0.), fEffIso(0.), fEffHlt1(0.), fEffHlt2(0.),
+	     fElChannel(0)
 {
   if (!this->assign(e,tag)) {
     std::cout << "error in clone constructor\n";
@@ -69,6 +71,7 @@ int DYTnPEff_t::assign(const DYTnPEff_t &e, TString tag)
 			      "h2Eff_HLT4p2_MC"+tag);
   h2Eff_HLT4p3_MC= cloneHisto(e.h2Eff_HLT4p3_MC, "h2Eff_HLT4p3_MC"+tag,
 			      "h2Eff_HLT4p3_MC"+tag);
+  fElChannel= e.fElChannel;
   return updateVectors();
 }
 
@@ -143,7 +146,7 @@ int DYTnPEff_helper_compareArrays(const TArrayD *xa, const TArrayD *ya,
     const TArrayD *ob = (iOrd==0) ? xb : yb;
     if (axis_difference_detected) std::cout << " axis iOrd=" << iOrd << "\n";
     for (int i=0; i < oa->GetSize(); i++) {
-      if ( oa->At(i) != ob->At(i) ) {
+      if ( fabs(oa->At(i) - ob->At(i)) > 1e-3 ) {
 	ok=0;
 	if (axis_difference_detected) {
 	  std::cout << "value different: " << oa->At(i) << " vs "
@@ -209,15 +212,22 @@ void DYTnPEff_t::printNumbers() const
   h2Va.push_back(h2Eff_RecoID_Data);
   h2Va.push_back(h2Eff_Iso_Data);
   h2Va.push_back(h2Eff_HLT4p2_Data);
-  h2Va.push_back(h2Eff_HLT4p3_Data);
+  if (!fElChannel) h2Va.push_back(h2Eff_HLT4p3_Data);
   h2Vb.push_back(h2Eff_RecoID_MC);
   h2Vb.push_back(h2Eff_Iso_MC);
   h2Vb.push_back(h2Eff_HLT4p2_MC);
-  h2Vb.push_back(h2Eff_HLT4p3_MC);
-  labelV.push_back("RECO+ID");
-  labelV.push_back("ISO");
-  labelV.push_back("HLT v.4p2");
-  labelV.push_back("HLT v.4p3");
+  if (!fElChannel) h2Vb.push_back(h2Eff_HLT4p3_MC);
+  if (!fElChannel) {
+    labelV.push_back("RECO+ID");
+    labelV.push_back("ISO");
+    labelV.push_back("HLT v.4p2");
+    labelV.push_back("HLT v.4p3");
+  }
+  else {
+    labelV.push_back("RECO");
+    labelV.push_back("ID");
+    labelV.push_back("HLT");
+  }
 
   std::ofstream fout("tnpEff.tex");
   if (!fout.is_open()) {
@@ -362,15 +372,19 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
   }
   if (subdir.Length() && (subdir[subdir.Length()-1]!='/')) subdir.Append("/");
 
-  h2Eff_RecoID_Data= loadHisto(fin,subdir+"h2Eff_RecoID_Data"+tag,"h2Eff_RecoID_Data"+tag,1,h2dummy);
-  h2Eff_Iso_Data= loadHisto(fin,subdir+"h2Eff_Iso_Data"+tag,"h2Eff_Iso_Data"+tag,1,h2dummy);
-  h2Eff_HLT4p2_Data= loadHisto(fin,subdir+"h2Eff_HLT4p2_Data"+tag,"h2Eff_HLT4p2_Data"+tag,1,h2dummy);
-  h2Eff_HLT4p3_Data= loadHisto(fin,subdir+"h2Eff_HLT4p3_Data"+tag,"h2Eff_HLT4p3_Data"+tag,1,h2dummy);
+  const TString mmNames[4]= { "h2Eff_RecoID", "h2Eff_Iso", "h2Eff_HLT4p2", "h2Eff_HLT4p3" };
+  const TString eeNames[4] = { "h2Eff_Reco", "h2Eff_ID", "h2Eff_Trig", "h2Eff_TrigUnneeded" };
+  const TString *hnames= (!fElChannel) ? mmNames : eeNames;
 
-  h2Eff_RecoID_MC= loadHisto(fin,subdir+"h2Eff_RecoID_MC"+tag,"h2Eff_RecoID_MC"+tag,1,h2dummy);
-  h2Eff_Iso_MC= loadHisto(fin,subdir+"h2Eff_Iso_MC"+tag,"h2Eff_Iso_MC"+tag,1,h2dummy);
-  h2Eff_HLT4p2_MC= loadHisto(fin,subdir+"h2Eff_HLT4p2_MC"+tag,"h2Eff_HLT4p2_MC"+tag,1,h2dummy);
-  h2Eff_HLT4p3_MC= loadHisto(fin,subdir+"h2Eff_HLT4p3_MC"+tag,"h2Eff_HLT4p3_MC"+tag,1,h2dummy);
+  h2Eff_RecoID_Data= loadHisto(fin,subdir+hnames[0]+"_Data"+tag,hnames[0]+"_Data"+tag,1,h2dummy);
+  h2Eff_Iso_Data= loadHisto(fin,subdir+hnames[1]+"_Data"+tag,hnames[1]+"_Data"+tag,1,h2dummy);
+  h2Eff_HLT4p2_Data= loadHisto(fin,subdir+hnames[2]+"_Data"+tag,hnames[2]+"_Data"+tag,1,h2dummy);
+  h2Eff_HLT4p3_Data= loadHisto(fin,subdir+hnames[3]+"_Data"+tag,hnames[3]+"_Data"+tag,1,h2dummy);
+
+  h2Eff_RecoID_MC= loadHisto(fin,subdir+hnames[0]+"_MC"+tag,hnames[0]+"_MC"+tag,1,h2dummy);
+  h2Eff_Iso_MC= loadHisto(fin,subdir+hnames[1]+"_MC"+tag,hnames[1]+"_MC"+tag,1,h2dummy);
+  h2Eff_HLT4p2_MC= loadHisto(fin,subdir+hnames[2]+"_MC"+tag,hnames[2]+"_MC"+tag,1,h2dummy);
+  h2Eff_HLT4p3_MC= loadHisto(fin,subdir+hnames[3]+"_MC"+tag,hnames[3]+"_MC"+tag,1,h2dummy);
 
   if (subdir.Length()) fin.cd();
 
@@ -378,6 +392,8 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
 }
 
 // -------------------------------------------------------------
+
+// Load Kyeongpil Lee files
 
 int DYTnPEff_t::load_DYMM_TnP(TFile &fin, int version, TString tag)
 {

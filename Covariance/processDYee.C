@@ -14,32 +14,45 @@ void prepareHisto(TH1D *h1) {
 }
 
 // --------------------------------------------------------------
+// --------------------------------------------------------------
 
-void processDYmm(Int_t maxEntries=-1)
+
+void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
 {
   std::cout << "DY range=" << DYtools::minMass << " .. " << DYtools::maxMass << "\n";
 
-  TVersion_t inpVersion=_verMu1;
-  inpVersion=_verMu76X;
+  TVersion_t inpVersion=_verEl2skim;
+  const int testSC=1;
 
-  if (inpVersion==_verMu76X) {
-    if (DYtools::nMassBins!=DYtools::nMassBins43) {
-      std::cout << "a potential DYbinning.h problem\n";
-      return;
+  if (DYtools::nMassBins!=DYtools::nMassBins43) {
+    std::cout << "a potential DYbinning.h problem\n";
+    return;
+  }
+
+  TString srcPath="/mnt/sdb/andriusj/v2ee-skim1-20160812/";
+
+  TString dataFName;
+  if (includeOnlyRange.Length()>0) {
+    std::stringstream ss(includeOnlyRange.Data());
+    TString rStr;
+    while (!ss.eof()) {
+      ss >> rStr;
+      if (rStr.Length()) {
+	std::cout << "rStr=" << rStr << "\n";
+	dataFName.Append(srcPath + Form("DYEE_M%s_v1.root ",rStr.Data()));
+      }
     }
   }
-
-  TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
-  srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
-  TString dataFName=srcPath + "Input3/ROOTFile_ntuple_CovarianceMatrixInput.root";
-
-  if (inpVersion==_verMu76X) {
-    srcPath="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
-    dataFName=srcPath + "Input3/ROOTFile_Input_CovarianceMatrix.root";
+  else {
+    for (int im=0; im<DYtools::nEEDatasetMassBins; im++) {
+      dataFName.Append(srcPath + Form("DYEE_M%dto%d_v1.root ",
+		      DYtools::eeDatasetMass[im],DYtools::eeDatasetMass[im+1]));
+    }
   }
+  //std::cout << "dataFName=<" << dataFName << ">\n";
 
   DYmm13TeV_t data(dataFName);
-  data.DeactivateBranches();
+  //data.DeactivateBranches(); // does not work
   data.ActivateBranches("Momentum_postFSR_Lead  Momentum_postFSR_Sub  Momentum_preFSR_Lead  Momentum_preFSR_Sub  Weight_Norm  Weight_Gen Weight_PU");
   data.ActivateBranches("Flag_EventSelection");
 
@@ -60,6 +73,8 @@ void processDYmm(Int_t maxEntries=-1)
 			   DYtools::massBinEdges);
   TH1D *h1preFsr_MW= new TH1D("h1_preFsr_Mweighted", "preFSR;M_{gen,preFSR} [GeV];weighted count", DYtools::nMassBins,
 			   DYtools::massBinEdges);
+  TH1D *h1preFsrTest_MW= new TH1D("h1_preFsrTest_Mweighted", "preFSR test version (different from preFSR);M_{gen,preFSR} [GeV];weighted count", DYtools::nMassBins,
+			   DYtools::massBinEdges);
   prepareHisto(h1postFsrInAccSel_M);
   prepareHisto(h1postFsrInAccSel_MW);
   prepareHisto(h1postFsrInAccSel_MWPU);
@@ -70,15 +85,16 @@ void processDYmm(Int_t maxEntries=-1)
   prepareHisto(h1postFsr_MW);
   prepareHisto(h1preFsr_M);
   prepareHisto(h1preFsr_MW);
+  prepareHisto(h1preFsrTest_MW);
 
   TH2D* h2FSRmig= new TH2D("h2FSRmig","FSR migration", DYtools::nMassBins, DYtools::massBinEdges, DYtools::nMassBins, DYtools::massBinEdges);
   h2FSRmig->Sumw2();
-  RooUnfoldResponse fsrResp(h1postFsr_MW,h1preFsr_MW,h2FSRmig,"rooUnf_fsrResp","fsrResp;M_{#mu#mu} [GeV];FSR unfolded yield");
+  RooUnfoldResponse fsrResp(h1postFsr_MW,h1preFsr_MW,h2FSRmig,"rooUnf_fsrResp","fsrResp;M_{ee} [GeV];FSR unfolded yield");
   fsrResp.UseOverflow();
 
   TH2D* h2effAccFSRmig= new TH2D("h2effAccFSRmig","eff x Acc x FSR migration", DYtools::nMassBins, DYtools::massBinEdges, DYtools::nMassBins, DYtools::massBinEdges);
   h2effAccFSRmig->Sumw2();
-  RooUnfoldResponse effAccFsrResp(h1postFsrInAccSel_MW,h1preFsr_MW,h2effAccFSRmig,"rooUnf_effAccFsrResp","effAccFsrResp;M_{#mu#mu} [GeV];eff Acc FSR unfolded yield");
+  RooUnfoldResponse effAccFsrResp(h1postFsrInAccSel_MW,h1preFsr_MW,h2effAccFSRmig,"rooUnf_effAccFsrResp","effAccFsrResp;M_{ee} [GeV];eff Acc FSR unfolded yield");
   effAccFsrResp.UseOverflow();
 
 
@@ -92,11 +108,15 @@ void processDYmm(Int_t maxEntries=-1)
       std::cout << "debug run\n";
       break;
     }
+
     double w= data.Weight_Norm * data.Weight_Gen;
     if (iEntry<100) std::cout << "w=" << w << ": weight_norm=" << data.Weight_Norm << ", gen=" << data.Weight_Gen << "\n";
     double mPostFsr= (*data.Momentum_postFSR_Lead + *data.Momentum_postFSR_Sub).M();
     double mPreFsr= (*data.Momentum_preFSR_Lead + *data.Momentum_preFSR_Sub).M();
-    if (DYtools::InAcceptance_mm(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub)) {
+
+    //std::cout << "momentum postFSR: " << data.Momentum_postFSR_Lead << ", " << data.Momentum_postFSR_Sub << "\n";
+    //std::cout << "mPostFsr=" << mPostFsr << ", mPreFsr=" << mPreFsr << "\n";
+    if (DYtools::InAcceptance_ee(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,testSC)) {
       if (data.Flag_EventSelection) {
 	h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
 	h1postFsrInAccSel_MW->Fill( mPostFsr, w );
@@ -110,6 +130,7 @@ void processDYmm(Int_t maxEntries=-1)
     h1postFsr_MW->Fill( mPostFsr, w );
     h1preFsr_M->Fill( mPreFsr, 1. );
     h1preFsr_MW->Fill( mPreFsr, w );
+    if (data.Flag_EventSelection) h1preFsrTest_MW->Fill( mPreFsr, w );
     h2FSRmig->Fill( mPostFsr, mPreFsr, w );
 
     if (0) {
@@ -130,7 +151,7 @@ void processDYmm(Int_t maxEntries=-1)
       fsrResp.Fill(mPostFsr,mPreFsr,w);
     }
 
-    int sel=(DYtools::InAcceptance_mm(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub) && data.Flag_EventSelection && DYtools::InsideMassRange(mPostFsr)) ? 1:0;
+    int sel=(DYtools::InAcceptance_ee(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,testSC) && data.Flag_EventSelection && DYtools::InsideMassRange(mPostFsr)) ? 1:0;
     if (sel) h2effAccFSRmig->Fill(mPostFsr,mPreFsr,w);
     if ( ! DYtools::InsideMassRange(mPreFsr) && sel ) {
       effAccFsrResp.Fake(mPostFsr,w);
@@ -143,6 +164,45 @@ void processDYmm(Int_t maxEntries=-1)
     }
   }
 
+  // plots
+
+  TCanvas *cPreFSR_WG=NULL, *cPreFSR_WGN=NULL;
+  if (data.fH1PreFSR_WG.size()) {
+    for (int iloop=0; iloop<2; iloop++) {
+      std::vector<TH1D*> *h1V=
+	(iloop==0) ? &data.fH1PreFSR_WG : &data.fH1PreFSR_WGN;
+      TString cNameLoop= (iloop==0) ? "cPreFSR_WG" : "cPreFSR_WGN";
+      for (unsigned int i=0; i<h1V->size(); i+=2) {
+	h1V->at(i)->SetLineColor(kRed);
+	h1V->at(i)->SetMarkerColor(kRed);
+      }
+      TCanvas **c= (iloop==0) ? &cPreFSR_WG : &cPreFSR_WGN;
+      (*c)=plotHisto(h1V->at(0),cNameLoop,1,1,"hist", Form("M%dto%d",
+		     DYtools::eeDatasetMass[0],DYtools::eeDatasetMass[1]));
+      for (unsigned int i=1; i<h1V->size(); i++) {
+	plotHistoSame(h1V->at(i),cNameLoop,"hist", Form("M%dto%d",
+		      DYtools::eeDatasetMass[i],DYtools::eeDatasetMass[i+1]));
+      }
+    }
+  }
+
+  if (0) {
+    histoStyle(h1postFsr_MW,kGreen+1,24);
+    histoStyle(h1preFsrTest_MW,kRed,5);
+    std::cout << "preFsrTest_MW->Integral()=" << h1preFsrTest_MW->Integral() << "\n";
+    plotHisto(h1postFsr_MW,"cPreFsrTEST",1,1,"LPE","postFsr");
+    plotHistoSame(h1preFsr_MW,"cPreFsrTEST","LPE","preFsr");
+    plotHistoSame(h1preFsrTest_MW,"cPreFsrTEST","LPE","preFsrTEST");
+  }
+
+  TCanvas *cPreFSRcheck=NULL;
+  if (data.fH1PreFSR_binned) {
+    histoStyle(data.fH1PreFSR_binned,kOrange,5);
+    cPreFSRcheck=plotHisto(data.fH1PreFSR_binned,"cPreFsrEmbeded",1,1,"LPE","preFSR embeded");
+    plotHistoSame(h1preFsr_MW,"cPreFsrEmbeded","LPE","preFsr_MW");
+    printRatio(data.fH1PreFSR_binned,h1preFsr_MW);
+  }
+
   RooUnfoldBayes bayesFSR( &fsrResp, h1postFsr_MW, 4 );
   TH1D *h1preFsrUnf= (TH1D*) bayesFSR.Hreco()->Clone("h1preFsrUnf");
   h1preFsrUnf->SetTitle("unfolded postFSR->preFSR");
@@ -150,8 +210,8 @@ void processDYmm(Int_t maxEntries=-1)
   histoStyle(h1preFsrUnf,kRed,24);
   h1preFsrUnf->GetXaxis()->SetMoreLogLabels();
   h1preFsrUnf->GetXaxis()->SetNoExponent();
-  TCanvas *cFSRTest=plotHisto(h1preFsrUnf,"cFSRTest",1,1,"LPE1");
-  plotHistoSame(h1preFsr_MW,"cFSRTest","LPE");
+  TCanvas *cFSRTest=plotHisto(h1preFsrUnf,"cFSRTest",1,1,"LPE1","BayesUnf4");
+  plotHistoSame(h1preFsr_MW,"cFSRTest","LPE","preFsr_MW");
 
   RooUnfoldBayes bayesEffAccFsr( &effAccFsrResp, h1postFsrInAccSel_MW, 4 );
   TH1D *h1EffAccFsrUnf= (TH1D*) bayesEffAccFsr.Hreco()->Clone("h1EffAccFsrUnf");
@@ -160,46 +220,51 @@ void processDYmm(Int_t maxEntries=-1)
   histoStyle(h1EffAccFsrUnf,kRed,24);
   h1EffAccFsrUnf->GetXaxis()->SetMoreLogLabels();
   h1EffAccFsrUnf->GetXaxis()->SetNoExponent();
-  TCanvas *cScaleToPreFsrTest= plotHisto(h1EffAccFsrUnf,"cScaleToPreFsrTest",1,1,"LPE1");
+  TCanvas *cScaleToPreFsrTest= plotHisto(h1EffAccFsrUnf,"cScaleToPreFsrTest",1,1,"LPE1","BayesUnf4");
   histoStyle(h1preFsr_MW,kBlue,5);
-  plotHistoSame(h1preFsr_MW,"cScaleToPreFsrTest","LPE");
+  plotHistoSame(h1preFsr_MW,"cScaleToPreFsrTest","LPE","preFsr_MW");
 
   TH1D* h1Eff=(TH1D*)h1postFsrInAccSel_MW->Clone("h1Eff");
   h1Eff->SetDirectory(0);
   if (!h1Eff->GetSumw2()) h1Eff->Sumw2();
-  h1Eff->SetTitle("Efficiency;M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAcc_Sel/postFSR_inAcc");
+  h1Eff->SetTitle("Efficiency;M_{ee,GEN postFSR} [GeV];postFSR_inAcc_Sel/postFSR_inAcc");
   h1Eff->Divide(h1postFsrInAccSel_MW,h1postFsrInAcc_MW,1,1,"B");
 
   TH1D* h1EffPU=(TH1D*)h1postFsrInAccSel_MWPU->Clone("h1EffPU");
   h1EffPU->SetDirectory(0);
   if (!h1EffPU->GetSumw2()) h1EffPU->Sumw2();
-  h1EffPU->SetTitle("Efficiency (wPU);M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAcc_Sel(wPU)/postFSR_inAcc(wPU)");
+  h1EffPU->SetTitle("Efficiency (wPU);M_{ee,GEN postFSR} [GeV];postFSR_inAcc_Sel(wPU)/postFSR_inAcc(wPU)");
   h1EffPU->Divide(h1postFsrInAccSel_MWPU,h1postFsrInAcc_MWPU,1,1,"B");
 
   histoStyle(h1EffPU,kBlue,24);
-  TCanvas *cEffCmp=plotHisto(h1Eff,"cEff_noPU_vs_wPU",1,0,"LPE1");
-  plotHistoSame(h1EffPU,"cEff_noPU_vs_wPU","LPE");
+  TCanvas *cEffCmp=plotHisto(h1Eff,"cEff_noPU_vs_wPU",1,0,"LPE1","Eff (no.PUw)");
+  plotHistoSame(h1EffPU,"cEff_noPU_vs_wPU","LPE","Eff (w.PUw)");
 
   TH1D* h1Acc=(TH1D*)h1postFsrInAcc_MW->Clone("h1Acc");
   h1Acc->SetDirectory(0);
   if (!h1Acc->GetSumw2()) h1Acc->Sumw2();
-  h1Acc->SetTitle("Acceptance;M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAcc/postFSR");
+  h1Acc->SetTitle("Acceptance;M_{ee,GEN postFSR} [GeV];postFSR_inAcc/postFSR");
   h1Acc->Divide(h1postFsrInAcc_MW,h1postFsr_MW,1,1,"B");
 
   TH1D* h1EffPUAcc=(TH1D*)h1postFsrInAccSel_MWPU->Clone("h1EffPUAcc");
   h1EffPUAcc->SetDirectory(0);
   if (!h1EffPUAcc->GetSumw2()) h1EffPUAcc->Sumw2();
-  h1EffPUAcc->SetTitle("Efficiency(wPU) x Acc;M_{#mu#mu,GEN postFSR} [GeV];postFSR_inAccSel(wPU)/h1postFsr_MW(noPU)");
+  h1EffPUAcc->SetTitle("Efficiency(wPU) x Acc;M_{ee,GEN postFSR} [GeV];postFSR_inAccSel(wPU)/h1postFsr_MW(noPU)");
   h1EffPUAcc->Divide(h1postFsrInAccSel_MWPU,h1postFsr_MW,1,1,"B");
 
   TH1D *h1FSRCorr_binByBin=(TH1D*)h1preFsr_MW->Clone("h1FSRCorr_binByBin");
   h1FSRCorr_binByBin->SetDirectory(0);
   if (!h1FSRCorr_binByBin->GetSumw2()) h1FSRCorr_binByBin->Sumw2();
-  h1FSRCorr_binByBin->SetTitle("FSR correction bin-by-bin;M_{#mu#mu} [GeV];preFSR/postFSR");
+  h1FSRCorr_binByBin->SetTitle("FSR correction bin-by-bin;M_{ee} [GeV];preFSR/postFSR");
   h1FSRCorr_binByBin->Divide(h1preFsr_MW,h1postFsr_MW,1.,1.,"B");
 
-  TString fname="dymm_test_" + versionName(inpVersion) + TString(".root");
-  if (maxEntries>0) fname.ReplaceAll(".root","_debug.root");
+  TString fname="dyee_test_" + versionName(inpVersion) + TString(".root");
+  if ((maxEntries>0) || includeOnlyRange.Length()) {
+    fname.ReplaceAll(".root","_debug.root");
+  }
+  if (testSC && (fname.Index("_debug")==-1))
+    fname.ReplaceAll(".root","_excludeGap.root");
+
   TFile fout(fname,"RECREATE");
   h1Eff->Write();
   h1EffPU->Write();
@@ -217,9 +282,13 @@ void processDYmm(Int_t maxEntries=-1)
   h1preFsr_M->Write();
   h1preFsr_MW->Write();
   h1preFsrUnf->Write();
+  if (data.fH1PreFSR_binned) data.fH1PreFSR_binned->Write();
   h2FSRmig->Write();
   h1EffAccFsrUnf->Write();
   h2effAccFSRmig->Write();
+  if (cPreFSR_WG) cPreFSR_WG->Write();
+  if (cPreFSR_WGN) cPreFSR_WGN->Write();
+  if (cPreFSRcheck) cPreFSRcheck->Write();
   cEffCmp->Write();
   cFSRTest->Write();
   cScaleToPreFsrTest->Write();

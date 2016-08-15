@@ -6,7 +6,8 @@
 #include <TLorentzVector.h>
 
 namespace DYtools {
-const int EtaPtFIMax=25; // assummed maximum number of (eta,pt) bins
+//const int EtaPtFIMax=25; // assummed maximum number of (eta,pt) bins
+const int EtaPtFIMax=50; // assummed maximum number of (eta,pt) bins
 
 // -------------------------------------------------------------
 
@@ -128,6 +129,7 @@ protected:
   //double fDefVal, fDefErr;
   mutable double fEffReco, fEffIso, fEffHlt1, fEffHlt2;
   //double fEffRecoErr, fEffIsoErr, fEffHlt1Err, fEffHlt2Err;
+  int fElChannel;
 
 protected:
   int ptrsOk(const std::vector<TH2D*> &v) const
@@ -139,8 +141,10 @@ protected:
   }
 
 public:
-  DYTnPEff_t();
+  DYTnPEff_t(int setElChannel=0);
   DYTnPEff_t(const DYTnPEff_t &e, TString tag);
+
+  int isElChannel() const { return fElChannel; }
 
   int ptrsOk() const {
     int ok= (

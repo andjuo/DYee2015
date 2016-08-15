@@ -13,6 +13,7 @@ TString versionName(TVersion_t ver)
   case _verMu76X: name="Mu76X"; break;
   case _verEl1: name="El1"; break;
   case _verEl2: name="El2"; break;
+  case _verEl2skim: name="El2skim"; break;
   default:
     std::cout << "versionName is not ready for this version type\n";
   }
@@ -45,7 +46,8 @@ TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
   if (logY) cx->SetLogy();
   h1->Draw(drawOpt);
   if (explain.Length()) {
-    TLegend *leg= new TLegend(0.15,0.15,0.40,0.22);
+    const int smaller=1;
+    TLegend *leg= new TLegend(0.15,0.15,0.40,0.22-0.02*smaller);
     leg->SetName("myLegend");
     leg->AddEntry(h1,explain);
     leg->Draw();
@@ -92,7 +94,8 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
       if (explain.Length()) {
 	TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
 	if (leg) {
-	  leg->SetY2NDC(leg->GetY2NDC() + 0.07);
+	  const int smaller=1;
+	  leg->SetY2NDC(leg->GetY2NDC() + 0.07-0.02*smaller);
 	  leg->AddEntry(h1,explain);
 	  leg->Draw();
 	}
