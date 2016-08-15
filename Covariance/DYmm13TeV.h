@@ -17,7 +17,10 @@
 #include <iostream>
 #include <sstream>
 #include <stdarg.h>
-
+#include <TString.h>
+#include <TH1D.h>
+#include <vector>
+#include "DYbinning.h"
 
 // Fixed size dimensions of array or collections stored in the TTree if any.
 
@@ -28,6 +31,9 @@ public :
   TTree            *fOutTree; // output tree
   TFile            *fOutFile; // output file
   Int_t           fCurrent; //!current Tree number in a TChain
+  Int_t           fCurrentOld;
+  TH1D            *fH1PreFSR_binned; // Weight = Gen x Norm
+  std::vector<TH1D*> fH1PreFSR_WG, fH1PreFSR_WGN; // pre-FSR mass histograms
 
    // Declaration of leaf types
    TLorentzVector  *Momentum_Reco_Lead_BeforeMomCorr;
@@ -91,22 +97,37 @@ public :
      std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj);
 };
 
+std::ostream& operator<<(std::ostream &out, const TLorentzVector &v);
+std::ostream& operator<<(std::ostream &out, const TLorentzVector *v);
+
 #endif
 
 #ifdef DYmm13TeV_t_cxx
 DYmm13TeV_t::DYmm13TeV_t(TString fname, TString treeName) :
   fChain(new TChain(treeName)),
   fOutTree(NULL), fOutFile(NULL),
-  fCurrent(-1)
+    fCurrent(-1), fCurrentOld(-1),
+    fH1PreFSR_binned(NULL),
+    fH1PreFSR_WG(), fH1PreFSR_WGN()
 {
   if (fname.Length()==0) return;
+  int ok=1;
   if (fname.Index("<new>")!=-1) {
     if (!this->CreateNew(fname,treeName)) {
+      ok=0;
       std::cout << "CreateNew failed in constructor" << std::endl;
     }
   }
   else if (!this->Init(fname)) {
+    ok=0;
     std::cout << "Initialization failed in constructor" << std::endl;
+  }
+  if (ok) {
+    fH1PreFSR_binned=new TH1D("h1preFSR_DYmm13TeV_binned",
+	 "preFSR DYmm13TeV from file;M_{preFSR} [GeV];sum(W_{norm}*W_{gen})",
+			      DYtools::nMassBins,DYtools::massBinEdges);
+    fH1PreFSR_binned->SetDirectory(0);
+    fH1PreFSR_binned->Sumw2();
   }
 }
 
@@ -122,8 +143,20 @@ Int_t DYmm13TeV_t::GetEntry(Long64_t entry)
 {
 // Read contents of entry.
    if (!fChain) return 0;
-   return fChain->GetEntry(entry);
+   Int_t res= fChain->GetEntry(entry);
+   if (fChain->GetTreeNumber() != fCurrent) {
+      fCurrent = fChain->GetTreeNumber();
+      Notify();
+   }
+   if (res && fH1PreFSR_WG.size()) {
+     double m=( (*Momentum_preFSR_Lead) + (*Momentum_preFSR_Sub) ).M();
+     fH1PreFSR_WG.back()->Fill(m, Weight_Gen);
+     fH1PreFSR_WGN.back()->Fill(m, Weight_Gen * Weight_Norm);
+     if (fH1PreFSR_binned) fH1PreFSR_binned->Fill(m, Weight_Gen * Weight_Norm);
+   }
+   return res;
 }
+
 Long64_t DYmm13TeV_t::LoadTree(Long64_t entry)
 {
 // Set the environment to read one entry
@@ -152,12 +185,14 @@ int DYmm13TeV_t::Init(TString fname)
     TString fn;
     while (!ss.eof()) {
       ss >> fn;
-      std::cout << "adding file <" << fn << ">\n";
-      if (fn=="<new>") {
-	std::cout << "keyword 'new' detected. Should call CreateNew(fname)\n";
-	return 0;
+      if (fn.Length()) {
+	std::cout << "adding file <" << fn << ">\n";
+	if (fn=="<new>") {
+	  std::cout << "keyword 'new' detected. Should call CreateNew(fname)\n";
+	  return 0;
+	}
+	fChain->Add(fn);
       }
-      fChain->Add(fn);
     }
   }
 
@@ -192,7 +227,8 @@ int DYmm13TeV_t::Init(TString fname)
    //if (!tree) return;
    //fChain = tree;
    fCurrent = -1;
-   fChain->SetMakeClass(1);
+   fCurrentOld=-1;
+   //fChain->SetMakeClass(1); // causes trouble with the skim from lxplus
 
    fChain->SetBranchAddress("Momentum_Reco_Lead_BeforeMomCorr", &Momentum_Reco_Lead_BeforeMomCorr, &b_Momentum_Reco_Lead_BeforeMomCorr);
    fChain->SetBranchAddress("Momentum_Reco_Sub_BeforeMomCorr", &Momentum_Reco_Sub_BeforeMomCorr, &b_Momentum_Reco_Sub_BeforeMomCorr);
@@ -222,7 +258,21 @@ Bool_t DYmm13TeV_t::Notify()
    // to the generated code, but the routine can be extended by the
    // user if needed. The return value is currently not used.
 
-   return kTRUE;
+  if (fCurrent!=fCurrentOld) {
+    fCurrentOld=fCurrent;
+    TString h1name=Form("h1preFSR_DYmm13TeV_WG_%d",int(fH1PreFSR_WG.size()));
+    TH1D *h1= new TH1D(h1name,h1name+TString(";M_{preFSR};weighted count(Gen)"),
+		       3100,0,3100);
+    h1->Sumw2();
+    h1->SetDirectory(0);
+    fH1PreFSR_WG.push_back(h1);
+    h1name=Form("h1preFSR_DYmm13TeV_WGN_%d",int(fH1PreFSR_WGN.size()));
+    TH1D *h1gn= (TH1D*)h1->Clone("h1name");
+    h1gn->SetTitle(h1name+TString(";M_{preFSR};weighted count (Gen#timesNorm)"));
+    h1gn->SetDirectory(0);
+    fH1PreFSR_WGN.push_back(h1gn);
+  }
+  return kTRUE;
 }
 
 void DYmm13TeV_t::Show(Long64_t entry)
@@ -231,7 +281,9 @@ void DYmm13TeV_t::Show(Long64_t entry)
 // If entry is not specified, print current entry
    if (!fChain) return;
    fChain->Show(entry);
+   std::cout << *this << "\n";
 }
+
 Int_t DYmm13TeV_t::Cut(Long64_t )
 {
 // This function may be called from Loop.
