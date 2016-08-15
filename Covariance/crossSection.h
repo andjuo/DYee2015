@@ -158,6 +158,8 @@ class CrossSection_t {
 
   int checkPtrs(int *failCode=NULL) const;
   int assign(const CrossSection_t &cs);
+  void removeBkg(); // set bkg to 0
+  void removeRho(); // set rho factor to 1
 
   TH1D* calcCrossSection();
   TH1D* calcCrossSection(TVaried_t new_var, int idx);

@@ -83,9 +83,17 @@ RooUnfoldResponse *loadRooUnfoldResponse(TString fname, TString fieldName,
 RooUnfoldResponse *loadRooUnfoldResponse(TFile &fin, TString fieldName,
 					 TString setName)
 {
-  if (!fin.IsOpen()) return NULL;
+  if (!fin.IsOpen()) {
+    std::cout << "loadRooUnfoldResponse(TFile&): file is not open\n";
+    return NULL;
+  }
   TObject *chk= fin.Get(fieldName);
-  if (!chk) return NULL;
+  if (!chk) {
+    std::cout << "loadRooUnfoldResponse(TFile&): field with name=<"
+	      << fieldName << "> does not exist in file <"
+	      << fin.GetName() << ">\n";
+    return NULL;
+  }
   delete chk;
   RooUnfoldResponse *rs= new RooUnfoldResponse();
   rs->Read(fieldName);
@@ -251,6 +259,7 @@ void CrossSection_t::setNIters_internal(TVersion_t)
 {
   switch(fVersion) {
   case _verMu76X: fNItersDetRes=17; fNItersFSR=100; break;
+  case _verEl2skim: fNItersDetRes=15; fNItersFSR=15; break;
   default: ; // nothing
   }
 }
@@ -336,6 +345,32 @@ int CrossSection_t::assign(const CrossSection_t &cs)
   int res= checkPtrs();
   std::cout << "assign res=" << res << "\n";
   return res;
+}
+
+// --------------------------------------------------------------
+
+void CrossSection_t::removeBkg()
+{
+  if (fh1Bkg) {
+    for (int ibin=1; ibin<=fh1Bkg->GetNbinsX(); ibin++) {
+      fh1Bkg->SetBinContent(ibin, 0.);
+      fh1Bkg->SetBinError  (ibin, 0.);
+    }
+  }
+  else std::cout << "removeBkg: fh1Bkg is null\n";
+}
+
+// --------------------------------------------------------------
+
+void CrossSection_t::removeRho()
+{
+  if (fh1Rho) {
+    for (int ibin=1; ibin<=fh1Rho->GetNbinsX(); ibin++) {
+      fh1Rho->SetBinContent(ibin, 1.);
+      fh1Rho->SetBinError  (ibin, 0.);
+    }
+  }
+  else std::cout << "removeRho: fh1Rho is null\n";
 }
 
 // --------------------------------------------------------------
