@@ -1,0 +1,281 @@
+\documentclass[11pt]{article}
+
+\usepackage{hyperref}
+\usepackage{xstring} % StrSubstitute
+
+
+%\newcommand{\cosh}{\mathrm{cosh}}
+
+\def\myund#1{%
+  \saveexpandmode\expandarg
+  \IfSubStr{#1}{_}{%
+   \StrSubstitute{#1}{_}{\_}}{#1}%
+  \restoreexpandmode
+}
+
+
+%opening
+\title{Electron energy calibration in CMSSW 76X}
+\author{A.~Juodagalvis}
+\date{started July 27, 2016}
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+	Electron energy corrections are described in the twiki \url{https://twiki.cern.ch/twiki/bin/viewauth/CMS/EGMSmearer}. Taking the case of electron calibration for CMSSW 76X, I try to understand how the uncertainty should be propagated.
+\end{abstract}
+
+\section{Introduction}
+
+The instructions for electron energy calibration in CMSSW 76X are pretty simple:
+\begin{verbatim}
+content...cmsrel CMSSW_7_6_3_patch2
+cd CMSSW_7_6_3_patch2/src
+cmsenv
+git cms-merge-topic -u matteosan1:smearer_76X
+scram b
+\end{verbatim}
+
+The configuration file should provide information for the producer:
+\begin{verbatim}
+process.load('EgammaAnalysis.ElectronTools.calibratedElectronsRun2_cfi')
+.......
+correctionType = "76XReReco"
+.......
+calibratedPatElectrons = cms.EDProducer("CalibratedPatElectronProducerRun2",
+
+# input collections
+electrons = cms.InputTag('slimmedElectrons'),
+gbrForestName = cms.string("gedelectron_p4combination_25ns"),
+
+# data or MC corrections
+# if isMC is false, data corrections are applied
+isMC = cms.bool(False),
+
+# set to True to get special "fake" smearing for synchronization. Use JUST in case of synchronization
+isSynchronization = cms.bool(False),
+
+correctionFile = cms.string(files[correctionType])
+)
+\end{verbatim}
+
+The coefficients file (files[correctionType]) are defined in the cfi
+file python/calibratedElectronsRun2\_cfi.py. The file basename is
+data/76X\_16DecRereco\_2015. There are four files in this directory,
+starting with this basename: Etunc\_scales.dat, Etunc\_smearings.dat,
+\_scales.dat, and \_smearings.dat. The 'scales' files are probably for
+data, and 'smearings' are for MC.
+
+The producer is defined in the file
+plugins/CalibratedElectronProducersRun2.cc. It is quite simple. It
+takes electrons from the input collection, calls the energy corrector
+of type ElectronEnergyCalibratorRun2, defined in
+\{interface/src\}ElectronEnergyCalibratorRun2, and saves the electron
+with the corrected energy.
+
+The ElectronEnergyCalibratorRun2 has four data members:
+epCombinationTool, isMC(bool), synchronization(bool) -- should be
+false in the real analysis, and rng(TRandom).
+
+The calibrator is called in ln68 of
+CalibratedElectronProducersRun2.cc:
+calibrate(pat::Electron\&,runNumber,iEvent.streamID())). In some cases,
+the electron object class may be reco::GsfElectron. The header file
+for ElectronEnergyCalibratorRun2 states, that "StreamID is needed when
+used with CMSSW Random Number Generator." The default value is
+StreamID::invalidStreamID.
+
+The method
+ElectronEnergyCalibratorRun2::calibrate(reco::GsfElectron\&)
+performs simple actions.
+The electron, whether it is reco::GsfElectron or pat::Electron
+(descendant of reco::GsfElectron), is copied to an instance of
+SimpleElectron, which is calibrated and written back to the original
+object (ln36-38 of ElectronEnergyCalibratorRun2.cc).
+
+The calibration of the SimpleElectron object is performed in the
+method ElectronEnergyCalibratorRun2::calibrate(SimpleElectron\&). The
+calibration is handled by the \_correctionRetriever member that has a
+type of EnergyScaleCorrection\_class. The retriever is created by
+giving the name of the file with corrections (actually, the base name,
+since the file name is
+'correctionFileName'+'\_\{scales$\vert$smearings\}.dat').
+
+The auxiliary class correctionValue\_class is defined in
+interface/EnergyScaleCorrection\_class.h. This class is used to read
+energy scale and smearings from .dat files.The implementation is in
+src/EnergyScaleCorrections\_class.cc. The constructor of the
+EnergyScaleCorrection\_class takes two arguments, namely: the input
+file name base (the actual file is +'\_scales.dat' and
++'\_smearings.dat'), and genSeed. The default values for correction
+indicators doScale and doSmearings are 'false', and smearingType is
+set to ECALELF. The constructor reads data from the file by calling
+ReadFromFile and ReadSmearingFromFile. The scale file format is
+'category' (like \myund{absEta_0_1-highR9-Et_0_20}),
+String='runnumber', runMin, runMax, deltaP, \myund{err_deltaP},
+\myund{err_deltaP_stat}, \myund{err_deltaP_syst}\ (according to the
+code Ln.166-177). The field \myund{err_deltaP}\ is ignored, i.e.\ it
+is not used when calling AddScale(category, runMin, runMax, deltaP,
+\myund{err_deltaP_stat}, \myund{err_deltaP_syst}). The implementation
+of the function
+EnergyScaleCorrection\_class:ReadSmearingFromFile(TString) starts in
+Ln264 of \myund{EnergyScaleCorrection_class.cc}. The smearingType
+value is set to ECALELF in the constructor. Thus the code reads-in
+category, Emean, \myund{err_Emean}, rho, \myund{err_rho},
+\myund{phi_string}, and \myund{err_phi_string}. The values of phi are
+read as strings. The file
+\myund{76X_16DecRereco_2015_smearings.dat}\ has values \myund{M_PI_2}\
+which mean $\pi/2$, according to $<$math.h$>$. Smearings are saved by
+calling \myund{AddSmearing(category, runMin, runMax, rho, err_rho, phi,
+err_phi, Emean, err_Emean)}.
+
+The type of activated calibration is set in the constructor of
+ElectronEnergyCalibratorRun2. If the argument isMC is true, the
+correction retriever members (doScale,doSmearings) are set as
+(false,true). Otherwise, the values are set to (true,false).
+The calibration method calibrate(SimpleElectron\&) first checks, that
+the electron flag ``from MC'' matches its own flag isMC.
+
+The calibration is performed by taking the absolute value of
+SimpleElectron::getEta(), aeta=$|\eta|$, and recalculating the
+corresponding $E_T$ value as
+simpleElectron::getNewEnergy()/$\cosh(|\eta|)$.  Since the function
+$\cosh(x)=\frac12(e^{x}+e^{-x})$ is symmetric, the initial sign of
+$\eta$ has no effect.  The header file indicates that the function
+getNewEnergy() simply returns the value of the field newEnergy.  What
+all that implies for our gsf::Electron? The SimpleElectron object is
+constructed by calling the constructor (electron,runNumber,isMC). This
+constructor is available in the code if the preprocessor directive
+SimpleElectron\_STANDALONE is active and has the implementation lines
+in SimpleElectron.cc file.  The value of newEnergy is copied from
+regEnergy, while regEnergy is the value of
+reco::GsfElectron::correctedEcalEnergy(). In addition, the value of
+$\eta$ is taken from the field GsfElectron::superCluster()-$>$eta().
+
+The object correctionRetriever is called to get scale or smearing
+correction (ScaleCorrection or getSmearingSigma) with the arguments of
+(getRunNumber(),isEB(),getR9(),aeta,et[,0,0]). During the construction of
+SimpleElectron, the value of isEB is taken from GsfElectron::isEB(),
+and the value of r9 is taken from GsfElectron::full5x5\_r9().
+
+EnergyScaleCorrection\_class::ScaleCorrection(runNumber,isEBEle,R9Ele,etaSCEle,EtEle)
+(Ln158-159 in EnergyScaleCorrection\_class.h, Ln51 in .cc file) is the
+method to get energy scale correction to measured electrons. If
+doScale=false, it returns 1, otherwise it calls the method
+getScaleOffset(runNumber,...) (the arguments are exactly the same) and
+returns its value. Note that here is also a \textit{public} method
+ScaleCorrectionUncertainty (with the same arguments) that returns the
+total uncertainty for a given $(|eta| \times \mathrm{R9}$ category.
+The function getScaleOffset first creates the category of a type
+\myund{correctionCategory_class} from the provided arguments
+(runNumber, etaSCEle, R9Ele, EtEle). Then it tries to locate the
+category in the variable scales which is of type
+map$<$\myund{correctionCategory_class, correctionValue_class}$>$
+(defined by typedef as \myund{correction_map_t}). If the category is
+found, the method returns the value 'scale' of the second element
+(iterator-$>$second.scale). The tricky part is how the non-discrete
+values are handled when checking the category. The
+\myund{correctionCategory_class}\ defines ranges of validity for
+runNumber, R9, Et, eta. The constructor(TString category) converts the
+provided string to the ranges. The category of the individual electron
+is created by calling a constructor
+\myund{correctionCategory_class}(runNumber,etaEle, R9Ele,EtEle). The
+method \myund{correctionCategory_class}::operator$<$ compares the
+values of the individual fields (runNumber, eta, r9, et) in order to
+determine whether the value of this operation is 'true' or
+'false'. There might be some tricky cases if both objects would have
+defined ranges as compared to a 'simple' case, when one object has
+different values of the range edges and the other object has value
+intervals of a zero length.
+
+ElectronScaleCorrection\_class::getSmearingSigma(runNumber,isEBEle,R9Ele,etaSCEle,EtEle,nSigma\_rho,nSigma\_phi)
+(Ln179 of the .h file, Ln353 of the .cc file). (A reminder: the method
+is called by the corrector with nSigma\_rho=nSigma\_phi=0.)  The
+functions find the smearing definition by the category created from
+(runNumber, etaSCEle, R9Ele, EtEle). Rho correction is defined as
+\myund{rho + rho_err$\times$ nSigma_rho}, and phi correction is
+defined as \myund{phi + phi_err$\times$ nSigma_phi}. Since the method
+is called with \myund{nSigma_rho=nSigma_phi=0}, the corrections are
+actually rho and phi. The constant term is $\rho \sin(\phi)\equiv
+\rho$, since our $\phi=\pi/2$, and alpha is
+$\rho\timesE_\mathrm{mean}\times\cos{\phi}\equiv0$. Note that $\alpha$
+is 0 because of both Emean=0 and $\phi=\pi/2$. Thus the used smearing
+values are defined in categories of $|eta|$ and low/high-R9.  The
+smearing sigma is defined as
+$\sqrt{\mathrm{constTerm}^2+\alpha^2/\mathrm{EtEle}}\equiv
+\mathrm{constTerm}\equiv\rho$.  This value would also be obtained by
+calling the method
+\myund{EnergyScaleCorrection_class::getSmearingRho}(runNumber,
+isEBEle, R9Ele, etaSCEle, EtEle). The method getSmearingSigma also
+allows to vary the smearing sigma by the uncertainty of the factor
+$\rho$ (\myund{nSigma_rho} should be set e.g.\ to 1).
+
+Now returning to the method
+ElectronEnergyCalibratorRun2::calibrate(SimpleElectron\&). We learned
+how the values of scale and smear are obtained from the
+correctionRetriever object. If the electron is simulated and has to be
+smeared, the correction factor is calculated as $\mathrm{corr}\equiv(1
++ \mathrm{smear} \times \mathrm{gauss}(\mathrm{streamID}))$. The new
+energy (SimpleElectron::getNewEnergy()) is multiplied by this factor
+(but not assigned yet!), and its uncertainty
+$\sqrt{(\mathrm{getNewEnergyError} \times \mathrm{corr})^2 +
+  (\mathrm{smear}\times \mathrm{getNewEnergy}\times\mathrm{corr})^2}$
+are calculated by calling std::hypot(x,y) that ``computes the square
+root of the sum of the squares of x and y, without undue overflow or
+underflow at intermediate stages of the computation'' (according to
+cppreference). [This uncertainty calculation is not clear to
+  me, since the uncertainty propagation formula for the expression
+  $e'=(1+\sigma)e$ would give $(\delta e')^2=(1+\sigma)^2(\delta
+  e)^2+e^2\sigma^2$. (Here I employed $\delta(1+\sigma)=\sigma$.)
+  Whereas the code uses the expression $(\delta
+  e')^2=(1+\sigma)^2(\delta e)^2 + (e')^2\sigma^2$.]
+The scaling is performed in a similar way, the new value of ECAL
+energy is calculated from
+$\mathrm{SimpleElectron::getNewEnergy()}\times\mathrm{scale}$, and the
+uncertainty is evaluated from
+hypot(getNewEnergyError()\,$\times$\,scale, smear $\times$
+modified\_energy). [This uncertainty is not clear to me. First of all,
+is it obvious that the 'smear' parameter would return the uncertainty
+of the 'scale' factor.]
+
+Subsequently, the SimpleElectron object electron is updated by calling
+setNewEnergy and setNewEnergyError (both are simple-assignment
+methods) and then invoking epCombinationTool to combine the electron
+fields. EpCombinationTool is defined in
+ElectronTools/interface/EpCombinationTool.h. The object is initialized
+in the ElectronEnergyCalibratorRun2 constructor by using the pointer
+value provided to the constructor. In our code, this pointer is
+obtained from edm::EventSetup instance iSetup, by getting the product
+named theGBRForestName. The configuration file
+\myund{python/calibratedElectronsRun2_cfi.py}\ defined gbrForestName
+as '\myund{gedelectron_p4combination_25ns}'.
+
+The method EpCombinationTool::combine(SimpleElectron\&) takes the both
+new energy and its error of the electron (getNewEnergy() and
+getNewEnergyError()) and recomputes several quantities:
+regressionInputs[1]= energyRelError= energyError/energy,
+regressionInputs[3]= momentumRelError= momentumError/momentum,
+regressionInputs[4]= errorRatio= energyRelError/momentumRelError,
+regressionInputs[5]= eOverP= energy/momentum, regressionInputs[6]=
+eOverPerror (calculated correctly). The other needed values are
+energy, momentum=electron.getTrackerMomentum(),
+momentumError=electron.getTrackerMomentumError(), and the additional
+needed flags are isEcalDriven, isTrackerDriven, electronClass, and
+isEB. Based on regressionInput values, the weight is obtained from
+\myund{m_forest}-$>$GetResponse(regressionInputs). The combined
+momentum is calculated from the tracker momentum and the energy as
+$\mathrm{weight} \times p_\mathrm{tracker} + (1-\mathrm{weight})\times
+E_\mathrm{ECAL}$. The pure tracker electrons have track momentum error
+of 999, the correction is not applied to them. Other electrons get the
+values of the combinedMomentum and the combinedMomentumError
+(calculated correctly).
+
+The electron with the combined momentum is converted back to
+reco::GsfElectron by method SimpleElectron::writeTo (see Ln38 of
+ElectronEnergyCalibratorRun2.cc). The method writeTo is implemented in
+Ln27 of SimpleElectron.cc.
+
+\end{document}

@@ -169,7 +169,24 @@ due to some unaccounted factor that has changed. The variation takes
 place only in the mass bins 830-1000~GeV (the relative difference is
 $2.567\%$ and 1000-1500~GeV ($1.135\%$).
 
-\textbf{Secondly, the covariances are being derived.} The macro is
+\textbf{Secondly, the randomized event-effciency scale factors should
+  be prepared.}  The code \myund{process_DYmm_RECO.C}\ reads the
+``compressed'' n-tuple and produces detector resolution and the
+efficiency scale factor corrections. It also saves 1D distributions of
+the pre-unfolded and unfolded yields, and copies the single-muon
+efficiencies from the provided input5. It also produces distributions
+needed to calculate the event-efficiency scale factor in an optimized
+way. The output is saved to a file
+\myund{dymm_test_RECO_$<$InpVersion$>$.root}.
+
+The randomized ensemble of the event-efficiency scale factors is
+produced by the code \myund{calcRhoRndVec.C}. It reads the file
+\myund{dymm_test_RECO_$<$InpVersion$>$.root}. It also compares the
+scale factors to the provided values. The random ensemble is saved to
+a file
+\myund{dir-Rho-$<$InpVersion$>$/dymm_rhoRndVec_$<$InpVersion$>$_$<$NSamples$>$.root}.
+
+\textbf{Thirdly, the covariances are being derived.} The macro is
 called \myund{studyDYmmCS.C}. This macro has several input parameters:
 the varied variable \myund{TVaried_t}\ (the enum type is defined in
 crossSection.h); the number of toy distributions nSample; and a flag
@@ -185,12 +202,72 @@ uncertainty of the detector resolution response matrix),
 \myund{_varFSRRes}\ (statistical uncertainty of the FSR response
 matrix), \myund{_varEff}, \myund{_varAcc}, and \myund{_varEffAcc}.
 The unimplemented variables are: \myund{_varSig}, \myund{_varRho}.
+(Note: \myund{_varRhoFile}\ is implemented to use the ensemble
+produced by the code \myund{calcRhoRndVec.C}.)
 
 Note June 8: It seems that the uncertainties from \myund{_varEff} and
 \myund{_varAcc} are smaller than the ones provided for
 \myund{_varEffAcc}. That is, the combined uncertainty of
 $\varepsilon\times A$ is smaller than provided by KL.
 
+The code \myund{calcRhoRndVec.C}\ compares the calculated event
+efficiency scale factor to the provided event efficiency scale factor.
+
+\subsection{Verification}
+
+The code \myund{createCSInput_DYmm13TeV.C}\ verifies several things.
+1)~The provided backgrounds by comparing the sum of
+the provided background counts to the difference of the provided
+observed yield and the signal yield (observed yield with the
+background subtracted). 2)~The uncertainties of the combined quantities
+$\epsilon_\mathrm{MC}\times A$. It compares whether those
+uncertainties are equal or smaller than the uncertainties of the
+combination. Since
+$\epsilon_\mathrm{MC}=N_\mathrm{sel,inAcc,postFSR}/N_\mathrm{inAcc,postFSR}$
+and $A=N_\mathrm{inAcc,postFSR}/N_\mathrm{postFSR}$, the combination
+$\epsilon_\mathrm{MC}\times
+A=N_\mathrm{sel,inAcc,postFSR}/N_\mathrm{postFSR}$ can have a smaller
+uncertainty. This, however, is not exploited.
+3)~The provided cross section and the inputs by calculating the final
+cross section from the provided inputs and comparing it to the
+provided final cross section.
+
+The event-efficiency scale factors are tested by two codes.  The code
+\myund{calcRhoRndVec.C}\ tests the output of the code
+\myund{processDYmm_RECO.C}\ by comparing the produced scale factor to
+the provided values.  The code \myund{processDYmm_avgRho2.C}\ verifies
+that the event-efficiency scale factors derived by using the event
+space correspond to the provided scale factor distributions.
+
+The code \myund{processDYmm.C}\ reads the ``compressed'' n-tuple and
+produces several distributions that lead to the efficiency, acceptance
+and the FSR corrections.
+ The output is saved to a file
+\myund{dymm_test_$<$InpVersion$>$.root}.
+This file is later used by a complicated code
+\myund{study_FSRResp.C}\ that compares several items.
+
+The code \myund{study_FSRResp.C}\ reads the main result file
+\myund{cs_DYmm_13TeV_$<$ShortInpVersion$>$_cs.root}\ (fnameMain) to
+get post-FSR and pre-FSR distributions h1PostFSR and h1PreFSR
+(variables nameh1preUnfData and nameh1unfData). Those distributions
+are obtained from the provided measured data by applying the provided
+corrections.  The FSR-correction may be read from several sources
+(including the main result file fnameMain).  The file and the object
+names are given by variables fnameResp and nameResp.  For 76X input
+version, the object \myund{rooUnf_fsrResp} is taken from a file
+\myund{dymm_test_$<$InpVersion$>$.root}\ that is produced by the code
+\myund{processDYmm.C}. The simulated distributions are read-in from a
+file defined by fnameMC and given by the variables nameh1measMC and
+nameh1trueMC (\myund{h1_postFSR_Mweighted}\ and
+\myund{h1_preFsr_Mweighted}). To be able to test the early result in
+the electron channel by using the migration matrix, a variable was
+introduced nameh2migrationMatrix. The code can also read-in the
+covariance from the randomized response. The variable is covFName and
+nameh2cov with the values \myund{cov_mumu_varFSRRes_10000.root}\ and
+h2Cov.
+
+The 
 
 \end{document}
 
