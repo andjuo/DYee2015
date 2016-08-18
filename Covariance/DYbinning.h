@@ -100,7 +100,7 @@ inline
 int InAcceptance_ee(const TLorentzVector *v1, const TLorentzVector *v2,
 		    int testSCGap=0) {
   if ((fabs(v1->Eta())<2.5) && (fabs(v2->Eta())<2.5) &&
-      (!testSCGap || (!InECALSCGap(v1->Eta()) && !InECALSCGap(v1->Eta())))) {
+      (!testSCGap || (!InECALSCGap(v1->Eta()) && !InECALSCGap(v2->Eta())))) {
     if (((v1->Pt() > 30.) && (v2->Pt() > 10.)) ||
 	((v1->Pt() > 10.) && (v2->Pt() > 30.)))
       return 1;
