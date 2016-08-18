@@ -1,5 +1,5 @@
-#include "inputs.h"
-#include "crossSection.h"
+#include "../Covariance/inputs.h"
+#include "../Covariance/crossSection.h"
 #include "../RooUnfold/src/RooUnfoldResponse.h"
 #include <map>
 
@@ -7,7 +7,9 @@ typedef enum { _fn_main=0, _fn_cmp1, _fn_cmp2, _fn_last } TSource_t;
 
 typedef enum { _iEff, _iRho, _iAcc, _iEffAcc,
 	       _iSignal, _iUnf, _iUnfRho, _iUnfRhoEffAcc,
-	       _iPostFsr, _iPreFsr
+	       _iPostFsr, _iPreFsr,
+	       _iEffPass, _iEffTot, _iAccPass, _iAccTot,
+	       _iCmp1, _iCmp2
 	       //_iRRmeas, _iRRtrue
 } THisto_t;
 
@@ -88,8 +90,16 @@ void compareVersions(int theCase=1)
     if (h1cmp1) plotHistoSame(h1cmp1,cName,"LPE1","cmp1");
     if (h1cmp2) plotHistoSame(h1cmp2,cName,"LPE1","cmp2");
     if (1) {
-      if (h1cmp1) printRatio(h1main,h1cmp1);
-      if (h1cmp2) printRatio(h1main,h1cmp2);
+      if (h1cmp1) {
+	std::cout << "mainFile=" << mainFName
+		  << ", cmpFile1=" << cmpFName1 << "\n";
+	printRatio(h1main,h1cmp1);
+      }
+      if (h1cmp2) {
+	std::cout << "mainFile=" << mainFName
+		  << ", cmpFile2=" << cmpFName2 << "\n";
+	printRatio(h1main,h1cmp2);
+      }
     }
   }
 }
@@ -113,6 +123,12 @@ TString THistoName(THisto_t ih)
   case _iUnfRhoEffAcc: name="UnfRhoEffAcc"; break;
   case _iPostFsr: name="postFSR"; break;
   case _iPreFsr: name="preFSR"; break;
+  case _iEffPass: name="effPass"; break;
+  case _iEffTot: name="effTotal"; break;
+  case _iAccPass: name="accPass"; break;
+  case _iAccTot: name="accTotal"; break;
+  case _iCmp1: name="cmp1"; break;
+  case _iCmp2: name="cmp2"; break;
   default:
     name="UNKNOWN";
   }
