@@ -461,6 +461,16 @@ inline
 void HERE(const char *msg)
 { std::cout << msg << std::endl; }
 
+template<class type_t>
+inline
+void HERE(const char *format, const type_t x)
+{ std::cout << Form(format,x) << std::endl; }
+
+template<class type1_t, class type2_t>
+inline
+void HERE(const char *format, const type1_t x, const type2_t y)
+{ std::cout << Form(format,x,y) << std::endl; }
+
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
