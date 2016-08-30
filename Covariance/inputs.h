@@ -10,6 +10,7 @@
 #include <TString.h>
 #include <TObjString.h>
 #include <TFile.h>
+#include <TTree.h>
 #include <TVectorD.h>
 #include <TMatrixD.h>
 #include <TArrayD.h>
@@ -261,6 +262,8 @@ int copyContents(TH1D *h1Dest, const histo1D_t *h1Src)
 
 TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
 		  TString setName, TString setTitle, const TH1D *h1protoType);
+
+TTree* loadTree(TString fname, TString treeName, TFile **fout_to_initialize);
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------

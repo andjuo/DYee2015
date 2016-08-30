@@ -397,6 +397,24 @@ TH1D* loadVectorD(TString fname, TString valueField, TString errorField,
 }
 
 // ---------------------------------------------------------
+
+TTree* loadTree(TString fname, TString treeName, TFile **fout_ptr)
+{
+  TFile *fout = new TFile(fname);
+  if (fout_ptr) *fout_ptr = fout;
+  if (!fout || !fout->IsOpen()) {
+    std::cout << "failed to open the file <" << fname << ">\n";
+    return NULL;
+  }
+  TTree *tree = (TTree*)fout->Get(treeName);
+  if (!tree) {
+    std::cout << "failed to get the tree " << treeName << " from a file <"
+	      << fname << ">\n";
+  }
+  return tree;
+}
+
+// ---------------------------------------------------------
 // ---------------------------------------------------------
 
 TMatrixD submatrix(const TMatrixD &M, int idxMin, int idxMax)
