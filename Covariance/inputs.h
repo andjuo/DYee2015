@@ -21,6 +21,7 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include <sstream>
 
 // -----------------------------------------------------------
 
@@ -458,6 +459,20 @@ int orderChanged(const std::vector<int> &idx);
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------
+
+
+template<class T>
+int valueEquals(const T val, const std::string targets)
+{
+  std::stringstream ss(targets);
+  T probe;
+  int yes=0;
+  while (!ss.eof()) {
+    ss >> probe;
+    if (probe==val) { yes=1; break; }
+  }
+  return yes;
+}
 
 
 inline
