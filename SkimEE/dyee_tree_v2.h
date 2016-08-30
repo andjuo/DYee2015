@@ -11,6 +11,7 @@
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
+#include <TObjArray.h>
 
 // Header file for the classes stored in the TTree if any.
 #include <vector>
@@ -25,6 +26,8 @@ public :
    Int_t           fCurrent; //!current Tree number in a TChain
 
    // Declaration of leaf types
+   Double_t        RunNo;
+   Double_t        EvtNo;
    vector<float>   *genPostFSR_Pt;
    vector<float>   *genPostFSR_Eta;
    vector<float>   *genPostFSR_Rap;
@@ -66,6 +69,8 @@ public :
    Char_t          Mu8_Ele17;
 
    // List of branches
+   TBranch        *b_RunNo;
+   TBranch        *b_EvtNo;
    TBranch        *b_genPostFSR_Pt;   //!
    TBranch        *b_genPostFSR_Eta;   //!
    TBranch        *b_genPostFSR_Rap;   //!
@@ -214,6 +219,22 @@ void dyee_tree_v2::Init(TTree *tree)
    fChain = tree;
    fCurrent = -1;
    fChain->SetMakeClass(1);
+
+   int RunEvtNoExist=0;
+   TObjArray *brObjArr= fChain->GetListOfBranches();
+   for (int ibr=0; ibr<brObjArr->GetEntries(); ibr++) {
+     if (TString(brObjArr->At(ibr)->GetName()) == "RunNo") RunEvtNoExist++;
+     else if (TString(brObjArr->At(ibr)->GetName()) == "EvtNo") RunEvtNoExist++;
+   }
+   if (RunEvtNoExist==2) {
+     std::cout << "RunNo and EvtNo branches exist\n";
+     fChain->SetBranchAddress("RunNo", &RunNo, &b_RunNo);
+     fChain->SetBranchAddress("EvtNo", &EvtNo, &b_EvtNo);
+   }
+   else {
+     b_RunNo=0;
+     b_EvtNo=0;
+   }
 
    fChain->SetBranchAddress("genPostFSR_Pt", &genPostFSR_Pt, &b_genPostFSR_Pt);
    fChain->SetBranchAddress("genPostFSR_Eta", &genPostFSR_Eta, &b_genPostFSR_Eta);
