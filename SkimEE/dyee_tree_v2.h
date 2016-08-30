@@ -14,6 +14,8 @@
 
 // Header file for the classes stored in the TTree if any.
 #include <vector>
+#include <sstream>
+#include <iostream>
 
 // Fixed size dimensions of array or collections stored in the TTree if any.
 
@@ -114,6 +116,10 @@ public :
    virtual Bool_t   Notify();
    virtual void     Show(Long64_t entry = -1);
 
+   // Added methods
+   UInt_t GetEntries() { return fChain->GetEntries(); }
+   void DeactivateAllBranches();
+   void ActivateBranches(TString brNames);
 };
 
 #endif
@@ -269,6 +275,7 @@ void dyee_tree_v2::Show(Long64_t entry)
    if (!fChain) return;
    fChain->Show(entry);
 }
+
 Int_t dyee_tree_v2::Cut(Long64_t entry)
 {
   if (0) entry=0;
@@ -277,5 +284,28 @@ Int_t dyee_tree_v2::Cut(Long64_t entry)
 // returns -1 otherwise.
    return 1;
 }
+
+// a few useful methods
+void dyee_tree_v2::DeactivateAllBranches() {
+  fChain->SetBranchStatus("*",0);
+}
+
+void dyee_tree_v2::ActivateBranches(TString brNames)
+{
+  if (brNames.Length()==0) {
+    std::cout << "dyee_tree_v2::ActivateBranches non-empty string is expected\n";
+    return;
+  }
+  std::stringstream ss(brNames.Data());
+  TString fn;
+  while (!ss.eof()) {
+    ss >> fn;
+    std::cout << "adding branch <" << fn << ">\n";
+    fChain->SetBranchStatus(fn,1);
+  }
+}
+
+
+
 #undef dyee_tree_v2_cxx
 #endif // #ifdef dyee_tree_v2_cxx
