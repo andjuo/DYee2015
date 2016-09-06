@@ -10,6 +10,7 @@ void DYmm13TeV_t::Zero()
 {
   TLorentzVector zero;
   zero.SetPxPyPzE(0,0,0,0);
+  RunNo=0; EvtNo=0;
   *Momentum_Reco_Lead_BeforeMomCorr=zero;
   *Momentum_Reco_Sub_BeforeMomCorr=zero;
   *Momentum_Reco_Lead=zero;
@@ -45,6 +46,7 @@ int DYmm13TeV_t::CreateNew(TString fnameInp, TString treeName)
   }
   fOutTree= new TTree(treeName,"semi-selected events");
 
+
   Momentum_Reco_Lead_BeforeMomCorr= new TLorentzVector();
   Momentum_Reco_Sub_BeforeMomCorr= new TLorentzVector();
   Momentum_Reco_Lead= new TLorentzVector();
@@ -54,6 +56,8 @@ int DYmm13TeV_t::CreateNew(TString fnameInp, TString treeName)
   Momentum_preFSR_Lead= new TLorentzVector();
   Momentum_preFSR_Sub= new TLorentzVector();
 
+  fOutTree->Branch("RunNo", &RunNo, "RunNo/D");
+  fOutTree->Branch("EvtNo", &EvtNo, "EvtNo/D");
   fOutTree->Branch("Momentum_Reco_Lead_BeforeMomCorr", &Momentum_Reco_Lead_BeforeMomCorr);
   fOutTree->Branch("Momentum_Reco_Sub_BeforeMomCorr", &Momentum_Reco_Sub_BeforeMomCorr);
   fOutTree->Branch("Momentum_Reco_Lead", Momentum_Reco_Lead);
@@ -135,6 +139,8 @@ std::ostream& operator<<(std::ostream &out, const TLorentzVector *v)
 std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj)
 {
   out << "DYmm13TeV: \n";
+  if ((obj.RunNo!=0) && (obj.EvtNo!=0))
+    out << "Run,Evt No=" << obj.RunNo << "," << obj.EvtNo << "\n";
   out << "Mom.before corr. " << obj.Momentum_Reco_Lead_BeforeMomCorr
       << ", " << obj.Momentum_Reco_Sub_BeforeMomCorr << "\n";
   out << "Mom. " << obj.Momentum_Reco_Lead << " "

@@ -11,6 +11,7 @@
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
+#include <TObjArray.h>
 
 // Header file for the classes stored in the TTree if any.
 #include <TLorentzVector.h>
@@ -36,6 +37,8 @@ public :
   std::vector<TH1D*> fH1PreFSR_WG, fH1PreFSR_WGN; // pre-FSR mass histograms
 
    // Declaration of leaf types
+  Double_t RunNo;
+  Double_t EvtNo;
    TLorentzVector  *Momentum_Reco_Lead_BeforeMomCorr;
    TLorentzVector  *Momentum_Reco_Sub_BeforeMomCorr;
    TLorentzVector  *Momentum_Reco_Lead;
@@ -54,6 +57,8 @@ public :
    Double_t        Weight_Gen;
 
    // List of branches
+   TBranch   *b_RunNo;
+   TBranch   *b_EvtNo;
    TBranch        *b_Momentum_Reco_Lead_BeforeMomCorr;   //!
    TBranch        *b_Momentum_Reco_Sub_BeforeMomCorr;   //!
    TBranch        *b_Momentum_Reco_Lead;   //!
@@ -197,6 +202,8 @@ int DYmm13TeV_t::Init(TString fname)
   }
 
   // Clear fields
+  RunNo=0;
+  EvtNo=0;
   Charge_Reco_Lead=0;
   Charge_Reco_Sub=0;
   TrackerLayers_Reco_Lead=0;
@@ -229,6 +236,22 @@ int DYmm13TeV_t::Init(TString fname)
    fCurrent = -1;
    fCurrentOld=-1;
    //fChain->SetMakeClass(1); // causes trouble with the skim from lxplus
+
+   int RunEvtNoExist=0;
+   TObjArray *brObjArr= fChain->GetListOfBranches();
+   for (int ibr=0; ibr<brObjArr->GetEntries(); ibr++) {
+     if (TString(brObjArr->At(ibr)->GetName()) == "RunNo") RunEvtNoExist++;
+     else if (TString(brObjArr->At(ibr)->GetName()) == "EvtNo") RunEvtNoExist++;
+   }
+   if (RunEvtNoExist==2) {
+     std::cout << "RunNo and EvtNo branches exist\n";
+     fChain->SetBranchAddress("RunNo", &RunNo, &b_RunNo);
+     fChain->SetBranchAddress("EvtNo", &EvtNo, &b_EvtNo);
+   }
+   else {
+     b_RunNo=0;
+     b_EvtNo=0;
+   }
 
    fChain->SetBranchAddress("Momentum_Reco_Lead_BeforeMomCorr", &Momentum_Reco_Lead_BeforeMomCorr, &b_Momentum_Reco_Lead_BeforeMomCorr);
    fChain->SetBranchAddress("Momentum_Reco_Sub_BeforeMomCorr", &Momentum_Reco_Sub_BeforeMomCorr, &b_Momentum_Reco_Sub_BeforeMomCorr);
