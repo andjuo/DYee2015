@@ -30,22 +30,29 @@ void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
   }
 
   TString srcPath="/mnt/sdb/andriusj/v2ee-skim1-20160812/";
+  inpVersion=_verEl2skim2; // preFSR is dressedElectrons(0.1)
+  srcPath="/media/sf_Share2/DYee_76X_Calibrated/mySkim-20160906/";
 
   TString dataFName;
+  TString fileFormat="DYEE_M%dto%d_v1.root ";
+  if (inpVersion==_verEl2skim2) fileFormat="DY_%dto%d_v2_orig.root ";
+
   if (includeOnlyRange.Length()>0) {
     std::stringstream ss(includeOnlyRange.Data());
     TString rStr;
+    TString strFileFormat=fileFormat;
+    strFileFormat.ReplaceAll("%dto%d","%s");
     while (!ss.eof()) {
       ss >> rStr;
       if (rStr.Length()) {
 	std::cout << "rStr=" << rStr << "\n";
-	dataFName.Append(srcPath + Form("DYEE_M%s_v1.root ",rStr.Data()));
+	dataFName.Append(srcPath + Form(strFileFormat,rStr.Data()));
       }
     }
   }
   else {
     for (int im=0; im<DYtools::nEEDatasetMassBins; im++) {
-      dataFName.Append(srcPath + Form("DYEE_M%dto%d_v1.root ",
+      dataFName.Append(srcPath + Form(fileFormat,
 		      DYtools::eeDatasetMass[im],DYtools::eeDatasetMass[im+1]));
     }
   }
@@ -90,12 +97,12 @@ void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
   TH2D* h2FSRmig= new TH2D("h2FSRmig","FSR migration", DYtools::nMassBins, DYtools::massBinEdges, DYtools::nMassBins, DYtools::massBinEdges);
   h2FSRmig->Sumw2();
   RooUnfoldResponse fsrResp(h1postFsr_MW,h1preFsr_MW,h2FSRmig,"rooUnf_fsrResp","fsrResp;M_{ee} [GeV];FSR unfolded yield");
-  fsrResp.UseOverflow();
+  fsrResp.UseOverflow(false);
 
   TH2D* h2effAccFSRmig= new TH2D("h2effAccFSRmig","eff x Acc x FSR migration", DYtools::nMassBins, DYtools::massBinEdges, DYtools::nMassBins, DYtools::massBinEdges);
   h2effAccFSRmig->Sumw2();
   RooUnfoldResponse effAccFsrResp(h1postFsrInAccSel_MW,h1preFsr_MW,h2effAccFSRmig,"rooUnf_effAccFsrResp","effAccFsrResp;M_{ee} [GeV];eff Acc FSR unfolded yield");
-  effAccFsrResp.UseOverflow();
+  effAccFsrResp.UseOverflow(false);
 
 
   UInt_t nEvents= data.GetEntries();
@@ -103,7 +110,7 @@ void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
   std::cout << "process data\n";
   for (UInt_t iEntry=0; iEntry<nEvents; iEntry++) {
     if (data.GetEntry(iEntry)<0) break;
-    if (iEntry%100000==0) std::cout << "iEntry=" << iEntry << Form("(%4.2lf%%)\n",iEntry*100/double(nEvents));
+    if (iEntry%100000==0) std::cout << "iEntry=" << iEntry << Form("(%4.2lf%%)\n",iEntry*100./double(nEvents));
     if ((maxEntries>0) && (iEntry>UInt_t(maxEntries))) {
       std::cout << "debug run\n";
       break;
@@ -116,6 +123,7 @@ void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
 
     //std::cout << "momentum postFSR: " << data.Momentum_postFSR_Lead << ", " << data.Momentum_postFSR_Sub << "\n";
     //std::cout << "mPostFsr=" << mPostFsr << ", mPreFsr=" << mPreFsr << "\n";
+
     if (DYtools::InAcceptance_ee(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,testSC)) {
       if (data.Flag_EventSelection) {
 	h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
@@ -168,7 +176,7 @@ void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
 
   TCanvas *cPreFSR_WG=NULL, *cPreFSR_WGN=NULL;
   if (data.fH1PreFSR_WG.size()) {
-    for (int iloop=0; iloop<2; iloop++) {
+    for (int iloop=1; iloop<2; iloop++) {
       std::vector<TH1D*> *h1V=
 	(iloop==0) ? &data.fH1PreFSR_WG : &data.fH1PreFSR_WGN;
       TString cNameLoop= (iloop==0) ? "cPreFSR_WG" : "cPreFSR_WGN";
@@ -233,8 +241,8 @@ void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
   TH1D* h1EffPU=(TH1D*)h1postFsrInAccSel_MWPU->Clone("h1EffPU");
   h1EffPU->SetDirectory(0);
   if (!h1EffPU->GetSumw2()) h1EffPU->Sumw2();
-  h1EffPU->SetTitle("Efficiency (wPU);M_{ee,GEN postFSR} [GeV];postFSR_inAcc_Sel(wPU)/postFSR_inAcc(wPU)");
-  h1EffPU->Divide(h1postFsrInAccSel_MWPU,h1postFsrInAcc_MWPU,1,1,"B");
+  h1EffPU->SetTitle("Efficiency (wPU/noPU);M_{ee,GEN postFSR} [GeV];postFSR_inAcc_Sel(wPU)/postFSR_inAcc(noPU)");
+  h1EffPU->Divide(h1postFsrInAccSel_MWPU,h1postFsrInAcc_MW,1,1,"B");
 
   histoStyle(h1EffPU,kBlue,24);
   TCanvas *cEffCmp=plotHisto(h1Eff,"cEff_noPU_vs_wPU",1,0,"LPE1","Eff (no.PUw)");
@@ -275,6 +283,7 @@ void processDYee(Int_t maxEntries=-1, TString includeOnlyRange="")
   effAccFsrResp.Write();
   h1postFsrInAccSel_M->Write();
   h1postFsrInAccSel_MW->Write();
+  h1postFsrInAccSel_MWPU->Write();
   h1postFsrInAcc_M->Write();
   h1postFsrInAcc_MW->Write();
   h1postFsr_M->Write();

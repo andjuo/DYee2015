@@ -14,6 +14,7 @@ TString versionName(TVersion_t ver)
   case _verEl1: name="El1"; break;
   case _verEl2: name="El2"; break;
   case _verEl2skim: name="El2skim"; break;
+  case _verEl2skim2: name="El2skim2"; break;
   default:
     std::cout << "versionName is not ready for this version type\n";
   }
