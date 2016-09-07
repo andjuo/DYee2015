@@ -23,6 +23,8 @@
 #include <vector>
 #include "DYbinning.h"
 
+// ------------------------------------------------------------------
+
 // Fixed size dimensions of array or collections stored in the TTree if any.
 
 class DYmm13TeV_t {
@@ -52,6 +54,7 @@ public :
    TLorentzVector  *Momentum_preFSR_Lead;
    TLorentzVector  *Momentum_preFSR_Sub;
    Bool_t          Flag_EventSelection;
+   Bool_t          Flag_EventSelectionTrigOnly;
    Double_t        Weight_Norm;
    Double_t        Weight_PU;
    Double_t        Weight_Gen;
@@ -72,6 +75,7 @@ public :
    TBranch        *b_Momentum_preFSR_Lead;   //!
    TBranch        *b_Momentum_preFSR_Sub;   //!
    TBranch        *b_Flag_EventSelection;   //!
+   TBranch        *b_Flag_EventSelectionTrigOnly;
    TBranch        *b_Weight_Norm;   //!
    TBranch        *b_Weight_PU;   //!
    TBranch        *b_Weight_Gen;   //!
@@ -94,9 +98,8 @@ public :
    // Added methods
    UInt_t GetEntries() { return fChain->GetEntries(); }
    void DeactivateBranches();
-   void ActivateBranches(int count, ...); // list n branch names
-   void ActivateBranches(const std::vector<TString> &brV); // list of branch names
    void ActivateBranches(TString brNames);
+   int BranchExists(TString brName);
 
    friend
      std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj);
@@ -209,6 +212,7 @@ int DYmm13TeV_t::Init(TString fname)
   TrackerLayers_Reco_Lead=0;
   TrackerLayers_Reco_Sub=0;
   Flag_EventSelection=false;
+  Flag_EventSelectionTrigOnly=false;
   Weight_Norm=0;
   Weight_PU=0;
   Weight_Gen=0;
@@ -237,13 +241,7 @@ int DYmm13TeV_t::Init(TString fname)
    fCurrentOld=-1;
    //fChain->SetMakeClass(1); // causes trouble with the skim from lxplus
 
-   int RunEvtNoExist=0;
-   TObjArray *brObjArr= fChain->GetListOfBranches();
-   for (int ibr=0; ibr<brObjArr->GetEntries(); ibr++) {
-     if (TString(brObjArr->At(ibr)->GetName()) == "RunNo") RunEvtNoExist++;
-     else if (TString(brObjArr->At(ibr)->GetName()) == "EvtNo") RunEvtNoExist++;
-   }
-   if (RunEvtNoExist==2) {
+   if ( BranchExists("RunNo") + BranchExists("EvtNo") == 2 ) {
      std::cout << "RunNo and EvtNo branches exist\n";
      fChain->SetBranchAddress("RunNo", &RunNo, &b_RunNo);
      fChain->SetBranchAddress("EvtNo", &EvtNo, &b_EvtNo);
@@ -266,6 +264,10 @@ int DYmm13TeV_t::Init(TString fname)
    fChain->SetBranchAddress("Momentum_preFSR_Lead", &Momentum_preFSR_Lead, &b_Momentum_preFSR_Lead);
    fChain->SetBranchAddress("Momentum_preFSR_Sub", &Momentum_preFSR_Sub, &b_Momentum_preFSR_Sub);
    fChain->SetBranchAddress("Flag_EventSelection", &Flag_EventSelection, &b_Flag_EventSelection);
+   if (BranchExists("Flag_EventSlectionTrigOnly")) {
+     fChain->SetBranchAddress("Flag_EventSelectionTrigOnly", &Flag_EventSelectionTrigOnly, &b_Flag_EventSelectionTrigOnly);
+   }
+   else b_Flag_EventSelectionTrigOnly=NULL;
    fChain->SetBranchAddress("Weight_Norm", &Weight_Norm, &b_Weight_Norm);
    fChain->SetBranchAddress("Weight_PU", &Weight_PU, &b_Weight_PU);
    fChain->SetBranchAddress("Weight_Gen", &Weight_Gen, &b_Weight_Gen);
@@ -320,30 +322,6 @@ void DYmm13TeV_t::DeactivateBranches() {
   fChain->SetBranchStatus("*",0);
 }
 
-void DYmm13TeV_t::ActivateBranches(int count, ...) {
-  va_list vl;
-  va_start(vl,count);
-  std::cout << "ActivateBranches(" << count << "): ";
-  for (int i=0; i<count; ++i) {
-    typedef const char* constCharPtr;
-    TString brName= TString(va_arg(vl,constCharPtr));
-    fChain->SetBranchStatus(brName,1);
-    std::cout << " <" << brName << ">";
-  }
-  std::cout << "\n";
-  va_end(vl);
-}
-
-void DYmm13TeV_t::ActivateBranches(const std::vector<TString> &brV) {
-  unsigned int count=brV.size();
-  std::cout << "ActivateBranches(" << count << "): ";
-  for (unsigned int i=0; i<count; ++i) {
-    fChain->SetBranchStatus(brV[i],1);
-    std::cout << " <" << brV[i] << ">";
-  }
-  std::cout << "\n";
-}
-
 void DYmm13TeV_t::ActivateBranches(TString brNames)
 {
   if (brNames.Length()==0) {
@@ -354,9 +332,21 @@ void DYmm13TeV_t::ActivateBranches(TString brNames)
   TString fn;
   while (!ss.eof()) {
     ss >> fn;
-    std::cout << "adding branch <" << fn << ">\n";
-    fChain->SetBranchStatus(fn,1);
+    if (fn.Length()>1) {
+      std::cout << "adding branch <" << fn << ">\n";
+      fChain->SetBranchStatus(fn,1);
+    }
   }
+}
+
+int DYmm13TeV_t::BranchExists(TString brName)
+{
+  int yes=0;
+  TObjArray *brObjArr= fChain->GetListOfBranches();
+  for (int ibr=0; !yes && (ibr<brObjArr->GetEntries()); ibr++) {
+    if (TString(brObjArr->At(ibr)->GetName()) == brName) yes=1;
+  }
+  return yes;
 }
 
 #undef DYmm13TeV_t_cxx

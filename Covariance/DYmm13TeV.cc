@@ -24,6 +24,7 @@ void DYmm13TeV_t::Zero()
   *Momentum_preFSR_Lead=zero;
   *Momentum_preFSR_Sub=zero;
   Flag_EventSelection=false;
+  Flag_EventSelectionTrigOnly=false;
   Weight_Norm=1;
   Weight_PU=1;
   Weight_Gen=1;
@@ -70,7 +71,8 @@ int DYmm13TeV_t::CreateNew(TString fnameInp, TString treeName)
   fOutTree->Branch("Momentum_postFSR_Sub", &Momentum_postFSR_Sub);
   fOutTree->Branch("Momentum_preFSR_Lead", &Momentum_preFSR_Lead);
   fOutTree->Branch("Momentum_preFSR_Sub", &Momentum_preFSR_Sub);
-  fOutTree->Branch("Flag_EventSelection", &Flag_EventSelection);
+  fOutTree->Branch("Flag_EventSelection", &Flag_EventSelection, "Flag_EventSelection/O");
+  fOutTree->Branch("Flag_EventSelectionTrigOnly", &Flag_EventSelectionTrigOnly, "Flag_EventSelectionTrigOnly/O");
   fOutTree->Branch("Weight_Norm", &Weight_Norm, "Weight_Norm/D");
   fOutTree->Branch("Weight_PU", &Weight_PU, "Weight_PU/D");
   fOutTree->Branch("Weight_Gen", &Weight_Gen, "Weight_Gen/D");
