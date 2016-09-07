@@ -813,4 +813,23 @@ int orderChanged(const std::vector<int> &idx) {
 }
 
 // ---------------------------------------------------------
+// ---------------------------------------------------------
+
+std::ostream& operator<<(std::ostream &out, const TLorentzVector &v)
+{
+  out << Form("(Pt,Eta,Phi,En)=(%lf,%lf,%lf,%lf)",v.Pt(),v.Eta(),v.Phi(),v.E());
+  return out;
+}
+
+// ---------------------------------------------------------
+
+std::ostream& operator<<(std::ostream &out, const TLorentzVector *v)
+{
+  if (!v) out << "(null ptr to TLorentzVector)";
+  else out << (*v);
+  return out;
+}
+
+// ---------------------------------------------------------
+// ---------------------------------------------------------
 

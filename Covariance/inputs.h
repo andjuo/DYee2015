@@ -17,6 +17,7 @@
 #include <TSystem.h>
 #include <TRandom3.h>
 #include <TGraphAsymmErrors.h>
+#include <TLorentzVector.h>
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -489,6 +490,12 @@ template<class type1_t, class type2_t>
 inline
 void HERE(const char *format, const type1_t x, const type2_t y)
 { std::cout << Form(format,x,y) << std::endl; }
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+std::ostream& operator<<(std::ostream &out, const TLorentzVector &v);
+std::ostream& operator<<(std::ostream &out, const TLorentzVector *v);
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------
