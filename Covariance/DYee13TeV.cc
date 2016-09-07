@@ -24,6 +24,7 @@ void DYee13TeV_t::Zero()
   *Momentum_preFSR_Lead=zero;
   *Momentum_preFSR_Sub=zero;
   Flag_EventSelection=false;
+  Flag_EventSelectionExceptSCGap=false;
   Weight_Norm=1;
   Weight_PU=1;
   Weight_Gen=1;
@@ -71,6 +72,7 @@ int DYee13TeV_t::CreateNew(TString fnameInp, TString treeName)
   fOutTree->Branch("Momentum_preFSR_Lead", &Momentum_preFSR_Lead);
   fOutTree->Branch("Momentum_preFSR_Sub", &Momentum_preFSR_Sub);
   fOutTree->Branch("Flag_EventSelection", &Flag_EventSelection, "Flag_EventSelection/O");
+  fOutTree->Branch("Flag_EventSelectionExceptSCGap", &Flag_EventSelectionExceptSCGap, "Flag_EventSelectionExceptSCGap/O");
   fOutTree->Branch("Weight_Norm", &Weight_Norm, "Weight_Norm/D");
   fOutTree->Branch("Weight_PU", &Weight_PU, "Weight_PU/D");
   fOutTree->Branch("Weight_Gen", &Weight_Gen, "Weight_Gen/D");
@@ -157,7 +159,10 @@ std::ostream& operator<<(std::ostream &out, DYee13TeV_t &obj)
       << ", " << (*obj.Momentum_preFSR_Sub) << "\n";
   out << "Event ";
   if (!obj.Flag_EventSelection) out << "NOT ";
-  out << "selected,  Weights: lumi=" << obj.Weight_Norm
+  out << "selected";
+  if (!obj.Flag_EventSelection && obj.Flag_EventSelectionExceptSCGap)
+    out << " (because of SC gap)";
+  out << ", Weights: lumi=" << obj.Weight_Norm
       << ", PU=" << obj.Weight_PU << ", Gen=" << obj.Weight_Gen << "\n";
   return out;
 }
