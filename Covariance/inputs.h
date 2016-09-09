@@ -46,6 +46,7 @@ void clearVec(std::vector<ptr_t*> &vec)
   vec.clear();
 }
 
+void addToVector(std::vector<TString> &vec, TString strings);
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="");
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
@@ -75,7 +76,7 @@ template <class th1_t>
 inline
 void removeError(th1_t *h1)
 {
-  for (int ibin=1; ibin<h1->GetNbinsX(); ibin++)
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++)
     h1->SetBinError(ibin,0);
 }
 

@@ -39,6 +39,19 @@ TString DayAndTimeTag(int eliminateSigns)
 
 // -----------------------------------------------------------
 
+void addToVector(std::vector<TString> &vec, TString strings)
+{
+  std::stringstream ss(strings.Data());
+  TString s;
+  while (!ss.eof()) {
+    ss >> s;
+    if (s.Length()) vec.push_back(s);
+  }
+}
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
 		   TString explain)
 {
