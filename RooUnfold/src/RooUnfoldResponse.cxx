@@ -461,6 +461,46 @@ RooUnfoldResponse::ClearCache()
   _cached= false;
 }
 
+
+void RooUnfoldResponse_ScaleVector(TVectorD *v, Double_t x)
+{
+  if (!v || (x==0)) return;
+  for (int i=0; i<v->GetNoElements(); i++) (*v)[i] *= x;
+}
+
+void RooUnfoldResponse_ScaleMatrix(TMatrixD *m, Double_t x)
+{
+  if (!m || (x==0)) return;
+  for (int ir=0; ir < m->GetNrows(); ir++) {
+    for (int ic=0; ic < m->GetNcols(); ic++) {
+      (*m)(ir,ic) *= x;
+    }
+  }
+}
+
+void
+RooUnfoldResponse::Scale(Double_t x)
+{
+  if (x==0) {
+    std::cout << "RooUnfoldResponse::Scale(x): x = 0\n";
+    return;
+  }
+  if (_mes) _mes->Scale(x);
+  if (_fak) _fak->Scale(x);
+  if (_tru) _tru->Scale(x);
+  if (_res) _res->Scale(x);
+  if (_cached) {
+    RooUnfoldResponse_ScaleVector(_vMes,x);
+    RooUnfoldResponse_ScaleVector(_eMes,x);
+    RooUnfoldResponse_ScaleVector(_vFak,x);
+    RooUnfoldResponse_ScaleVector(_vTru,x);
+    RooUnfoldResponse_ScaleVector(_eTru,x);
+    RooUnfoldResponse_ScaleMatrix(_mRes,x);
+    RooUnfoldResponse_ScaleMatrix(_eRes,x);
+  }
+}
+
+
 Int_t
 RooUnfoldResponse::Fill (Double_t xr, Double_t xt, Double_t w)
 {

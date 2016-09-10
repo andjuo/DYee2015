@@ -55,6 +55,9 @@ public:
   virtual RooUnfoldResponse& Setup (const TH1* measured, const TH1* truth);  // set up - measured and truth only used for shape
   virtual RooUnfoldResponse& Setup (const TH1* measured, const TH1* truth, const TH2* response);  // set up from already-filled histograms
 
+  // allow scaling of the histograms
+  void Scale(Double_t x);
+
   // Fill with training data
 
   virtual Int_t Fill (Double_t xr, Double_t xt, Double_t w= 1.0);  // Fill 1D Response Matrix
