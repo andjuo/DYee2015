@@ -9,7 +9,9 @@ typedef enum { _iEff, _iRho, _iAcc, _iEffAcc,
 	       _iSignal, _iUnf, _iUnfRho, _iUnfRhoEffAcc,
 	       _iPostFsr, _iPreFsr,
 	       _iEffPass, _iEffTot, _iAccPass, _iAccTot,
-	       _iCmp1, _iCmp2
+	       _iDetResFakes, _iFSRResFakes,
+	       _iCmp1, _iCmp2,
+	       _ih2Mig, _ih2FsrMig
 	       //_iRRmeas, _iRRtrue
 } THisto_t;
 
@@ -18,36 +20,85 @@ typedef enum { _iEff, _iRho, _iAcc, _iEffAcc,
 TString THistoName(THisto_t ih);
 TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 		THisto_t idxHisto,
-		TString fileName, TString newHistoName);
+		TString fileName, TString newHistoName, TH2D **h2ptr=NULL);
 
 // ---------------------------------------------------------
 
-void compareVersions(int theCase=1)
+void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TString showOnly="")
 {
   TString mainFName;
   TString cmpFName1, cmpFName2;
   std::map<THisto_t,TString> histoNames[_fn_last];
 
+  std::vector<TString> vecMainFName,vecCmp1FName,vecCmp2FName;
+  addToVector(vecMainFName,". . cs_DYee_13TeV_El2.root");
+  addToVector(vecCmp1FName,". . dyee_test_El2skim2_excludeGap.root");
+  addToVector(vecCmp2FName,". . dyee_test_RECO_El2skim.root");
+
+  // version 3
+  addToVector(vecMainFName,"cs_DYee_13TeV_El2.root");
+  addToVector(vecCmp1FName,"dyee_test_dressed_El2skim2.root");
+  addToVector(vecCmp2FName,".");
+
+  // version 4
+  addToVector(vecMainFName,"cs_DYee_13TeV_El3.root");
+  if (1) addToVector(vecCmp1FName,"dyee_test_dressed_El2skim2.root");
+  else addToVector(vecCmp1FName,"dyee_test_dressed_El2skim2-old20160916.root");
+  addToVector(vecCmp2FName,".");
+
+  // version 5
+  addToVector(vecMainFName,"cs_DYee_13TeV_El3.root");
+  addToVector(vecCmp1FName,"/mnt/sdc/andriusj/DY13TeV/EgammaWork-20160912/ElectronNtupler/work_76x/Unfolding/RespObj_detUnfolding.root");
+  addToVector(vecCmp2FName,".");
+
+  // version 6
+  addToVector(vecMainFName,"/mnt/sdc/andriusj/DY13TeV/EgammaWork-20160912/ElectronNtupler/work_76x/Unfolding/dyee_unf_input.root");
+  addToVector(vecCmp1FName,"/mnt/sdc/andriusj/DY13TeV/EgammaWork-20160912/ElectronNtupler/work_76x/Unfolding/RespObj_detUnfolding.root");
+  addToVector(vecCmp2FName,".");
+
+
+  TString lumiScale=":scale2316.969";
+  TString lumiInvScale=":scale4.31598164844603134e-04";
+
   if (theCase==1) {
     std::cout << "compare DYee corrections\n";
-    mainFName="cs_DYee_13TeV_El2.root";
+    mainFName=vecMainFName[version];
+    histoNames[_fn_main][_iSignal]="RRmeas+detRes";
+    histoNames[_fn_main][_iUnf]="RRtrue+detRes";
+    histoNames[_fn_main][_ih2Mig]="RRmig+detRes";
+    histoNames[_fn_main][_iDetResFakes]="RRfakes+detRes";
     histoNames[_fn_main][_iEff]="h1Eff";
     histoNames[_fn_main][_iRho]="h1Rho";
     histoNames[_fn_main][_iAcc]="h1Acc";
     histoNames[_fn_main][_iEffAcc]="h1EffAcc";
     histoNames[_fn_main][_iPostFsr]="RRmeas+FSRRes";
     histoNames[_fn_main][_iPreFsr]="RRtrue+FSRRes";
-    cmpFName1="dyee_test_El2skim_excludeGap.root";
-    histoNames[_fn_cmp1][_iEff]="h1Eff";
+    histoNames[_fn_main][_ih2FsrMig]="RRmig+FSRRes";
+    cmpFName1=vecCmp1FName[version];
+    if (valueEquals(version,"3 4")) {
+      histoNames[_fn_cmp1][_iSignal]="RRmeas+rooUnf_detResRespPU"+lumiScale;
+      //histoNames[_fn_cmp1][_iSignal]="h1recoSelNoPostFsrAcc_MWPU"+lumiScale;
+      histoNames[_fn_cmp1][_iUnf]="RRtrue+rooUnf_detResRespPU"+lumiScale;
+      histoNames[_fn_cmp1][_ih2Mig]="RRmig+rooUnf_detResRespPU"+lumiScale;
+      histoNames[_fn_cmp1][_iDetResFakes]="RRfakes+rooUnf_detResRespPU"+lumiScale;
+    }
+    //histoNames[_fn_cmp1][_iEff]="h1Eff";
     histoNames[_fn_cmp1][_iEff]="h1EffPU";
+    if (valueEquals(version,"3 4")) {
+      histoNames[_fn_cmp1][_iRho]="h1rho_inPostFsrAcc";
+    }
     histoNames[_fn_cmp1][_iAcc]="h1Acc";
     histoNames[_fn_cmp1][_iEffAcc]="h1EffPUAcc";
-    TString lumiScale=":scale2316.97";
     histoNames[_fn_cmp1][_iPostFsr]="h1_postFsr_Mweighted"+lumiScale;
     //histoNames[_fn_cmp1][_iPostFsr]="RRmeas+rooUnf_fsrResp"+lumiScale;
     histoNames[_fn_cmp1][_iPreFsr]="RRtrue+rooUnf_fsrResp"+lumiScale;
-    cmpFName2="dyee_test_RECO_El2skim.root";
+    histoNames[_fn_cmp1][_ih2FsrMig]="RRmig+rooUnf_fsrResp"+lumiScale;
+    cmpFName2=vecCmp2FName[version];
     histoNames[_fn_cmp2][_iRho]="h1rho";
+    if (version==2) {
+      histoNames[_fn_cmp2][_iSignal]="RRmeas+rooUnf_detResResp"+lumiScale;
+      histoNames[_fn_cmp2][_iUnf]="RRtrue+rooUnf_detResResp"+lumiScale;
+    }
   }
   else if ((theCase==2) || (theCase==3)) {
     std::cout << "compare DYee CS closure test\n";
@@ -66,40 +117,131 @@ void compareVersions(int theCase=1)
     histoNames[_fn_cmp1][_iUnfRho]="RRtrue+detRes";
     histoNames[_fn_cmp1][_iUnfRhoEffAcc]="RRmeas+FSRRes";
   }
+  else if (theCase==4) {
+    std::cout << "compare DYee Rho corrections\n";
+    mainFName=vecMainFName[version];
+    histoNames[_fn_main][_iRho]="h1Rho";
+    cmpFName1=vecCmp1FName[version];
+    histoNames[_fn_cmp1][_iRho]="h1rho";
+    cmpFName2=vecCmp1FName[version];
+    histoNames[_fn_cmp2][_iRho]="h1rho_inPostFsrAcc";
+  }
+  else if (theCase==5) {
+    std::cout << "compare DYee Rho corrections\n";
+    mainFName=vecMainFName[version];
+    histoNames[_fn_main][_iRho]="h1Rho";
+    cmpFName1=vecCmp1FName[version];
+    histoNames[_fn_cmp1][_iRho]="h1rho_reco";
+    cmpFName2=vecCmp1FName[version];
+    histoNames[_fn_cmp2][_iRho]="h1rho_recoInPostFsrAcc";
+  }
+  else if (theCase==6) {
+    std::cout << "compare DYee Rho corrections\n";
+    mainFName=vecCmp1FName[version];
+    histoNames[_fn_main][_iSignal]="RRmeas+rooUnf_detResResp";
+    cmpFName1=vecCmp1FName[version];
+    histoNames[_fn_cmp1][_iSignal]="h1recoSel_MWPU";
+  }
+  else if (theCase==100) {
+    std::cout << "compare detRes objects\n";
+    mainFName=vecMainFName[version];
+    histoNames[_fn_main][_iSignal]="RRmeas+detRes";
+    histoNames[_fn_main][_iUnf]="RRtrue+detRes";
+    histoNames[_fn_main][_ih2Mig]="RRmig+detRes";
+    cmpFName1=vecCmp1FName[version];
+    histoNames[_fn_cmp1][_iSignal]="RRmeas+Unfold_DetectorRes1";
+    histoNames[_fn_cmp1][_iUnf]="RRtrue+Unfold_DetectorRes1";
+    histoNames[_fn_cmp1][_ih2Mig]="RRmig+Unfold_DetectorRes1";
+  }
+  else if (theCase==200) {
+    std::cout << "compare DYmm preFSR 4pi theory\n";
+    mainFName="theory13TeVmm.root";
+    histoNames[_fn_main][_iPreFsr]="h1cs_theory";
+    lumiScale="";
+    cmpFName1="dyee_test_El2skim2_excludeGap.root";
+    histoNames[_fn_cmp1][_iPreFsr]="RRtrue+rooUnf_fsrResp"+lumiScale;
+    histoNames[_fn_cmp1][_iPreFsr]="h1_preFsr_Mweighted";
+    if (1) {
+      cmpFName2="cs_DYee_13TeV_El2.root";
+      histoNames[_fn_cmp2][_iPreFsr]="RRtrue+FSRRes"+lumiInvScale;
+    }
+    else {
+      cmpFName2="dyee_test_El2skim_excludeGap.root";
+      histoNames[_fn_cmp2][_iPreFsr]="RRtrue+rooUnf_fsrResp"+lumiScale;
+      histoNames[_fn_cmp2][_iPreFsr]="h1_preFsr_Mweighted";
+    }
+  }
   //else if (theCase==4)
   else {
     std::cout << "not ready for theCase=" << theCase << "\n";
   }
 
 
+  if (mainFName.Length()<2) {
+    std::cout << "too short mainFName\n";
+    return;
+  }
+
   for (std::map<THisto_t,TString>::const_iterator it= histoNames[_fn_main].begin();
        it!=histoNames[_fn_main].end(); it++) {
     std::cout << THistoName(it->first) << " " << it->second << "\n";
+    if ((showOnly.Length()>0) && (showOnly!=THistoName(it->first))) {
+      std::cout << "   ... skipping by request\n";
+      continue;
+    }
 
     TString h1nameBase= "h1" + THistoName(it->first);
-    TH1D *h1main= loadHisto(histoNames[_fn_main],it->first,mainFName,h1nameBase+"_main");
-    TH1D *h1cmp1= loadHisto(histoNames[_fn_cmp1],it->first,cmpFName1,h1nameBase+"_cmp1");
-    TH1D* h1cmp2= loadHisto(histoNames[_fn_cmp2],it->first,cmpFName2,h1nameBase+"_cmp2");
+    TH2D *h2main=NULL, *h2cmp1=NULL, *h2cmp2=NULL;
+    TH1D *h1main= loadHisto(histoNames[_fn_main],it->first,mainFName,h1nameBase+"_main",&h2main);
+    TH1D *h1cmp1=loadHisto(histoNames[_fn_cmp1],it->first,cmpFName1,h1nameBase+"_cmp1",&h2cmp1);
+    TH1D* h1cmp2= loadHisto(histoNames[_fn_cmp2],it->first,cmpFName2,h1nameBase+"_cmp2",&h2cmp2);
 
-    histoStyle(h1main,kBlue,24,1);
-    if (h1cmp1) histoStyle(h1cmp1,kGreen+1,5,1);
-    if (h1cmp2) histoStyle(h1cmp2,kRed,7,1);
+    if (h1main) {
+      histoStyle(h1main,kBlue,24,1);
+      if (h1cmp1) histoStyle(h1cmp1,kGreen+1,5,1);
+      if (h1cmp2) histoStyle(h1cmp2,kRed,7,1);
 
-    TString cName="c" + h1nameBase;
-    plotHisto(h1main,cName,1,0,"LPE1","main");
-    if (h1cmp1) plotHistoSame(h1cmp1,cName,"LPE1","cmp1");
-    if (h1cmp2) plotHistoSame(h1cmp2,cName,"LPE1","cmp2");
-    if (1) {
-      if (h1cmp1) {
-	std::cout << "mainFile=" << mainFName
-		  << ", cmpFile1=" << cmpFName1 << "\n";
-	printRatio(h1main,h1cmp1);
+      TString cName="c" + h1nameBase;
+      plotHisto(h1main,cName,1,0,"LPE1","main");
+      if (h1cmp1) plotHistoSame(h1cmp1,cName,"LPE1","cmp1");
+      if (h1cmp2) plotHistoSame(h1cmp2,cName,"LPE1","cmp2");
+      if (1) {
+	if (h1cmp1) {
+	  std::cout << "mainFile=" << mainFName
+		    << ", cmpFile1=" << cmpFName1 << "\n";
+	  printRatio(h1main,h1cmp1);
+	}
+	if (h1cmp2) {
+	  std::cout << "mainFile=" << mainFName
+		    << ", cmpFile2=" << cmpFName2 << "\n";
+	  printRatio(h1main,h1cmp2);
+	}
       }
-      if (h1cmp2) {
-	std::cout << "mainFile=" << mainFName
-		  << ", cmpFile2=" << cmpFName2 << "\n";
-	printRatio(h1main,h1cmp2);
+    }
+    else if (h2main) {
+      int idx=0;
+      TH2D *h2_cmp=NULL;
+      if (h2cmp1!=NULL) { idx=1; h2_cmp=h2cmp1; }
+      else if (h2cmp2!=NULL) { idx=2; h2_cmp=h2cmp2; }
+      TString diffTag=Form("_diff%d",idx);
+      TString cName="c" + h1nameBase + diffTag;
+      TCanvas *cx= new TCanvas(cName,cName,900,300);
+      cx->Divide(3,1);
+      cx->cd(1);
+      h2main->Draw("COLZ");
+      if (idx!=0) {
+	cx->cd(2);
+	h2_cmp->Draw("COLZ");
+	TString h2name_new=h2main->GetName()+TString("_diff");
+	TH2D *h2main_diff_cmp= cloneHisto(h2main,h2name_new,h2name_new);
+	h2main_diff_cmp->Add(h2_cmp,-1);
+	cx->cd(3);
+	h2main_diff_cmp->Draw("COLZ");
+	if (noH2Ratios_user) std::cout << "skipping h2 ratio print out\n";
+	else printHisto(h2main_diff_cmp,1,1);
+	std::cout << "h2main(1,1)=" << h2main->GetBinContent(1,1) << "\n";
       }
+      cx->Update();
     }
   }
 }
@@ -127,8 +269,12 @@ TString THistoName(THisto_t ih)
   case _iEffTot: name="effTotal"; break;
   case _iAccPass: name="accPass"; break;
   case _iAccTot: name="accTotal"; break;
+  case _iDetResFakes: name="detResFakes"; break;
+  case _iFSRResFakes: name="fsrResFakes"; break;
   case _iCmp1: name="cmp1"; break;
   case _iCmp2: name="cmp2"; break;
+  case _ih2Mig: name="h2Mig"; break;
+  case _ih2FsrMig: name="h2FsrMig"; break;
   default:
     name="UNKNOWN";
   }
@@ -139,10 +285,14 @@ TString THistoName(THisto_t ih)
 
 TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 		THisto_t idxHisto,
-		TString fileName, TString newHistoName)
+		TString fileName, TString newHistoName,
+		TH2D **h2ptr)
 {
   TH1D *h1=NULL;
+  int is2D=0;
+  if (h2ptr) *h2ptr=NULL;
   if (fileName.Length()==0) return h1;
+  if (fileName.Length()<2) return h1;
 
   for (std::map<THisto_t,TString>::const_iterator it=histoNames.begin();
        it!=histoNames.end(); it++) {
@@ -159,7 +309,9 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 	h1= loadHisto(fileName,hNameDisk, newHistoName,h1dummy);
       }
       else if ((hNameDisk.Index("RRmeas+")!=-1) ||
-	       (hNameDisk.Index("RRtrue+")!=-1)) {
+	       (hNameDisk.Index("RRtrue+")!=-1) ||
+	       (hNameDisk.Index("RRmig+")!=-1) ||
+	       (hNameDisk.Index("RRfakes+")!=-1)) {
 	TString respName=hNameDisk;
 	respName.Remove(0,respName.Index("+")+1);
 	std::cout << "respName=" << respName << "\n";
@@ -173,13 +325,23 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 	    h1=cloneHisto((TH1D*)r->Hmeasured(),newHistoName,newHistoName);
 	  else if (hNameDisk.Index("RRtrue+")!=-1)
 	    h1=cloneHisto((TH1D*)r->Htruth(),newHistoName,newHistoName);
+	  else if (hNameDisk.Index("RRfakes+")!=-1)
+	    h1=cloneHisto((TH1D*)r->Hfakes(),newHistoName,newHistoName);
+	  else if (hNameDisk.Index("RRmig+")!=-1) {
+	    is2D=1;
+	    if (!h2ptr) { std::cout << "cannot receive RRmig\n"; }
+	    else *h2ptr=cloneHisto((TH2D*)r->Hresponse(),newHistoName,newHistoName);
+	  }
 	  delete r;
 	}
       }
-      if (!h1) {
+      if ((!h1 && !is2D) || (is2D && (!h2ptr || !(*h2ptr)))) {
 	std::cout << "failed to get " << it->second << "\n";
       }
-      else if (scale!=1.) h1->Scale(scale);
+      else if (scale!=1.) {
+	if (h1) h1->Scale(scale);
+	else (*h2ptr)->Scale(scale);
+      }
       break;
     }
   }
