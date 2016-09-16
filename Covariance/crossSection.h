@@ -30,8 +30,10 @@ TBkg_t next(TBkg_t &b)
 
 // -----------------------------------------------------------
 
-RooUnfoldResponse* loadRooUnfoldResponse(TString fname, TString fieldName, TString name);
-RooUnfoldResponse* loadRooUnfoldResponse(TFile &fin, TString fieldName, TString name);
+RooUnfoldResponse* loadRooUnfoldResponse(TString fname, TString fieldName,
+					 TString name, int warnIfAbsent=1);
+RooUnfoldResponse* loadRooUnfoldResponse(TFile &fin, TString fieldName,
+					 TString name, int warnIfAbsent=1);
 RooUnfoldBayes* loadRooUnfoldBayes(TFile &fin, TString fieldName, TString name);
 void plotHisto(RooUnfoldResponse &rs, TString cNameBase, int logx=0, int logy=0);
 RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString name,

@@ -70,10 +70,10 @@ TString csTypeName(TCSType_t cs)
 // --------------------------------------------------------------
 
 RooUnfoldResponse *loadRooUnfoldResponse(TString fname, TString fieldName,
-					 TString setName)
+					 TString setName, int warnIfAbsent)
 {
   TFile fin(fname);
-  RooUnfoldResponse *rs= loadRooUnfoldResponse(fin,fieldName,setName);
+  RooUnfoldResponse *rs= loadRooUnfoldResponse(fin,fieldName,setName,warnIfAbsent);
   fin.Close();
   return rs;
 }
@@ -81,7 +81,7 @@ RooUnfoldResponse *loadRooUnfoldResponse(TString fname, TString fieldName,
 // --------------------------------------------------------------
 
 RooUnfoldResponse *loadRooUnfoldResponse(TFile &fin, TString fieldName,
-					 TString setName)
+					 TString setName, int warnIfAbsent)
 {
   if (!fin.IsOpen()) {
     std::cout << "loadRooUnfoldResponse(TFile&): file is not open\n";
@@ -89,9 +89,11 @@ RooUnfoldResponse *loadRooUnfoldResponse(TFile &fin, TString fieldName,
   }
   TObject *chk= fin.Get(fieldName);
   if (!chk) {
-    std::cout << "loadRooUnfoldResponse(TFile&): field with name=<"
-	      << fieldName << "> does not exist in file <"
-	      << fin.GetName() << ">\n";
+    if (warnIfAbsent) {
+      std::cout << "loadRooUnfoldResponse(TFile&): field with name=<"
+		<< fieldName << "> does not exist in file <"
+		<< fin.GetName() << ">\n";
+    }
     return NULL;
   }
   delete chk;
@@ -1104,7 +1106,7 @@ int CrossSection_t::load(TString fname, TString setTag)
   fh1PreFsrCS=loadHisto(fin, "h1PreFSRCS","h1PreFSRCS" + fTag, 0, h1dummy);
   fh1Theory = loadHisto(fin, "h1Theory", "h1Theory" + fTag, 0, h1dummy);
   fh1Varied = loadHisto(fin, "h1Varied", "h1Varied" + fTag, 0, h1dummy);
-  fResVaried= loadRooUnfoldResponse(fin, "respVaried","respVaried"+fTag);
+  fResVaried= loadRooUnfoldResponse(fin, "respVaried","respVaried"+fTag,0);
   if (fResVaried) fResVaried->UseOverflow(false);
   fDetResBayes= loadRooUnfoldBayes(fin, "detResBayes", "detResBayes" + fTag);
   fFSRBayes = loadRooUnfoldBayes(fin, "fsrBayes", "fsrBayes" + fTag);
