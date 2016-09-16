@@ -374,17 +374,22 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
 
   const TString mmNames[4]= { "h2Eff_RecoID", "h2Eff_Iso", "h2Eff_HLT4p2", "h2Eff_HLT4p3" };
   const TString eeNames[4] = { "h2Eff_Reco", "h2Eff_ID", "h2Eff_Trig", "h2Eff_TrigUnneeded" };
-  const TString *hnames= (!fElChannel) ? mmNames : eeNames;
+  const TString eeNamesV2[4]= { "h_2D_Eff_RECO", "h_2D_Eff_ID", "h_2D_Eff_Trig", "h_2D_Eff_TrigUnneeded" };
+  const TString *hnames = mmNames;
+  if (fElChannel==1) hnames=eeNames;
+  else if (fElChannel==2) hnames=eeNamesV2;
 
   h2Eff_RecoID_Data= loadHisto(fin,subdir+hnames[0]+"_Data"+tag,hnames[0]+"_Data"+tag,1,h2dummy);
   h2Eff_Iso_Data= loadHisto(fin,subdir+hnames[1]+"_Data"+tag,hnames[1]+"_Data"+tag,1,h2dummy);
   h2Eff_HLT4p2_Data= loadHisto(fin,subdir+hnames[2]+"_Data"+tag,hnames[2]+"_Data"+tag,1,h2dummy);
-  h2Eff_HLT4p3_Data= loadHisto(fin,subdir+hnames[3]+"_Data"+tag,hnames[3]+"_Data"+tag,1,h2dummy);
+  if (!fElChannel) h2Eff_HLT4p3_Data= loadHisto(fin,subdir+hnames[3]+"_Data"+tag,hnames[3]+"_Data"+tag,1,h2dummy);
+  else h2Eff_HLT4p3_Data=cloneHisto(h2Eff_HLT4p2_Data,hnames[3]+"_Data"+tag,h2Eff_HLT4p2_Data->GetTitle());
 
   h2Eff_RecoID_MC= loadHisto(fin,subdir+hnames[0]+"_MC"+tag,hnames[0]+"_MC"+tag,1,h2dummy);
   h2Eff_Iso_MC= loadHisto(fin,subdir+hnames[1]+"_MC"+tag,hnames[1]+"_MC"+tag,1,h2dummy);
   h2Eff_HLT4p2_MC= loadHisto(fin,subdir+hnames[2]+"_MC"+tag,hnames[2]+"_MC"+tag,1,h2dummy);
-  h2Eff_HLT4p3_MC= loadHisto(fin,subdir+hnames[3]+"_MC"+tag,hnames[3]+"_MC"+tag,1,h2dummy);
+  if (!fElChannel) h2Eff_HLT4p3_MC= loadHisto(fin,subdir+hnames[3]+"_MC"+tag,hnames[3]+"_MC"+tag,1,h2dummy);
+  else h2Eff_HLT4p3_MC= cloneHisto(h2Eff_HLT4p2_MC,hnames[3]+"_MC"+tag,h2Eff_HLT4p2_MC->GetTitle());
 
   if (subdir.Length()) fin.cd();
 
