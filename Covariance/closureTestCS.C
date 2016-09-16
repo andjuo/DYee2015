@@ -2,11 +2,12 @@
 
 void closureTestCS()
 {
-  TVersion_t inpVer=_verEl2skim;
+  TVersion_t inpVer=_verEl2;
+  inpVer=_verEl3;
   TString inpVerTag=versionName(inpVer);
 
-  TString csFName="cs_DYee_13TeV_El2.root";
-  TString csOutFName="csClosure_DYee_13TeV_El2.root";
+  TString csFName="cs_DYee_13TeV_" + inpVerTag + ".root";
+  TString csOutFName="csClosure_DYee_13TeV_" + inpVerTag + ".root";
   CrossSection_t cs("cs",inpVerTag,_csPreFsrFullSp,inpVer);
   if (!cs.load(csFName,inpVerTag)) {
     std::cout << "loading failed\n";
@@ -30,10 +31,20 @@ void closureTestCS()
 
   if (0) {
     // replace Acc x Eff by my values
-    TH1D* h1effAcc=loadHisto("dyee_test_El2skim_excludeGap.root","h1EffPUAcc",
+    TH1D* h1effAcc=loadHisto("dyee_test_El2skim2_excludeGap.root","h1EffPUAcc",
 			     "h1effAcc_my",1,h1dummy);
     cs.h1EffAcc(h1effAcc);
     csOutFName.ReplaceAll(".root","_AJeffAcc.root");
+  }
+  if (0) {
+    // replace detRes by my values
+    RooUnfoldResponse *detRes=loadRooUnfoldResponse("dyee_test_RECO_El2skim.root","rooUnf_detResRespPU","detResRespPU");
+    cs.detRes(*detRes);
+  }
+  if (0) {
+    // replace fsrRes by my values
+    RooUnfoldResponse *fsrRes=loadRooUnfoldResponse("dyee_test_El2skim2_excludeGap.root","rooUnf_fsrResp","fsrResp");
+    cs.fsrRes(*fsrRes);
   }
 
   TH1D* h1cs= cs.calcCrossSection();
