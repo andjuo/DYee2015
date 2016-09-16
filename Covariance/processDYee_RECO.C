@@ -91,6 +91,7 @@ void processDYee_RECO(Int_t maxEntries=-1, TString includeOnlyRange="")
   TH1D *h1postFsrInAccSel_M= new TH1D("h1_postFsrInAccSel_M", "postFSR selected events in acceptance;M_{gen,postFSR} [GeV];count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_MW= new TH1D("h1_postFsrInAccSel_MW", "postFSR selected events in acceptance (weighted);M_{gen,postFSR} [GeV];weighted count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_MWPU= new TH1D("h1_postFsrInAccSel_MWPU", "postFSR selected events in acceptance (weighted,wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH1D *h1postFsrAccSelMiss_MWPU= new TH1D("h1_postFsrAccSelMiss_MWPU", "postFSR selected events missing from acceptance (weighted,wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
 
   prepareHisto(h1recoSel_M);
   prepareHisto(h1recoSel_MW);
@@ -98,6 +99,7 @@ void processDYee_RECO(Int_t maxEntries=-1, TString includeOnlyRange="")
   prepareHisto(h1postFsrInAccSel_M);
   prepareHisto(h1postFsrInAccSel_MW);
   prepareHisto(h1postFsrInAccSel_MWPU);
+  prepareHisto(h1postFsrAccSelMiss_MWPU);
 
   TH2D* h2DetResMig= new TH2D("h2DetResMig","Det.resolution migration", DYtools::nMassBins, DYtools::massBinEdges, DYtools::nMassBins, DYtools::massBinEdges);
   h2DetResMig->Sumw2();
@@ -200,6 +202,7 @@ void processDYee_RECO(Int_t maxEntries=-1, TString includeOnlyRange="")
       std::cout << "miss " << mPostFsr << " (mReco=" << mReco << "), is selected=" << data.Flag_EventSelection << "\n";
       detResResp.Miss(mPostFsr, w);
       detResRespPU.Miss(mPostFsr, wPU);
+      h1postFsrAccSelMiss_MWPU->Fill(mPostFsr, wPU);
     }
     else {
       if (inAccReco && inAccPostFsr) {
@@ -327,6 +330,8 @@ void processDYee_RECO(Int_t maxEntries=-1, TString includeOnlyRange="")
   }
 
 
+  plotHisto(h1postFsrAccSelMiss_MWPU,"cAccSelMiss",1,1,"LPE1");
+
 
 
   TString fname="dyee_test_RECO_" + versionName(inpVersion) + TString(".root");
@@ -346,6 +351,7 @@ void processDYee_RECO(Int_t maxEntries=-1, TString includeOnlyRange="")
   h1postFsrInAccSel_M->Write();
   h1postFsrInAccSel_MW->Write();
   h1postFsrInAccSel_MWPU->Write();
+  h1postFsrAccSelMiss_MWPU->Write();
   h1Unf->Write();
   h1UnfPU->Write();
   h2DetResMig->Write();
