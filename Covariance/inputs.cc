@@ -137,10 +137,13 @@ void printHisto(const TH1D *h1, int extraRange) {
 
 // ---------------------------------------------------------
 
-void printHisto(const TH2D *h2) {
+void printHisto(const TH2D *h2, int extraRange, int nonZero) {
+  int d=(extraRange) ? 1 : 0;
   std::cout << "\nhisto " << h2->GetName() << " " << h2->GetTitle() << "\n";
-  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
-    for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) {
+  if (nonZero) std::cout << "  (only non-zero values printed)\n";
+  for (int ibin=1-d; ibin<=h2->GetNbinsX()+d; ibin++) {
+    for (int jbin=1-d; jbin<=h2->GetNbinsY()+d; jbin++) {
+      if (nonZero && (fabs(h2->GetBinContent(ibin,jbin))<1e-8)) continue;
       std::cout << "ibin=" << ibin << ",jbin=" << jbin
 		<< "  " << h2->GetXaxis()->GetBinLowEdge(ibin)
 		<< "-" << (h2->GetXaxis()->GetBinLowEdge(ibin)+

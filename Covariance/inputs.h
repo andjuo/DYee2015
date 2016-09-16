@@ -55,7 +55,7 @@ TCanvas* plotHisto(const TH2D* h2, TString cName, int logX=0, int logY=0);
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain="");
 
 void printHisto(const TH1D* h1, int extraRange=0);
-void printHisto(const TH2D* h1);
+void printHisto(const TH2D* h1, int extraRange=0, int nonZero=0);
 void printRatio(const TH1D* h1a, const TH1D* h1b, int extraRange=0,
 		int includeErr=0);
 void printRatio(const TH2D* h2a, const TH2D* h2b, int extraRange=0,
