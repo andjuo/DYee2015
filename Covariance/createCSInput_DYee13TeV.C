@@ -1,4 +1,5 @@
 #include "crossSection.h"
+#include <TText.h>
 
 // ---------------------------------------------------------
 
@@ -14,10 +15,17 @@ void createCSInput_DYee13TeV(int doSave=0)
 
   TVersion_t inpVer=_verEl1;
   inpVer=_verEl2;
+  inpVer=_verEl3;
 
   if (inpVer==_verEl2) {
     srcPath="/mnt/sdb/andriusj/v2_08082016_CovarianceMatrixInputs/";
     lumiTot=2316.97; // approximate
+    setNiters_detRes=15;
+    setNiters_FSR=15;
+  }
+  else if (inpVer==_verEl3) {
+    srcPath="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/";
+    lumiTot=2316.969; // actually used
     setNiters_detRes=15;
     setNiters_FSR=15;
   }
@@ -59,7 +67,7 @@ void createCSInput_DYee13TeV(int doSave=0)
     h1WZ->Reset();
     h1ZZ->Reset();
   }
-  else if (inpVer==_verEl2) {
+  else if ((inpVer==_verEl2) || (inpVer==_verEl3)) {
     h1WZ= loadHisto(fname2, "h_WZ", "h1WZ", 1,h1dummy);
     h1ZZ= loadHisto(fname2, "h_ZZ", "h1ZZ", 1,h1dummy);
     if (!h1WZ || !h1ZZ) {
@@ -131,6 +139,15 @@ void createCSInput_DYee13TeV(int doSave=0)
     hNameMap[_varEffAcc]= "h_AccEff";
     hNameMap[_varLast]= "h_diffXsec_Meas";
   }
+  else if (inpVer==_verEl3) {
+    hNameMap[_varDetRes]= "Unfold_DetectorRes";
+    hNameMap[_varFSRRes]= "Unfold_FSRCorr";
+    hNameMap[_varEff]= "h_Eff";
+    hNameMap[_varRho]= "h_EffSF";
+    hNameMap[_varAcc]= "h_Acc";
+    hNameMap[_varEffAcc]= "h_AccEff";
+    hNameMap[_varLast]= "h_diffXsec_Meas";
+  }
   else {
     std::cout << "code (hNameMap) is not ready for this inpVer\n";
     return;
@@ -152,6 +169,11 @@ void createCSInput_DYee13TeV(int doSave=0)
   fin6.Close();
   if (!rooUnfDetRes || !rooUnfFSRRes) return;
   if (!h1Acc || !h1Eff || !h1EffAcc || !h1Rho || !h1_DiffXSec_data) return;
+
+  //if (rooUnfFSRRes && (inpVer==_verEl3)) {
+  //  std::cout << "\n\tscaling rooUnfFSRRes by luminosity\n";
+  //  rooUnfFSRRes->Scale(lumiTot);
+  //}
 
 
   if (1) {
@@ -205,7 +227,16 @@ void createCSInput_DYee13TeV(int doSave=0)
     if (h1cs) printRatio(h1cs, h1_DiffXSec_data);
   }
 
-  cs.plotCrossSection();
+  TCanvas *canv=cs.plotCrossSection();
+  TText *info= new TText();
+  info->DrawTextNDC(0.45,0.93,inpVerTag);
+  canv->Update();
+
+  TH1D *h1theoryRaw= loadHisto("theory13TeVmm.root","h1cs_theory","h1NNLOtheory",1,h1dummy);
+  TH1D *h1theory= perMassBinWidth(h1theoryRaw,0);
+  histoStyle(h1theory,kRed,7,1);
+  plotHistoSame(h1theory,"cs","LP");
+
   //cs.plotCrossSection_StepByStep("cCalcTest");
 
   //return;
