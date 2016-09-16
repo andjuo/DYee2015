@@ -2,6 +2,7 @@
 #include <TROOT.h>
 #include <TString.h>
 #include <TH1D.h>
+#include <TH2D.h>
 #include <TCanvas.h>
 #include "../RooUnfold/src/RooUnfoldResponse.h"
 #include "../RooUnfold/src/RooUnfoldBayes.h"
@@ -13,7 +14,7 @@ void compareHistos(const TH1D *h1a, const TH1D *h1b);
 
 // ----------------------------------------------------
 
-void simpleCS()
+void simpleCS(int loadTheory=0, int loadSet2=0)
 {
   TString dataInputFName="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/ROOTFile_Input1_Histograms_Data.root";
   TString h1DataYieldName="h_yield";
@@ -27,6 +28,18 @@ void simpleCS()
   int nDetResIters=15;
   int nFSRResIters=15;
   double lumi=2316.969;
+
+  TString theoryFName=(loadTheory) ? "theory13TeVmm.root" : "";
+  TString theoryHistoName="h1cs_theory";
+
+  if (loadSet2) {
+    corrInputFName="dyee_test_dressed_El2skim2.root";
+    h1AccEffName="h1EffPUAcc";
+    h1EffSFName="h1rho_inPostFsrAcc";
+    h1FinalXSName="h1_preFsr_Mweighted";
+    DetResName="rooUnf_detResRespPU";
+    FSRResName="rooUnf_fsrResp";
+  }
 
   TFile finData(dataInputFName);
   if (!finData.IsOpen()) {
@@ -80,6 +93,7 @@ void simpleCS()
 
   // correct for FSR
   h1postFSR->Scale(1/lumi);
+  std::cout << "first FSR mig bin: " << ((TH2D*)(detFSRRes->Hresponse()))->GetBinContent(1,1) << "\n";
   RooUnfoldBayes fsrBayes( detFSRRes, h1postFSR, nFSRResIters );
   TH1D *h1preFSR=(TH1D*)fsrBayes.Hreco();
 
@@ -89,6 +103,36 @@ void simpleCS()
     double w= h1final->GetBinWidth(ibin);
     h1final->SetBinContent( ibin, h1final->GetBinContent(ibin)/w );
     h1final->SetBinError  ( ibin, 0 ); //h1final->GetBinError(ibin)/w );
+    if (loadSet2) {
+      h1FinalXS->SetBinContent( ibin, h1FinalXS->GetBinContent(ibin)/w );
+      h1FinalXS->SetBinError  ( ibin, h1FinalXS->GetBinError(ibin)/w );
+    }
+  }
+
+  // theory
+  TH1D *h1theory=NULL;
+  if (theoryFName.Length()) {
+    TFile finTh(theoryFName);
+    if (!finTh.IsOpen()) {
+      std::cout << "Theory file <" << finTh.GetName() << "> not found\n";
+      return;
+    }
+    TH1D *h1th_inp=(TH1D*)finTh.Get(theoryHistoName);
+    if (!h1th_inp) {
+      std::cout << "failed to get " << theoryHistoName << " from file <"
+		<< finTh.GetName() << ">\n";
+      return;
+    }
+    h1th_inp->SetDirectory(0);
+    finTh.Close();
+    h1theory=(TH1D*)h1th_inp->Clone("h1theory");
+    for (int ibin=1; ibin<=h1th_inp->GetNbinsX(); ibin++) {
+      double w= h1th_inp->GetBinWidth(ibin);
+      h1theory->SetBinContent(ibin, h1th_inp->GetBinContent(ibin)/w );
+      h1theory->SetBinError  (ibin, h1th_inp->GetBinError(ibin)/w );
+    }
+    delete h1th_inp;
+    h1theory->SetStats(0);
   }
 
   // plot
@@ -96,6 +140,11 @@ void simpleCS()
   h1FinalXS->SetLineColor(kBlue);
   h1FinalXS->SetMarkerColor(kBlue);
   h1final->SetMarkerStyle(24);
+  if (h1theory) {
+    h1theory->SetLineColor(kRed);
+    h1theory->SetMarkerColor(kRed);
+    h1theory->SetMarkerStyle(7);
+  }
 
   TCanvas *cx= new TCanvas("cs","cs",600,600);
   cx->SetLogx();
@@ -104,10 +153,12 @@ void simpleCS()
   //h1FinalXS->Draw("LPE1 same");
   //h1final->Draw("LPE1 same");
   h1final->Draw("LPsame");
+  if (h1theory) h1theory->Draw("LPE1 same");
   cx->Update();
 
   // print ratio
   if (1) compareHistos(h1FinalXS,h1final);
+  if (1 && h1theory) compareHistos(h1theory,h1final);
 }
 
 // ----------------------------------------------------
