@@ -292,7 +292,11 @@ public:
     int fi2= DYtools::FlatIndex(fh2EffBinDef, v2, allow_overflow);
     //std::cout << "fi1=" << fi1 << ", fi2=" << fi2 << "\n";
     if ((fi1<0) || (fi2<0)) {
-      std::cout << "negative fi\n";
+      if ((v1->Pt()>10) && (v2->Pt()>10)) {
+	std::cout << "negative fi in " << v1->Pt() << ", " << v1->Eta()
+		  << " : " << fi1 << "; " << v2->Pt() << ", "
+		  << v2->Eta() << " : " << fi2 << "\n";
+      }
       return 0;
     }
     if ((fi1>DYtools::EtaPtFIMax) || (fi2>DYtools::EtaPtFIMax)) {
