@@ -137,13 +137,24 @@ void printHisto(const TH1D *h1, int extraRange) {
 
 // ---------------------------------------------------------
 
-void printHisto(const TH2D *h2, int extraRange, int nonZero) {
+void printHisto(const TH2D *h2, int extraRange, int nonZero,
+		const TH2D *h2DenomHisto, double threshold) {
   int d=(extraRange) ? 1 : 0;
   std::cout << "\nhisto " << h2->GetName() << " " << h2->GetTitle() << "\n";
   if (nonZero) std::cout << "  (only non-zero values printed)\n";
   for (int ibin=1-d; ibin<=h2->GetNbinsX()+d; ibin++) {
     for (int jbin=1-d; jbin<=h2->GetNbinsY()+d; jbin++) {
-      if (nonZero && (fabs(h2->GetBinContent(ibin,jbin))<1e-8)) continue;
+      if (nonZero) {
+	double currVal=h2->GetBinContent(ibin,jbin);
+	int check=0;
+	if (!h2DenomHisto) check=1;
+	else {
+	  double denom=h2DenomHisto->GetBinContent(ibin,jbin);
+	  if (denom==0) check=1;
+	  else { if (fabs(currVal/denom)<threshold) continue; }
+	}
+	if (check && (fabs(h2->GetBinContent(ibin,jbin))<1e-8)) continue;
+      }
       std::cout << "ibin=" << ibin << ",jbin=" << jbin
 		<< "  " << h2->GetXaxis()->GetBinLowEdge(ibin)
 		<< "-" << (h2->GetXaxis()->GetBinLowEdge(ibin)+
