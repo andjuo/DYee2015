@@ -55,6 +55,7 @@ public :
   TLorentzVector  *Momentum_preFSR_Sub;
   Bool_t          Flag_EventSelection;
   Bool_t          Flag_EventSelectionExceptSCGap;
+  Bool_t          Flag_RecoEleSelection;
   Double_t        Weight_Norm;
   Double_t        Weight_PU;
   Double_t        Weight_Gen;
@@ -76,6 +77,7 @@ public :
   TBranch        *b_Momentum_preFSR_Sub;   //!
   TBranch        *b_Flag_EventSelection;   //!
   TBranch        *b_Flag_EventSelectionExceptSCGap;   //!
+  TBranch        *b_Flag_RecoEleSelection;
   TBranch        *b_Weight_Norm;   //!
   TBranch        *b_Weight_PU;   //!
   TBranch        *b_Weight_Gen;   //!
@@ -215,6 +217,7 @@ int DYee13TeV_t::Init(TString fname)
   SCEta_Sub=0;
   Flag_EventSelection=false;
   Flag_EventSelectionExceptSCGap=false;
+  Flag_RecoEleSelection=false;
   Weight_Norm=0;
   Weight_PU=0;
   Weight_Gen=0;
@@ -267,6 +270,7 @@ int DYee13TeV_t::Init(TString fname)
    fChain->SetBranchAddress("Momentum_preFSR_Sub", &Momentum_preFSR_Sub, &b_Momentum_preFSR_Sub);
    fChain->SetBranchAddress("Flag_EventSelection", &Flag_EventSelection, &b_Flag_EventSelection);
    fChain->SetBranchAddress("Flag_EventSelectionExceptSCGap", &Flag_EventSelectionExceptSCGap, &b_Flag_EventSelectionExceptSCGap);
+   fChain->SetBranchAddress("Flag_RecoEleSelection", &Flag_RecoEleSelection, &b_Flag_RecoEleSelection);
    fChain->SetBranchAddress("Weight_Norm", &Weight_Norm, &b_Weight_Norm);
    fChain->SetBranchAddress("Weight_PU", &Weight_PU, &b_Weight_PU);
    fChain->SetBranchAddress("Weight_Gen", &Weight_Gen, &b_Weight_Gen);

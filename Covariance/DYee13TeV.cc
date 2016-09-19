@@ -25,6 +25,7 @@ void DYee13TeV_t::Zero()
   *Momentum_preFSR_Sub=zero;
   Flag_EventSelection=false;
   Flag_EventSelectionExceptSCGap=false;
+  Flag_RecoEleSelection=false;
   Weight_Norm=1;
   Weight_PU=1;
   Weight_Gen=1;
@@ -73,6 +74,7 @@ int DYee13TeV_t::CreateNew(TString fnameInp, TString treeName)
   fOutTree->Branch("Momentum_preFSR_Sub", &Momentum_preFSR_Sub);
   fOutTree->Branch("Flag_EventSelection", &Flag_EventSelection, "Flag_EventSelection/O");
   fOutTree->Branch("Flag_EventSelectionExceptSCGap", &Flag_EventSelectionExceptSCGap, "Flag_EventSelectionExceptSCGap/O");
+  fOutTree->Branch("Flag_RecoEleSelection", &Flag_RecoEleSelection, "Flag_RecoEleSelection/O");
   fOutTree->Branch("Weight_Norm", &Weight_Norm, "Weight_Norm/D");
   fOutTree->Branch("Weight_PU", &Weight_PU, "Weight_PU/D");
   fOutTree->Branch("Weight_Gen", &Weight_Gen, "Weight_Gen/D");
@@ -162,6 +164,9 @@ std::ostream& operator<<(std::ostream &out, DYee13TeV_t &obj)
   out << "selected";
   if (!obj.Flag_EventSelection && obj.Flag_EventSelectionExceptSCGap)
     out << " (because of SC gap)";
+  out << ",";
+  if (!obj.Flag_RecoEleSelection) out << " NOT";
+  out << " in RECO acc";
   out << ", Weights: lumi=" << obj.Weight_Norm
       << ", PU=" << obj.Weight_PU << ", Gen=" << obj.Weight_Gen << "\n";
   return out;
