@@ -96,8 +96,8 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
     cmpFName2=vecCmp2FName[version];
     histoNames[_fn_cmp2][_iRho]="h1rho";
     if (version==2) {
-      histoNames[_fn_cmp2][_iSignal]="RRmeas+rooUnf_detResResp"+lumiScale;
-      histoNames[_fn_cmp2][_iUnf]="RRtrue+rooUnf_detResResp"+lumiScale;
+      histoNames[_fn_cmp2][_iSignal]="RRmeas+rooUnf_detResRespPU"+lumiScale;
+      histoNames[_fn_cmp2][_iUnf]="RRtrue+rooUnf_detResRespPU"+lumiScale;
     }
   }
   else if ((theCase==2) || (theCase==3)) {
@@ -138,7 +138,7 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
   else if (theCase==6) {
     std::cout << "compare DYee Rho corrections\n";
     mainFName=vecCmp1FName[version];
-    histoNames[_fn_main][_iSignal]="RRmeas+rooUnf_detResResp";
+    histoNames[_fn_main][_iSignal]="RRmeas+rooUnf_detResRespPU";
     cmpFName1=vecCmp1FName[version];
     histoNames[_fn_cmp1][_iSignal]="h1recoSel_MWPU";
   }
@@ -147,10 +147,12 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
     mainFName=vecMainFName[version];
     histoNames[_fn_main][_iSignal]="RRmeas+detRes";
     histoNames[_fn_main][_iUnf]="RRtrue+detRes";
+    histoNames[_fn_main][_iDetResFakes]="RRfakes+detRes";
     histoNames[_fn_main][_ih2Mig]="RRmig+detRes";
     cmpFName1=vecCmp1FName[version];
     histoNames[_fn_cmp1][_iSignal]="RRmeas+Unfold_DetectorRes1";
     histoNames[_fn_cmp1][_iUnf]="RRtrue+Unfold_DetectorRes1";
+    histoNames[_fn_cmp1][_iDetResFakes]="RRfakes+Unfold_DetectorRes1";
     histoNames[_fn_cmp1][_ih2Mig]="RRmig+Unfold_DetectorRes1";
   }
   else if (theCase==200) {
@@ -170,6 +172,17 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
       histoNames[_fn_cmp2][_iPreFsr]="RRtrue+rooUnf_fsrResp"+lumiScale;
       histoNames[_fn_cmp2][_iPreFsr]="h1_preFsr_Mweighted";
     }
+  }
+  else if (theCase==201) {
+    std::cout << "compare postFSRInAccSel with and without recoSCGap\n";
+    mainFName="dyee_test_dressed_El2skim2.root";
+    histoNames[_fn_main][_iUnf]="h1_postFsrInAccSelNoRecoGap_MWPU";
+    histoNames[_fn_main][_iUnf]="h1_postFsrInAccSel_MWPU";
+    //histoNames[_fn_main][_iEff]="h1_postFsrInAccSelNoRecoGap_MWPU:ratio:h1_postFsrInAcc_MW";
+    cmpFName1=mainFName;
+    //histoNames[_fn_cmp1][_iUnf]="h1_postFsrInAccSel_MWPU";
+    //histoNames[_fn_cmp1][_iEff]="h1EffPU";
+    histoNames[_fn_cmp1][_iUnf]="RRtrue+rooUnf_detResRespPU";
   }
   //else if (theCase==4)
   else {
@@ -305,7 +318,24 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 	if (valueStr.Length()) scale=atof(valueStr.Data());
 	hNameDisk.ReplaceAll(":scale" + valueStr,"");
       }
-      if (hNameDisk.Index("+")==-1) {
+      if (hNameDisk.Index(":ratio:")!=-1) {
+	int idx=hNameDisk.Index(":ratio:");
+	TString hist1name= hNameDisk(0,idx);
+	TString hist2name= hNameDisk(idx+7,hNameDisk.Length());
+	std::cout << "histnames=<" << hist1name << "> and <"
+		  << hist2name << ">\n";
+	h1= loadHisto(fileName,hist1name, newHistoName,h1dummy);
+	TH1D *denom= loadHisto(fileName,hist2name, newHistoName+TString("_denom"),h1dummy);
+	if (!denom) {
+	  std::cout << "failed to load " << hist2name << " from file "
+		    << fileName << "\n";
+	  if (h1) { delete h1; h1=NULL; }
+	}
+	else {
+	  if (h1) h1->Divide(denom);
+	}
+      }
+      else if (hNameDisk.Index("+")==-1) {
 	h1= loadHisto(fileName,hNameDisk, newHistoName,h1dummy);
       }
       else if ((hNameDisk.Index("RRmeas+")!=-1) ||
