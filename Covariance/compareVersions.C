@@ -1,3 +1,6 @@
+#ifndef compareVersions_C
+#define compareVersions_C
+
 #include "../Covariance/inputs.h"
 #include "../Covariance/crossSection.h"
 #include "../RooUnfold/src/RooUnfoldResponse.h"
@@ -17,10 +20,39 @@ typedef enum { _iEff, _iRho, _iAcc, _iEffAcc,
 
 // ---------------------------------------------------------
 
+struct InfoBundle_t {
+  TString fileName;
+  std::map<THisto_t,TString> *histoNames;
+public:
+  InfoBundle_t() : fileName(), histoNames(new std::map<THisto_t,TString>()) {}
+
+  InfoBundle_t(TString set_fname, std::map<THisto_t,TString> *set_hNames) :
+    fileName(set_fname), histoNames(set_hNames)
+  {}
+
+  void add(THisto_t ih, TString hname)
+  { (*histoNames)[ih]=hname; }
+};
+
+// ---------------------------------------------------------
+
 TString THistoName(THisto_t ih);
 TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 		THisto_t idxHisto,
 		TString fileName, TString newHistoName, TH2D **h2ptr=NULL);
+
+TH1D* loadHisto(THisto_t ih, TString histoDiskName,
+		TString fileName, TString newHistoName,
+		TH2D **h2ptr);
+
+int drawComparison(const InfoBundle_t &main,
+		   const InfoBundle_t &c1,
+		   const InfoBundle_t &c2,
+		   int noH2Ratios,
+		   TString showOnly);
+
+TString lumiScale=":scale2316.969";
+TString lumiInvScale=":scale4.31598164844603134e-04";
 
 // ---------------------------------------------------------
 
@@ -42,7 +74,7 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
 
   // version 4
   addToVector(vecMainFName,"cs_DYee_13TeV_El3.root");
-  if (1) addToVector(vecCmp1FName,"dyee_test_dressed_El2skim2.root");
+  if (1) addToVector(vecCmp1FName,"dyee_test_dressed_El2skim3.root");
   else addToVector(vecCmp1FName,"dyee_test_dressed_El2skim2-old20160916.root");
   addToVector(vecCmp2FName,".");
 
@@ -56,9 +88,6 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
   addToVector(vecCmp1FName,"/mnt/sdc/andriusj/DY13TeV/EgammaWork-20160912/ElectronNtupler/work_76x/Unfolding/RespObj_detUnfolding.root");
   addToVector(vecCmp2FName,".");
 
-
-  TString lumiScale=":scale2316.969";
-  TString lumiInvScale=":scale4.31598164844603134e-04";
 
   if (theCase==1) {
     std::cout << "compare DYee corrections\n";
@@ -195,19 +224,34 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
     return;
   }
 
-  for (std::map<THisto_t,TString>::const_iterator it= histoNames[_fn_main].begin();
-       it!=histoNames[_fn_main].end(); it++) {
-    std::cout << THistoName(it->first) << " " << it->second << "\n";
-    if ((showOnly.Length()>0) && (showOnly!=THistoName(it->first))) {
+  drawComparison(InfoBundle_t(mainFName,&histoNames[_fn_main]),
+		 InfoBundle_t(cmpFName1,&histoNames[_fn_cmp1]),
+		 InfoBundle_t(cmpFName2,&histoNames[_fn_cmp2]),
+		 noH2Ratios_user,showOnly);
+
+}
+
+// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+
+int drawComparison(const InfoBundle_t &m,
+		   const InfoBundle_t &c1,
+		   const InfoBundle_t &c2,
+		   int noH2Ratios,
+		   TString showOnly)
+{
+  for (std::map<THisto_t,TString>::const_iterator it= m.histoNames->begin();
+       it!=m.histoNames->end(); it++) {
+    std::cout << THistoName(it->first) << " " << it->second << "\n";    if ((showOnly.Length()>0) && (showOnly!=THistoName(it->first))) {
       std::cout << "   ... skipping by request\n";
       continue;
     }
 
     TString h1nameBase= "h1" + THistoName(it->first);
     TH2D *h2main=NULL, *h2cmp1=NULL, *h2cmp2=NULL;
-    TH1D *h1main= loadHisto(histoNames[_fn_main],it->first,mainFName,h1nameBase+"_main",&h2main);
-    TH1D *h1cmp1=loadHisto(histoNames[_fn_cmp1],it->first,cmpFName1,h1nameBase+"_cmp1",&h2cmp1);
-    TH1D* h1cmp2= loadHisto(histoNames[_fn_cmp2],it->first,cmpFName2,h1nameBase+"_cmp2",&h2cmp2);
+    TH1D *h1main= loadHisto(*m.histoNames,it->first,m.fileName,h1nameBase+"_main",&h2main);
+    TH1D *h1cmp1=loadHisto(*c1.histoNames,it->first,c1.fileName,h1nameBase+"_cmp1",&h2cmp1);
+    TH1D* h1cmp2= loadHisto(*c2.histoNames,it->first,c2.fileName,h1nameBase+"_cmp2",&h2cmp2);
 
     if (h1main) {
       histoStyle(h1main,kBlue,24,1);
@@ -220,13 +264,13 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
       if (h1cmp2) plotHistoSame(h1cmp2,cName,"LPE1","cmp2");
       if (1) {
 	if (h1cmp1) {
-	  std::cout << "mainFile=" << mainFName
-		    << ", cmpFile1=" << cmpFName1 << "\n";
+	  std::cout << "mainFile=" << m.fileName
+		    << ", cmpFile1=" << c1.fileName << "\n";
 	  printRatio(h1main,h1cmp1);
 	}
 	if (h1cmp2) {
-	  std::cout << "mainFile=" << mainFName
-		    << ", cmpFile2=" << cmpFName2 << "\n";
+	  std::cout << "mainFile=" << m.fileName
+		    << ", cmpFile2=" << c2.fileName << "\n";
 	  printRatio(h1main,h1cmp2);
 	}
       }
@@ -250,13 +294,14 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
 	h2main_diff_cmp->Add(h2_cmp,-1);
 	cx->cd(3);
 	h2main_diff_cmp->Draw("COLZ");
-	if (noH2Ratios_user) std::cout << "skipping h2 ratio print out\n";
-	else printHisto(h2main_diff_cmp,1,1);
+	if (noH2Ratios) std::cout << "skipping h2 ratio print out\n";
+	else printHisto(h2main_diff_cmp,1,1, h2main,1e-3);
 	std::cout << "h2main(1,1)=" << h2main->GetBinContent(1,1) << "\n";
       }
       cx->Update();
     }
   }
+  return 1;
 }
 
 // ---------------------------------------------------------
@@ -292,6 +337,17 @@ TString THistoName(THisto_t ih)
     name="UNKNOWN";
   }
   return name;
+}
+
+// ---------------------------------------------------------
+
+TH1D* loadHisto(THisto_t ih, TString histoDiskName,
+		TString fileName, TString newHistoName,
+		TH2D **h2ptr)
+{
+  std::map<THisto_t,TString> hNames;
+  hNames[ih]=histoDiskName;
+  return loadHisto(hNames,ih,fileName,newHistoName,h2ptr);
 }
 
 // ---------------------------------------------------------
@@ -334,6 +390,14 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 	else {
 	  if (h1) h1->Divide(denom);
 	}
+      }
+      else if (hNameDisk.Index(":unf")!=-1) {
+	int idx=hNameDisk.Index(":unf");
+	int nIters=atoi(hNameDisk.Data()+idx+4);
+	TString histname= hNameDisk(0,idx);
+	TString respName= hNameDisk(hNameDisk.Index(":",idx+1),hNameDisk.Length());
+	std::cout << ":unf: histname=" << histname << ", respName=" << respName << ", nIters=" << nIters << "\n";
+	return NULL;
       }
       else if (hNameDisk.Index("+")==-1) {
 	h1= loadHisto(fileName,hNameDisk, newHistoName,h1dummy);
@@ -379,3 +443,5 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 }
 
 // ---------------------------------------------------------
+
+#endif
