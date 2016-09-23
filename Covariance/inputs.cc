@@ -11,6 +11,7 @@ TString versionName(TVersion_t ver)
   case _verUndef: name="UndefVer"; break;
   case _verMu1: name="Mu1"; break;
   case _verMu76X: name="Mu76X"; break;
+  case _verMuApproved: name="MuApproved"; break;
   case _verEl1: name="El1"; break;
   case _verEl2: name="El2"; break;
   case _verEl2skim: name="El2skim"; break;
