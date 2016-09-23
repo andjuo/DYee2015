@@ -414,6 +414,7 @@ TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
 
 TCanvas *findCanvas(TString canvName);
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
+void closeCanvases();
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
 void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);

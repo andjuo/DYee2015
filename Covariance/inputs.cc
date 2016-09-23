@@ -754,6 +754,18 @@ int findCanvases(TString canvNames, std::vector<TCanvas*> &cV)
 
 // ---------------------------------------------------------
 
+void closeCanvases()
+{
+  TSeqCollection *seq=gROOT->GetListOfCanvases();
+  for (int i=0; i<=seq->LastIndex(); i++) {
+    TCanvas *c= (TCanvas*) seq->At(i);
+    delete c;
+  }
+  gSystem->ProcessEvents();
+}
+
+// ---------------------------------------------------------
+
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir)
 {
   gSystem->mkdir(destDir,kTRUE);
