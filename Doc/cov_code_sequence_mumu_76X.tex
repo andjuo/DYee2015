@@ -35,6 +35,8 @@ Vilnius University, Institute of Theoretical Physics and Astronomy, \\
 %\abstract{Information about the needed data structures.}
 \maketitle
 
+\section{Dimuon covariance calculation}
+
 Explanation of the code sequence used to derive the covariance
 matrices of the 1D measurement in the muon channel. Explanation is
 based on the provided data with the tag ``76X''.
@@ -267,7 +269,14 @@ covariance from the randomized response. The variable is covFName and
 nameh2cov with the values \myund{cov_mumu_varFSRRes_10000.root}\ and
 h2Cov.
 
-The 
+
+% ----------------------------------
+\section{Dielectron covariance calculation}
+
+The code sequence for the dielectrons:
+(1)~\myund{createCSInput_DYee13TeV.C},
+(2)~\myund{processDYee_dressed.C}, (3)~\myund{calcRhoRndVec_ee.C},
+(4)~\myund{studyDYeeCS.C}.
 
 \end{document}
 
