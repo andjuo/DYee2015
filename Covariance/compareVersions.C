@@ -74,7 +74,8 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
 
   // version 4
   addToVector(vecMainFName,"cs_DYee_13TeV_El3.root");
-  if (1) addToVector(vecCmp1FName,"dyee_test_dressed_El2skim3.root");
+  if (1) addToVector(vecCmp1FName,"dyee_test_dressed_El3.root");
+  else if (1) addToVector(vecCmp1FName,"dyee_test_dressed_El2skim3.root");
   else addToVector(vecCmp1FName,"dyee_test_dressed_El2skim2-old20160916.root");
   addToVector(vecCmp2FName,".");
 
@@ -152,8 +153,11 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
     histoNames[_fn_main][_iRho]="h1Rho";
     cmpFName1=vecCmp1FName[version];
     histoNames[_fn_cmp1][_iRho]="h1rho";
+    //histoNames[_fn_cmp1][_iRho]="h1rho_reco";
     cmpFName2=vecCmp1FName[version];
-    histoNames[_fn_cmp2][_iRho]="h1rho_inPostFsrAcc";
+    //histoNames[_fn_cmp2][_iRho]="h1rho_trigOnly";
+    //histoNames[_fn_cmp2][_iRho]="h1rho_reco";
+    histoNames[_fn_cmp2][_iRho]="h1rho_recoInPostFsrAcc";
   }
   else if (theCase==5) {
     std::cout << "compare DYee Rho corrections\n";
