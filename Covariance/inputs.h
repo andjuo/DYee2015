@@ -18,6 +18,7 @@
 #include <TRandom3.h>
 #include <TGraphAsymmErrors.h>
 #include <TLorentzVector.h>
+#include <stdarg.h>
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -49,7 +50,9 @@ void clearVec(std::vector<ptr_t*> &vec)
   vec.clear();
 }
 
+// assign values
 void addToVector(std::vector<TString> &vec, TString strings);
+void addToVector(std::vector<int> &vec, int count, ...);
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="");
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
@@ -376,6 +379,17 @@ TVectorD convert2vec(const histo1D_t* h1)
   TVectorD v(h1->GetNbinsX());
   for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++)
     v(ibin-1)= h1->GetBinContent(ibin);
+  return v;
+}
+
+
+template<class histo1D_t>
+inline
+TMatrixD convert2mat1D(const histo1D_t* h1)
+{
+  TMatrixD v(h1->GetNbinsX(),1);
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++)
+    v(ibin-1,0)= h1->GetBinContent(ibin);
   return v;
 }
 

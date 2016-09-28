@@ -53,6 +53,18 @@ void addToVector(std::vector<TString> &vec, TString strings)
 }
 
 // -----------------------------------------------------------
+
+void addToVector(std::vector<int> &vec, int count, ...)
+{
+  va_list vl;
+  va_start(vl,count);
+  for (int i=0; i<count; i++) {
+    vec.push_back(va_arg(vl,int));
+  }
+  va_end(vl);
+}
+
+// -----------------------------------------------------------
 // -----------------------------------------------------------
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
