@@ -2,7 +2,8 @@
 
 // --------------------------------------------------------------
 
-void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave);
+void work(TVersion_t inpVer,
+	  MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave);
 
 // --------------------------------------------------------------
 
@@ -10,10 +11,9 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 {
   TVersion_t inpVer=_verMu1;
   TString inpVerTag="_v1";
-  if (1) {
-    inpVer=_verMu76X;
-    inpVerTag="_76X";
-  }
+  if (0) { inpVer=_verMu76X; inpVerTag="_76X"; }
+  else if (1) { inpVer=_verMuApproved; inpVerTag=versionName(inpVer); }
+
   MuonCrossSection_t muCS("muCS",inpVerTag,0,0,inpVer);
   if (!muCS.load("cs_DYmm_13TeV" + inpVerTag, inpVerTag)) {
     std::cout << "loading failed\n";
@@ -34,7 +34,7 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
     for (int i=0; i<muCS.bkgWUnc().GetNoElements(); i++) {
       bkgW.push_back(2.);
     }
-    if (!muCS.recalcBkg(bkgW)) return;
+    if (!muCS.recalcBkg(&bkgW)) return;
     plotHistoSame(cloneHisto(muCS.h1Bkg(),"h1tmp2","tmp2"),"ctmp1","LPE");
  
     TCanvas *c2= muCS.plotCrossSection("cs2",1);
@@ -42,7 +42,7 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
   }
   else {
     std::cout << "perform study\n";
-    work(muCS,var,nSample,doSave);
+    work(inpVer,muCS,var,nSample,doSave);
   }
 
   std::cout << "macro ran with inpVerTag=" << inpVerTag << "\n";
@@ -52,15 +52,19 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 
-void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
+void work(TVersion_t inpVer,
+	  MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
 {
   std::vector<TH1D*> rndCSVec, rndCSaVec, rndCSbVec;
   int res=1;
   if (var!=_varRhoFile)
     res=muCS.sampleRndVec(var,nSample,rndCSVec,&rndCSaVec,&rndCSbVec);
   else {
-    RndVecInfo_t info(Form("dir-RhoMu76X/dymm_rhoRndVec_Mu76X_%d.root",nSample),
-		      "h1rho_4p2_var","h1rho_4p3_var");
+    TString inpVerTag=versionName(inpVer);
+    TString loadFName=Form("dir-Rho%s/dymm_rhoRndVec_%s_%d.root",
+			   inpVerTag.Data(),inpVerTag.Data(),
+			   nSample);
+    RndVecInfo_t info(loadFName,"h1rho_4p2_var","h1rho_4p3_var");
     res=muCS.sampleRndVec(var,nSample,info,
 			  rndCSVec,&rndCSaVec,&rndCSbVec);
   }
@@ -73,7 +77,8 @@ void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
   if (!c) return;
   h1Avg->SetLineColor(kGreen+1);
   h1Avg->SetMarkerColor(kGreen+1);
-  plotHistoSame(h1Avg,"cs","LPE");
+  plotHistoSame(h1Avg,"cs","LPE","rnd avg");
+  printRatio(muCS.h1CS(), h1Avg);
 
   TH2D* h2Corr=NULL;
   TCanvas *cx= plotCovCorr(h2Cov,"ccov",&h2Corr);
@@ -83,6 +88,10 @@ void work(MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
   TH1D *h1relUncFromCov= uncFromCov(h2Cov,muCS.h1CS());
 
   if (!doSave) {
+    std::cout << "Comparing uncertainty from covariance to the uncertainty "
+	      << "in the provided cross-section\n";
+    std::cout << "Expectation is that the covariance uncertainties will not "
+	      << "exceed those from the cross-section\n";
     TH1D *h1CSUnc= errorAsCentral(muCS.h1CS(),0);
     TH1D *h1CSRelUnc= errorAsCentral(muCS.h1CS(),1);
     histoStyle(h1CSUnc,kBlue,24);

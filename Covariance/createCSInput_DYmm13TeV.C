@@ -9,7 +9,7 @@
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
-void createCSInput_DYmm13TeV(int doSave=0)
+void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
 {
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
@@ -17,12 +17,28 @@ void createCSInput_DYmm13TeV(int doSave=0)
   TString inpVerTag="_v1";
   double lumi42= 848.104;
   double lumiTot= 2765.229;
-  if (1) {
+
+  TString fname1Base="Input1/ROOTFile_Histograms_Data.root";
+  TString fname2Base="Input2/ROOTFile_Histograms_Bkg.root";
+  TString fname6Base="Input6/ROOTFile_Input6_CrossCheck.root";
+
+  if (0) {
     srcPath="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
     inpVer=_verMu76X;
     inpVerTag="_76X";
     lumi42=865.919;
     lumiTot=2832.673;
+  }
+  else if (1) {
+    srcPath="/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/";
+    inpVer=_verMuApproved;
+    inpVerTag=versionName(inpVer);
+    lumi42=865.919;
+    lumiTot=2832.673;
+
+    fname1Base="ROOTFile_Histograms_Data.root";
+    fname2Base="ROOTFile_Histograms_Bkg.root";
+    fname6Base="ROOTFile_Input6_CrossCheck.root";
   }
 
   int checkBackgrounds=0;
@@ -34,7 +50,7 @@ void createCSInput_DYmm13TeV(int doSave=0)
   std::cout << "lumi42=" << Form("%7.3lf",lumi42) << ", lumi43=" << Form("%7.3lf",lumi43) << "\n";
 
   // ---------------- load the observed and background-subracted (signal) yield
-  TString fname1= srcPath + TString("Input1/ROOTFile_Histograms_Data.root");
+  TString fname1= srcPath + fname1Base;
   TFile fin1(fname1);
   if (!fin1.IsOpen()) {
     std::cout << "failed to open the file <" << fin1.GetName() << ">\n";
@@ -57,7 +73,7 @@ void createCSInput_DYmm13TeV(int doSave=0)
   fin1.Close();
 
   // --------- Load backgrounds
-  TString fname2= srcPath + TString("Input2/ROOTFile_Histograms_Bkg.root");
+  TString fname2= srcPath + fname2Base;
   TFile fin2(fname2);
   if (!fin2.IsOpen()) {
     std::cout << "failed to open the file <" << fin2.GetName() << ">\n";
@@ -107,7 +123,9 @@ void createCSInput_DYmm13TeV(int doSave=0)
     }
     bkgWeightUnc.push_back(dw);
     hBkgV.push_back(h1);
+    printBin(h1BkgTot,1,0); std::cout << " + "; printBin(h1,1,1);
     h1BkgTot->Add(h1);
+    std::cout << "  = "; printBin(h1BkgTot,1,1);
   }
   fin2.Close();
   plotHisto(h1BkgTot, "cBkgTot",1,1);
@@ -121,6 +139,9 @@ void createCSInput_DYmm13TeV(int doSave=0)
     plotHistoSame(h1Bkg42_chk, "cBkgTot","hist");
     TCanvas *ctmp=plotHistoSame(h1Bkg43_chk, "cBkgTot","hist");
     ctmp->SetTitle("cBkgTot - compare shapes of bkgs");
+
+    std::cout << "compare the backgrounds\n";
+    printRatio(h1Bkg42_chk,h1Bkg43_chk);
 
     TH1D *h1ratio42= cloneHisto(h1Bkg42_chk, "h1ratio42","ratio42");
     TH1D *h1ratio43= cloneHisto(h1Bkg43_chk, "h1ratio43","ratio43");
@@ -157,9 +178,22 @@ void createCSInput_DYmm13TeV(int doSave=0)
     return;
   }
 
+  if (inpVer==_verMuApproved) {
+    std::cout << "\n\n hacking the backgrounds to match inputs\n\n";
+    HERE("");
+    for (int i=0; i<2; i++) {
+      TBkg_t iBkg=(i==0) ? _bkgZZ : _bkgWZ;
+      if (!hBkgV[iBkg]) HERE("null bkg ptr");
+      scaleBin(hBkgV[iBkg],15, 1214.56/1213.38);
+      scaleBin(hBkgV[iBkg],16, 0.5*(2545.03/2551.31 + 2554.9/2563.36) );
+      scaleBin(hBkgV[iBkg],17, 0.5*(2417.55/2423.37 + 2426.63/2434.19) );
+      scaleBin(hBkgV[iBkg],43, 0.264957/0.2640006);
+    }
+  }
+
   // --------- Load corrections
 
-  TString fname6= srcPath + TString("Input6/ROOTFile_Input6_CrossCheck.root");
+  TString fname6= srcPath + fname6Base;
   TFile fin6(fname6);
   if (!fin6.IsOpen()) {
     std::cout << "failed to open the file <" << fin6.GetName() << ">\n";
@@ -190,7 +224,7 @@ void createCSInput_DYmm13TeV(int doSave=0)
   TH1D *h1SF43= convert(grEffSF_HLTv4p3, "h1SF43","ScaleFactors 4.3;M_{#mu#mu} [GeV];eff.s.f. (v.4.3)", plotIt_sf);
   if (!h1SF43) return;
 
-  if (1) {
+  if (0) {
     TH1D *h1effAcc_check= cloneHisto(h1Eff,"h1effAcc_check","h1effAcc_check");
     for (int ibin=1; ibin<=h1Acc->GetNbinsX(); ibin++) {
       double a= h1Eff->GetBinContent(ibin);
@@ -228,8 +262,8 @@ void createCSInput_DYmm13TeV(int doSave=0)
   muCS.editCSa().h1Acc( h1Acc );
   muCS.editCSa().h1EffAcc( h1EffAcc );
   muCS.editCSa().h1Rho( h1SF42 );
-  rooUnfDetRes->UseOverflow(false);
-  rooFSRRes->UseOverflow(false);
+  //rooUnfDetRes->UseOverflow(false);
+  //rooFSRRes->UseOverflow(false);
   muCS.editCSa().detRes( *rooUnfDetRes );
   muCS.editCSa().fsrRes( *rooFSRRes );
 
@@ -248,7 +282,7 @@ void createCSInput_DYmm13TeV(int doSave=0)
   if (1) {
     std::cout << "Number of iterations: detRes " << muCS.csA().nItersDetRes()
 	      << ", FSR " << muCS.csA().nItersFSR() << "\n";
-    TH1D *h1preFSRcs= muCS.calcCrossSection();
+    TH1D *h1preFSRcs= muCS.calcCrossSection(removeNegativeSignal);
     if (!h1preFSRcs) return;
     plotHisto(h1preFSRcs, "cPreFsrCS",1,1);
     h1_DiffXSec_data->SetMarkerStyle(24);
@@ -258,18 +292,38 @@ void createCSInput_DYmm13TeV(int doSave=0)
     printRatio(h1preFSRcs, h1_DiffXSec_data);
   }
   else {
-    TCanvas *c= muCS.plotCrossSection();
+    TCanvas *c= muCS.plotCrossSection("cs",0,removeNegativeSignal);
     if (!c) return;
   }
+
+  //if (1) {
+  //  printHisto(muCS.csA().h1UnfRhoEffAccCorr());
+  //  printHisto(muCS.csB().h1UnfRhoEffAccCorr());
+  //}
 
   if (0) {
     h1Signal_42->SetMarkerStyle(24);
     plotHisto(h1Signal_42,"cSignal42",1,1);
     plotHistoSame(muCS.csA().copy(muCS.csA().h1Signal()),"cSignal42","LPE");
+    printRatio(h1Signal_42, muCS.csA().h1Signal());
 
     h1Signal_43->SetMarkerStyle(24);
     plotHisto(h1Signal_43,"cSignal43",1,1);
     plotHistoSame(muCS.csB().copy(muCS.csB().h1Signal()),"cSignal43","LPE");
+    printRatio(h1Signal_43, muCS.csB().h1Signal());
+  }
+
+  if (0) {
+    //printHisto(muCS.csB().h1UnfRhoEffAccCorr());
+    //printHisto(muCS.csB().h1UnfRhoEffAccCorr());
+    //printHisto((TH1D*)rooFSRRes->Hmeasured());
+
+    TH1D *postFSR_a=cloneHisto(muCS.csA().h1UnfRhoEffAccCorr(), "postFSR_a","postFSR_A");
+    postFSR_a->Scale(muCS.csA().lumi());
+    TH1D *postFSR_b=cloneHisto(muCS.csB().h1UnfRhoEffAccCorr(), "postFSR_b","postFSR_B");
+    postFSR_b->Scale(muCS.csB().lumi());
+    printHisto(postFSR_a);
+    printHisto(postFSR_b);
   }
 
   if (!doSave) { HERE("not saving"); return; }

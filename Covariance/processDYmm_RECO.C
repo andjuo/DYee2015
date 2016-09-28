@@ -24,8 +24,9 @@ void processDYmm_RECO(Int_t maxEntries=-1)
 
   TVersion_t inpVersion=_verMu1;
   inpVersion=_verMu76X;
+  inpVersion=_verMuApproved;
 
-  if (inpVersion==_verMu76X) {
+  if (inpVersion!=_verMu1) {
     if (DYtools::nMassBins!=DYtools::nMassBins43) {
       std::cout << "a potential DYbinning.h problem\n";
       return;
@@ -49,6 +50,14 @@ void processDYmm_RECO(Int_t maxEntries=-1)
     fnameEff= srcPath + "Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
     dataFName=srcPath + "Input3/ROOTFile_Input_CovarianceMatrix.root";
   }
+  else if (inpVersion==_verMuApproved) {
+    TString srcPath76X="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
+    srcPath="/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/";
+    fnameEff= srcPath76X + "Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
+    dataFName=srcPath + "ROOTFile_Input_CovarianceMatrix.root";
+  }
+  std::cout << "dataFName=" << dataFName << ", fnameEff=" << fnameEff << "\n";
+
 
   DYTnPEff_t tnpEff;
   TFile finEff(fnameEff);
