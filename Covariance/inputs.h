@@ -85,6 +85,10 @@ void removeError(th1_t *h1)
 }
 
 TH1D* errorAsCentral(const TH1D* h1, int relative=0);
+void removeNegatives(TH1D* h1);
+
+void scaleBin(TH1D *h1, int ibin, double x);
+void printBin(TH1D *h1, int ibin, int newLine=1);
 
 // -----------------------------------------------------------
 

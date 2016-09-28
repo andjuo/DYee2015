@@ -286,6 +286,33 @@ TH1D* errorAsCentral(const TH1D* h1, int relative) {
 }
 
 // ---------------------------------------------------------
+
+void removeNegatives(TH1D* h1)
+{
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    if (h1->GetBinContent(ibin)<0) h1->SetBinContent(ibin,0.);
+  }
+}
+
+// ---------------------------------------------------------
+
+void scaleBin(TH1D* h1, int ibin, double x)
+{
+  h1->SetBinContent(ibin, x * h1->GetBinContent(ibin));
+  h1->SetBinError  (ibin, x * h1->GetBinError(ibin));
+}
+
+// ---------------------------------------------------------
+
+void printBin(TH1D *h1, int ibin, int newLine)
+{
+  std::cout << h1->GetName() << "[" << ibin << "]="
+	    << h1->GetBinContent(ibin) << " +- "
+	    << h1->GetBinError(ibin);
+  if (newLine) std::cout << "\n";
+}
+
+// ---------------------------------------------------------
 // ---------------------------------------------------------
 
 TH1D* perMassBinWidth(const TH1D* h1_orig, int prnBinW)
