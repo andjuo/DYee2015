@@ -175,8 +175,44 @@ void createCSInput_DYee13TeV(int doSave=0)
   //  rooUnfFSRRes->Scale(lumiTot);
   //}
 
-
-  if (1) {
+  if (inpVer==_verEl3) {
+    std::cout << "\n\nReplacing h1EffAcc with my version\n";
+    TFile finAJ("dyee_test_dressed_" + versionName(inpVer) + TString(".root"));
+    if (!finAJ.IsOpen()) {
+      std::cout << "failed to open the file <" << finAJ.GetName() << ">\n";
+      return;
+    }
+    TH1D *h1EffPU_aj= loadHisto(finAJ,"h1EffPU","h1EffPU_aj",1,h1dummy);
+    TH1D *h1EffPUAcc_aj= loadHisto(finAJ,"h1EffPUAcc","h1EffPUAcc_aj",1,h1dummy);
+    TH1D *h1rho_aj= loadHisto(finAJ, "h1rho","h1rho_aj",1,h1dummy);
+    finAJ.Close();
+    CrossSection_t csTmp("elCS_tmp",inpVerTag+"_tmp",_csPreFsrFullSp);
+    csTmp.lumi(lumiTot);
+    csTmp.h1Yield(h1Yield);
+    csTmp.h1Bkg(h1BkgTot);
+    csTmp.h1Eff(h1EffPU_aj);
+    if (1) csTmp.h1Rho(h1Rho);
+    //else csTmp.h1Rho(h1rho_aj);
+    csTmp.h1Acc(h1Acc);
+    csTmp.h1EffAcc(h1EffPUAcc_aj);
+    rooUnfDetRes->UseOverflow(false);
+    rooUnfFSRRes->UseOverflow(false);
+    csTmp.detRes(*rooUnfDetRes);
+    csTmp.fsrRes(*rooUnfFSRRes);
+    csTmp.h1Theory(h1_DiffXSec_data);
+    csTmp.nItersDetRes(setNiters_detRes);
+    csTmp.nItersFSR(setNiters_FSR);
+    TH1D *h1cs_aj= csTmp.calcCrossSection();
+    TCanvas *canv_aj= csTmp.plotCrossSection();
+    printRatio(h1cs_aj,h1_DiffXSec_data);
+    // copying
+    copyContents(h1Eff, h1EffPU_aj);
+    copyContents(h1EffAcc, h1EffPUAcc_aj);
+    copyContents(h1_DiffXSec_data, h1cs_aj);
+    copyContents(h1Rho, h1rho_aj);
+    //return;
+  }
+  else if (1) {
     TH1D *h1effAcc_check= cloneHisto(h1Eff,"h1effAcc_check","h1effAcc_check");
     for (int ibin=1; ibin<=h1Acc->GetNbinsX(); ibin++) {
       double a= h1Eff->GetBinContent(ibin);
@@ -206,6 +242,7 @@ void createCSInput_DYee13TeV(int doSave=0)
     printRatio(h1EffAcc,h1effAcc_check);
   }
 
+
   CrossSection_t cs("elCS",inpVerTag,_csPreFsrFullSp);
   cs.lumi(lumiTot);
   cs.h1Yield(h1Yield);
@@ -222,10 +259,8 @@ void createCSInput_DYee13TeV(int doSave=0)
   cs.nItersDetRes(setNiters_detRes);
   cs.nItersFSR(setNiters_FSR);
 
-  if (1) {
-    TH1D* h1cs= cs.calcCrossSection();
-    if (h1cs) printRatio(h1cs, h1_DiffXSec_data);
-  }
+  TH1D* h1cs= cs.calcCrossSection();
+  if (h1cs) printRatio(h1cs, h1_DiffXSec_data);
 
   TCanvas *canv=cs.plotCrossSection();
   TText *info= new TText();
@@ -236,6 +271,7 @@ void createCSInput_DYee13TeV(int doSave=0)
   TH1D *h1theory= perMassBinWidth(h1theoryRaw,0);
   histoStyle(h1theory,kRed,7,1);
   plotHistoSame(h1theory,"cs","LP");
+  printRatio(h1cs,h1theory);
 
   //cs.plotCrossSection_StepByStep("cCalcTest");
 

@@ -37,10 +37,14 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   inpVersion=_verEl2skim3;
   srcPath="/media/sf_Share2/DYee_76X_Calibrated/mySkim/";
 
+  inpVersion=_verEl3;
+  fnameEff="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/ROOTFile_Input5_TagProbeEfficiency.root";
+
   TString dataFName;
   TString fileFormat="DYEE_M%dto%d_v1.root ";
   if ((inpVersion==_verEl2skim2) ||
-      (inpVersion==_verEl2skim3)) fileFormat="DY_%dto%d_v2_orig.root ";
+      (inpVersion==_verEl2skim3) ||
+      (inpVersion==_verEl3)) fileFormat="DY_%dto%d_v2_orig.root ";
 
   if (includeOnlyRange.Length()>0) {
     std::stringstream ss(includeOnlyRange.Data());
@@ -153,8 +157,8 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   detResEffAccFsrResp.UseOverflow(false);
 
   EventSpace_t postFsrES("mainES",tnpEff.h2Eff_RecoID_Data);
-  EventSpace_t postFsrES_inPostFsrAcc("mainES_inPostFsrAcc",tnpEff.h2Eff_RecoID_Data);
-  EventSpace_t postFsrES_noPU("mainES_noPU",tnpEff.h2Eff_RecoID_Data);
+  EventSpace_t postFsrES_trigOnly("mainES_trigOnly",tnpEff.h2Eff_RecoID_Data);
+  EventSpace_t postFsrES_trigOnly_noPU("mainES_trigOnly_noPU",tnpEff.h2Eff_RecoID_Data);
   EventSpace_t recoES("recoES",tnpEff.h2Eff_RecoID_Data);
   EventSpace_t recoESinPostFsrAcc("recoESinPostFsrAcc",tnpEff.h2Eff_RecoID_Data);
 
@@ -175,6 +179,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
     double w= data.Weight_Norm * data.Weight_Gen;
     double wPU= w* data.Weight_PU;
 
+    // Flag_RecoEleSelection = Flag_EventSelection + dielectron in acceptance
     int inAccReco=data.Flag_RecoEleSelection;
 
     //if (data.Flag_EventSelection && !data.Flag_RecoEleSelection) {
@@ -313,23 +318,24 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
       h1recoSel_MW->Fill( mReco, w );
       h1recoSel_MWPU->Fill( mReco, wPU );
       recoES.fill(data.Momentum_Reco_Lead,data.Momentum_Reco_Sub,wPU);
+      if (inAccPostFsr) {
+	h1recoSelInPostFsrAcc_MWPU->Fill( mReco, wPU );
+      }
     }
 
-
-    if (inAccReco) {
-      h1recoSelInPostFsrAcc_MWPU->Fill( mReco, wPU );
+    if (inAccPostFsr) {
       recoESinPostFsrAcc.fill(data.Momentum_Reco_Lead,data.Momentum_Reco_Sub,wPU);
     }
 
     //std::cout << "mPostFsr=" << mPostFsr << "\n";
-    postFsrES.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU);
-    postFsrES_noPU.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,w);
+    postFsrES_trigOnly.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU);
+    postFsrES_trigOnly_noPU.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,w);
 
     //
-    // Not sure is needed
+    // It is needed
     //
     if (inAccPostFsr) {
-      postFsrES_inPostFsrAcc.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU);
+      postFsrES.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU);
       int fi1= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Lead,1);
       int fi2= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Sub,1);
       if ((fi1<0) || (fi2<0)) {
@@ -376,18 +382,18 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
 
 
   TH1D* h1rho= postFsrES.calculateScaleFactor(tnpEff,0,"h1rho","scale factor;M_{ee] [GeV];#rho");
-  TH1D* h1rhoInPostFsrAcc= postFsrES_inPostFsrAcc.calculateScaleFactor(tnpEff,0,"h1rho_inPostFsrAcc","scale factor (inPostFsrAcc)");
-  TH1D* h1rhoNoPU= postFsrES_noPU.calculateScaleFactor(tnpEff,0,"h1rho_noPU","scale factor (no PU)");
+  TH1D* h1rhoTrigOnly= postFsrES_trigOnly.calculateScaleFactor(tnpEff,0,"h1rho_trigOnly","scale factor (trigOnly)");
+  TH1D* h1rhoTrigOnlyNoPU= postFsrES_trigOnly_noPU.calculateScaleFactor(tnpEff,0,"h1rho_trigOnly_noPU","scale factor (no PU)");
   TH1D* h1rho_reco= recoES.calculateScaleFactor(tnpEff,0,"h1rho_reco","scale factor (reco space)");
   TH1D* h1rho_recoInPostFsrAcc= recoESinPostFsrAcc.calculateScaleFactor(tnpEff,0,"h1rho_recoInPostFsrAcc","scale factor (reco space, in postFSR acc)");
   histoStyle(h1rho,kBlack,24,1);
-  histoStyle(h1rhoInPostFsrAcc,kGreen+1,5,3);
-  histoStyle(h1rhoNoPU,kBlue,7,1);
+  histoStyle(h1rhoTrigOnly,kGreen+1,5,3);
+  histoStyle(h1rhoTrigOnlyNoPU,kBlue,7,1);
   histoStyle(h1rho_reco,kOrange,5,1);
   histoStyle(h1rho_recoInPostFsrAcc,kRed,7,1);
   plotHisto(h1rho,"cRho",1,0,"LPE1","rho (postFSRES)");
-  plotHistoSame(h1rhoInPostFsrAcc,"cRho","LPE1","rho (inPostFSRAcc)");
-  plotHistoSame(h1rhoNoPU,"cRho","LPE1","rho (postFSRES_noPU)");
+  plotHistoSame(h1rhoTrigOnly,"cRho","LPE1","rho (trigOnly)");
+  plotHistoSame(h1rhoTrigOnlyNoPU,"cRho","LPE1","rho (trigOnly_noPU)");
   plotHistoSame(h1rho_reco,"cRho","LPE1","rho (reco)");
   plotHistoSame(h1rho_recoInPostFsrAcc,"cRho","LPE1","rho (reco inPostFsrAcc)");
 
@@ -420,7 +426,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
     TH1D* h1esChk= cloneHisto(h1recoSel_MWPU,"h1esChk","h1esChk");
     h1esChk->Reset();
     for (int iM=0; iM<DYtools::nMassBins; iM++) {
-      const TH2D *h2es= postFsrES_inPostFsrAcc.h2ES(iM);
+      const TH2D *h2es= postFsrES.h2ES(iM);
       double sum=0;
       for (int ibin=1; ibin<=h2es->GetNbinsX(); ibin++) {
 	for (int jbin=1; jbin<=h2es->GetNbinsY(); jbin++) {
@@ -505,8 +511,8 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   TFile foutH(fname,"RECREATE");
   tnpEff.save(foutH);
   h1rho->Write();
-  h1rhoInPostFsrAcc->Write();
-  h1rhoNoPU->Write();
+  h1rhoTrigOnly->Write();
+  h1rhoTrigOnlyNoPU->Write();
   h1rho_reco->Write();
   h1rho_recoInPostFsrAcc->Write();
   detResResp.Write();
@@ -555,8 +561,8 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   recoES.save(foutH);
   recoESinPostFsrAcc.save(foutH);
   postFsrES.save(foutH);
-  postFsrES_inPostFsrAcc.save(foutH);
-  postFsrES_noPU.save(foutH);
+  postFsrES_trigOnly.save(foutH);
+  postFsrES_trigOnly_noPU.save(foutH);
   TObjString timeTag(DayAndTimeTag(0));
   timeTag.Write("timeTag");
 
