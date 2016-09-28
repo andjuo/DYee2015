@@ -47,6 +47,7 @@ void simpleCS_DYmm(int checkBackgrounds=0, int loadTheory=0)
   const int nBkgs=8;
   const TString bkgNames[nBkgs] = { "h_ZZ", "h_WZ", "h_WW", "h_ttbar",
 				    "h_DYtautau", "h_tW", "h_WJets", "h_QCD" };
+  int scaleMCbkg=1;
 
   TString corrInputFName=inpPath + "ROOTFile_Input6_CrossCheck.root";
   TString gAccEffName="g_AccEff";
@@ -92,6 +93,8 @@ void simpleCS_DYmm(int checkBackgrounds=0, int loadTheory=0)
   h1bkgTot->Reset();
   h1bkgTot->SetDirectory(0);
   h1bkgTot->Sumw2();
+  TH1D *h1bkg_fromMC= (TH1D*)h1bkgTot->Clone("h1bkg_fromMC");
+  TH1D *h1bkg_fromData=(TH1D*)h1bkgTot->Clone("h1bkg_fromData");
   TFile finBkg(bkgInputFName);
   if (!finBkg.IsOpen()) {
     std::cout << "failed to open the file <" << finBkg.GetName() << ">\n";
@@ -103,25 +106,15 @@ void simpleCS_DYmm(int checkBackgrounds=0, int loadTheory=0)
       std::cout << "Failed to get <" << bkgNames[iBkg] << ">\n";
       return;
     }
+    if ((bkgNames[iBkg]=="h_ZZ") || (bkgNames[iBkg]=="h_WZ")) {
+      h1bkg_fromMC->Add(h1);
+    }
+    else h1bkg_fromData->Add(h1);
     h1bkgTot->Add(h1);
   }
   finBkg.Close();
 
-  if (checkBackgrounds) {
-    std::cout << "\n\n Check background\n";
-    TH1D *h1Bkg[2];
-    for (int i=0; i<2; i++) {
-      h1Bkg[i] = (TH1D*)h1meas[i]->Clone("h1bkg_from_input_" + ending[i]);
-      h1Bkg[i]->Add(h1yield[i],-1);
-      h1Bkg[i]->SetDirectory(0);
-      h1Bkg[i]->Scale(lumiTot/lumi[i]);
-      //compareHistos(h1bkgTot,h1Bkg[i]);
-      compareHistos(h1Bkg[i],h1bkgTot);
-    }
-    compareHistos(h1Bkg[0],h1Bkg[1]);
-    std::cout << "\n\n";
-    return;
-  }
+  // background check requires efficiency correction scale factor
 
   // load other corrections and the results
 
@@ -155,6 +148,38 @@ void simpleCS_DYmm(int checkBackgrounds=0, int loadTheory=0)
   h1FinalXS->SetDirectory(0);
   finCorr.Close();
 
+  if (checkBackgrounds) {
+    std::cout << "\n\n Check background\n";
+    TH1D *h1Bkg[2];
+    for (int i=0; i<2; i++) {
+      h1Bkg[i] = (TH1D*)h1meas[i]->Clone("h1bkg_from_input_" + ending[i]);
+      h1Bkg[i]->Add(h1yield[i],-1);
+      h1Bkg[i]->SetDirectory(0);
+      h1Bkg[i]->Scale(lumiTot/lumi[i]);
+      //compareHistos(h1bkgTot,h1Bkg[i]);
+      if (scaleMCbkg) {
+	TH1D *h1bkg_check=(TH1D*)h1bkg_fromMC->Clone(Form("h1bkg_check_%d",i));
+	h1bkg_check->Multiply(h1EffSF[i]);
+	//h1bkg_check->Divide(h1EffSF[i]);
+	h1bkg_check->Add(h1bkg_fromData);
+	compareHistos(h1Bkg[i],h1bkg_check);
+      }
+      else compareHistos(h1Bkg[i],h1bkgTot);
+    }
+    compareHistos(h1Bkg[0],h1Bkg[1]);
+    std::cout << "\n\n";
+    return;
+  }
+
+
+  if (1) {
+    printHisto(h1yield[0],1);
+    printHisto(h1yield[1],1);
+    printHisto((TH1D*)detResResp->Hmeasured(),1);
+  }
+
+  detResResp->UseOverflow(true);
+
   // correct for detRes
   RooUnfoldBayes detResBayes4p2( detResResp, h1yield[0], nDetResIters );
   RooUnfoldBayes detResBayes4p3( detResResp, h1yield[1], nDetResIters );
@@ -175,6 +200,13 @@ void simpleCS_DYmm(int checkBackgrounds=0, int loadTheory=0)
   // add contributions
   TH1D* h1postFSR=(TH1D*)h1postFSR_4p2->Clone("h1postFSR_");
   h1postFSR->Add(h1postFSR_4p3);
+
+  if (1) {
+    printHisto(h1yield[0]);
+    printHisto(h1yield[1]);
+    printHisto(h1postFSR_4p2);
+    printHisto(h1postFSR_4p3);
+  }
 
   // FSR unfolding
   RooUnfoldInvert fsrInvert( detFSRRes, h1postFSR, "rooInv");
