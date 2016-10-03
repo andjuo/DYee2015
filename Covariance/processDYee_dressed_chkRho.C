@@ -18,7 +18,7 @@ void prepareHisto(TH1D *h1) {
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 
-void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
+void processDYee_dressed_chkRho(Int_t maxEntries=100, TString includeOnlyRange="")
 {
   std::cout << "processDYee_dressed\n";
   std::cout << "DY range=" << DYtools::minMass << " .. " << DYtools::maxMass << "\n";
@@ -103,6 +103,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   TH1D *h1postFsrInAccSel_M= new TH1D("h1_postFsrInAccSel_M", "postFSR selected events in acceptance;M_{gen,postFSR} [GeV];count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_MW= new TH1D("h1_postFsrInAccSel_MW", "postFSR selected events in acceptance (weighted);M_{gen,postFSR} [GeV];weighted count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_MWPU= new TH1D("h1_postFsrInAccSel_MWPU", "postFSR selected events in acceptance (weighted,wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH1D *h1postFsrInAccSel_MWPURho= new TH1D("h1_postFsrInAccSel_MWPURho", "postFSR selected events in acceptance (weighted,wPU#times#rho_{i});M_{gen,postFSR} [GeV];weighted (wPU#times#rho_{i}) count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSelNoRecoGap_MWPU= new TH1D("h1_postFsrInAccSelNoRecoGap_MWPU", "postFSR selected events in acceptance (ignoring recoSCGap) (weighted,wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_MissAndMig_MWPU= new TH1D("h1_postFsrInAccSel_MissAndMig_MWPU", "postFSR selected events in acceptance to check detResRespPU (weighted,wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
   TH1D *h1postFsrInAccSel_Mig_MWPU= new TH1D("h1_postFsrInAccSel_Mig_MWPU", "postFSR selected events in acceptance to check detResRespPU (weighted,wPU);M_{gen,postFSR} [GeV];weighted (wPU) count",DYtools::nMassBins,DYtools::massBinEdges);
@@ -115,6 +116,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   prepareHisto(h1postFsrInAccSel_M);
   prepareHisto(h1postFsrInAccSel_MW);
   prepareHisto(h1postFsrInAccSel_MWPU);
+  prepareHisto(h1postFsrInAccSel_MWPURho);
   prepareHisto(h1postFsrInAccSelNoRecoGap_MWPU);
   prepareHisto(h1postFsrInAccSel_MissAndMig_MWPU);
   prepareHisto(h1postFsrInAccSel_Mig_MWPU);
@@ -200,12 +202,18 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
     }
 
     if (inAccPostFsr) {
+      double rho= tnpEff.scaleFactor(data.Momentum_postFSR_Lead->Eta(),
+				     data.Momentum_postFSR_Lead->Pt(),
+				     data.Momentum_postFSR_Sub->Eta(),
+				     data.Momentum_postFSR_Sub->Pt(),0);
+
       if (data.Flag_EventSelectionExceptSCGap)
 	h1postFsrInAccSelNoRecoGap_MWPU->Fill( mPostFsr, wPU );
       if (data.Flag_EventSelection) {
 	h1postFsrInAccSel_M->Fill( mPostFsr, 1. );
 	h1postFsrInAccSel_MW->Fill( mPostFsr, w );
 	h1postFsrInAccSel_MWPU->Fill( mPostFsr, wPU );
+	h1postFsrInAccSel_MWPURho->Fill( mPostFsr, wPU*rho );
 	if (data.Flag_RecoEleSelection)
 	  h1postFsrInAccSel_DieleOk_MWPU->Fill( mPostFsr, wPU );
       }
@@ -503,7 +511,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   h1EffPUEleMatchAcc->Divide(h1EffPUEleMatchAcc,h1postFsr_MW,1,1,"B");
 
 
-  TString fname="dyee_test_dressed_" + versionName(inpVersion)+TString(".root");
+  TString fname="dyee_test_dressed_" + versionName(inpVersion)+TString("_chkRho.root");
   //fname.ReplaceAll(".root","_withOverflow.root");
   if ((maxEntries>0) || includeOnlyRange.Length()) {
     fname.ReplaceAll(".root","_debug.root");
@@ -524,6 +532,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   h1postFsrInAccSel_M->Write();
   h1postFsrInAccSel_MW->Write();
   h1postFsrInAccSel_MWPU->Write();
+  h1postFsrInAccSel_MWPURho->Write();
   h1postFsrInAccSelNoRecoGap_MWPU->Write();
   h1postFsrInAccSel_MissAndMig_MWPU->Write();
   h1postFsrInAccSel_Mig_MWPU->Write();
