@@ -4,6 +4,11 @@
 
 // --------------------------------------------------------------
 
+const TH1D *h1dummy=NULL;
+const TH2D *h2dummy=NULL;
+
+// --------------------------------------------------------------
+
 TString versionName(TVersion_t ver)
 {
   TString name="versionNameUNKNOWN";

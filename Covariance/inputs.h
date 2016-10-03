@@ -108,8 +108,8 @@ void printObjStringField(TFile &f, TString keyName);
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
-const TH1D* h1dummy=NULL;
-const TH2D* h2dummy=NULL;
+extern const TH1D* h1dummy;
+extern const TH2D* h2dummy;
 
 
 template<class histo_t>
@@ -514,6 +514,14 @@ template<class type1_t, class type2_t>
 inline
 void HERE(const char *format, const type1_t x, const type2_t y)
 { std::cout << Form(format,x,y) << std::endl; }
+
+
+inline
+int PosOk(std::string s, std::string substr, size_t from_pos=0)
+{
+  size_t p=s.find(substr,from_pos);
+  return (p!=std::string::npos) ? int(p) : -1;
+}
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------

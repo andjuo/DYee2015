@@ -570,3 +570,29 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   std::cout << "file <" << foutH.GetName() << "> created\n";
 }
 
+
+// ------------------------------------------------------------
+
+#ifdef __CXX__
+int main(int argc, char **argv)
+{
+  int maxEntries=100;
+  TString includeOnlyRange;
+  if (argc>1) {
+    for (int i=1; i<argc; i++) {
+      if (PosOk(argv[i],"-max-events")!=-1) {
+	maxEntries=atoi(argv[i+1]);
+	std::cout << " ** maxEntries=" << maxEntries << "\n";
+      }
+      else if (PosOk(argv[i],"-include-only")!=-1) {
+	includeOnlyRange=argv[i+1];
+	std::cout << " ** includeOnlyRange=" << includeOnlyRange << "\n";
+      }
+    }
+  }
+  processDYee_dressed(maxEntries,includeOnlyRange);
+  return 0;
+}
+#endif
+
+// ------------------------------------------------------------
