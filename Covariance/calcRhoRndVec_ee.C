@@ -160,10 +160,6 @@ void calcRhoRndVec_ee(int nSamples=100)
     h1rho_sqrAvg->Add(h1rho_rndSqr, 1/double(nSamples));
     delete h1rho_rndSqr;
   }
-  h1rho_avg->SetDirectory(0);
-  h1rho_sqrAvg->SetDirectory(0);
-  fout.Close();
-  std::cout << "file <" << fout.GetName() << "> created\n";
 
   for (int ibin=1; ibin<=h1rho_avg->GetNbinsX(); ibin++) {
     for (int jbin=1; jbin<=h1rho_avg->GetNbinsY(); jbin++) {
@@ -173,6 +169,13 @@ void calcRhoRndVec_ee(int nSamples=100)
       h1rho_avg->SetBinError(ibin,jbin, sqrt(err));
     }
   }
+
+  h1rho_avg->Write();
+
+  h1rho_avg->SetDirectory(0);
+  h1rho_sqrAvg->SetDirectory(0);
+  fout.Close();
+  std::cout << "file <" << fout.GetName() << "> created\n";
 
   histoStyle(h1rho_avg,kRed,24);
   plotHistoSame(h1rho_avg,"cRho","LPE1","avg");
