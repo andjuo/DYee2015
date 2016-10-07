@@ -78,6 +78,22 @@ void work13TeV()
   TMatrixD eeCovTot(eeCovStat,TMatrixD::kPlus,eeCovSyst);
   TMatrixD mmCovTot(mmCovStat,TMatrixD::kPlus,mmCovSyst);
 
+  if (0) {
+    TMatrixD cov100 = reduceCorrelations(eeCovTot,-2.);
+    TMatrixD cov050 = reduceCorrelations(cov100,0.666);
+    TMatrixD cov000 = reduceCorrelations(cov100,1.0);
+    TH2D *h2covOrig= convert2histo(eeCovTot,h1csEE,"h2covOrig","h2covOrig");
+    TH2D *h2cov100 = convert2histo(cov100,h1csEE,"h2cov100","h2cov100");
+    TH2D *h2cov050 = convert2histo(cov050,h1csEE,"h2cov050","h2cov050");
+    TH2D *h2cov000 = convert2histo(cov000,h1csEE,"h2cov000","h2cov000");
+    plotCovCorr(h2covOrig,"cCov orig");
+    plotCovCorr(h2cov100,"cCov100corr fake tripled");
+    plotCovCorr(h2cov050,"cCov050corr fake one third");
+    plotCovCorr(h2cov000,"cCov000corr fake no corr");
+    return;
+  }
+
+
   if (!combineData(measEE,eeCovStat,measMM,mmCovStat, h1csEE)) {
     std::cout << "failed to combined data. stopping\n";
     return;
@@ -115,13 +131,19 @@ int loadCovData(const finfomap_t &covFNames,
 
 // -----------------------------------------------------------------------
 
-int combineData(const TMatrixD &measEE, const TMatrixD &covEE,
-		const TMatrixD &measMM, const TMatrixD &covMM,
+int combineData(const TMatrixD &measEE_inp, const TMatrixD &covEE_inp,
+		const TMatrixD &measMM_inp, const TMatrixD &covMM_inp,
 		const TH1D* h1binning)
 {
   const int nXbins= h1binning->GetNbinsX();
   const TArrayD *xb= h1binning->GetXaxis()->GetXbins();
   const Double_t *xBins= xb->GetArray();
+
+  TMatrixD measEE(measEE_inp), covEE(covEE_inp);
+  TMatrixD measMM(measMM_inp), covMM(covMM_inp);
+
+  if (0) { measEE=measMM; covEE=covMM; }
+  else if (0) { measMM=measEE; covMM=covEE; }
 
   TMatrixD covEM(TMatrixD::kZero,covEE);
   BLUEResult_t blue;
@@ -155,13 +177,18 @@ int combineData(const TMatrixD &measEE, const TMatrixD &covEE,
     h1LLErr->SetMarkerColor(kRed);
     h1MMErr->SetMarkerStyle(20);
     h1MMErr->SetMarkerSize(0.5);
-    TCanvas *cErr= new TCanvas("cErr","cErr",600,600);
-    if (h1EEErr->GetNbinsX()<50) cErr->SetLogx();
-    cErr->SetLogy();
-    h1EEErr->Draw("LPE1");
-    h1LLErr->Draw("LPE1 same");
-    h1MMErr->Draw("LPE1 same");
-    cErr->Update();
+    h1EEErr->SetTitle("uncertainties");
+    int setLogX= (h1EEErr->GetNbinsX()<50) ? 1:0;
+    plotHisto(h1EEErr,"cErr",setLogX,1,"LP","DY#rightarrowee");
+    plotHistoSame(h1MMErr,"cErr","LP","DY#rightarrow#mu#mu");
+    plotHistoSame(h1LLErr,"cErr","LP","combined");
+    //TCanvas *cErr= new TCanvas("cErr","cErr",600,600);
+    //if (h1EEErr->GetNbinsX()<50) cErr->SetLogx();
+    //cErr->SetLogy();
+    //h1EEErr->Draw("LPE1");
+    //h1LLErr->Draw("LPE1 same");
+    //h1MMErr->Draw("LPE1 same");
+    //cErr->Update();
     //return 1;
   }
 
@@ -235,7 +262,7 @@ int combineData(const TMatrixD &measEE, const TMatrixD &covEE,
     }
 
     return 1;
-  }
+  } // check split
 
   TMatrixD covEEFinal( blue.contributedCov(blue.measCovMatrix(covEE,1)) );
   TMatrixD covMMFinal( blue.contributedCov(blue.measCovMatrix(covMM,0)) );
