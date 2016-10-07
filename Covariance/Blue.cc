@@ -133,6 +133,20 @@ TMatrixD covToCorrPartial(const TMatrixD &m, const TMatrixD &covTot)
 
 // -------------------------------------------------------------------
 
+TMatrixD reduceCorrelations(const TMatrixD &cov, double by_fraction)
+{
+  TMatrixD m(cov);
+  for (int ir=0; ir<m.GetNrows(); ir++) {
+    for (int ic=0; ic<m.GetNcols(); ic++) {
+      double f= (ir==ic) ? 1 : (1.-by_fraction);
+      m(ir,ic) = f * cov(ir,ic);
+    }
+  }
+  return m;
+}
+
+// -------------------------------------------------------------------
+
 TMatrixD removeNaNs(const TMatrixD &m)
 {
   TMatrixD mNew(m);

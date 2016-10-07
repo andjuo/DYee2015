@@ -31,6 +31,7 @@ int assignValues(TMatrixD &m, int ir, TString str);
 int assignValuesT(TMatrixD &m, int ic, TString str);
 TMatrixD covToCorr(const TMatrixD &cov);
 TMatrixD covToCorrPartial(const TMatrixD &cov, const TMatrixD &covTot);
+TMatrixD reduceCorrelations(const TMatrixD &cov, double by_fraction);
 
 TMatrixD removeNaNs(const TMatrixD &m);
 
