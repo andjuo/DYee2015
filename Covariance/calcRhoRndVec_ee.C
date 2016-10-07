@@ -11,14 +11,16 @@ void studyAvgValues(const EventSpace_t &es);
 void calcRhoRndVec_ee(int nSamples=100)
 {
 
-  //TH2D* h2PostrFsrEventSpace=NULL;
-  DYTnPEff_t tnpEff(1); // 1 - electron channel
-  TH1D* h1postFsrInAccSel_MWPU=NULL; // will provide mass binning
-
   EventSpace_t esPostFsr;
+  TString esMainDirName="mainES";
 
+  TString dyeeTestFNameBase="dyee_test_RECO_";
   TString fnameChk="/mnt/sdb/andriusj/v2_08082016_CovarianceMatrixInputs/";
+  TString effSFNameOnFile="h_EfficiencySF";
   TVersion_t inpVersion=_verEl2skim;
+  int elChannelEffVer=1;
+
+  inpVersion=_verEl3;
 
   if (DYtools::nMassBins!=DYtools::nMassBins43) {
     std::cout << "a potential DYbinning.h problem\n";
@@ -26,15 +28,26 @@ void calcRhoRndVec_ee(int nSamples=100)
   }
   fnameChk="/mnt/sdb/andriusj/v2_08082016_CovarianceMatrixInputs/ROOTFile_Input6_CrossCheck.root";
 
+  if (inpVersion==_verEl3) {
+    elChannelEffVer=2; // different histogram naming
+    dyeeTestFNameBase="dyee_test_dressed_";
+    fnameChk="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/ROOTFile_Input6_CrossCheck.root";
+    effSFNameOnFile="h_EffSF";
+  }
+
+  //TH2D* h2PostrFsrEventSpace=NULL;
+  DYTnPEff_t tnpEff(elChannelEffVer); // 1 - electron channel
+  TH1D* h1postFsrInAccSel_MWPU=NULL; // will provide mass binning
+
   // Load data
-  TString fname="dyee_test_RECO_" + versionName(inpVersion) + TString(".root");
+  TString fname= dyeeTestFNameBase + versionName(inpVersion) + TString(".root");
   TFile fin(fname);
   if (!fin.IsOpen()) {
     std::cout << "failed to open the file <" << fin.GetName() << ">\n";
     return;
   }
   h1postFsrInAccSel_MWPU=loadHisto(fin, "h1_postFsrInAccSel_MWPU","h1postFsrInAccSel_MWPU",1, h1dummy);
-  if (!esPostFsr.load(fin, "mainES")) return;
+  if (!esPostFsr.load(fin, esMainDirName)) return;
   if (!tnpEff.load(fin,"DYTnPEff")) {
     std::cout << "failed to load efficiencies\n";
     return;
@@ -91,7 +104,7 @@ void calcRhoRndVec_ee(int nSamples=100)
   plotHisto(h1rho,"cRho",1,0,"LPE1","my code");
 
   if (1) {
-    TH1D *h1rhoChk= loadHisto(fnameChk,"h_EfficiencySF", "h1rhoChk",1,h1dummy);
+    TH1D *h1rhoChk= loadHisto(fnameChk,effSFNameOnFile, "h1rhoChk",1,h1dummy);
     if (!h1rhoChk) return;
     histoStyle(h1rhoChk,kBlue,24);
     plotHistoSame(h1rhoChk,"cRho","LPE1","RC");
@@ -147,9 +160,6 @@ void calcRhoRndVec_ee(int nSamples=100)
     h1rho_sqrAvg->Add(h1rho_rndSqr, 1/double(nSamples));
     delete h1rho_rndSqr;
   }
-  h1rho_avg->SetDirectory(0);
-  h1rho_sqrAvg->SetDirectory(0);
-  fout.Close();
 
   for (int ibin=1; ibin<=h1rho_avg->GetNbinsX(); ibin++) {
     for (int jbin=1; jbin<=h1rho_avg->GetNbinsY(); jbin++) {
@@ -159,6 +169,13 @@ void calcRhoRndVec_ee(int nSamples=100)
       h1rho_avg->SetBinError(ibin,jbin, sqrt(err));
     }
   }
+
+  h1rho_avg->Write();
+
+  h1rho_avg->SetDirectory(0);
+  h1rho_sqrAvg->SetDirectory(0);
+  fout.Close();
+  std::cout << "file <" << fout.GetName() << "> created\n";
 
   histoStyle(h1rho_avg,kRed,24);
   plotHistoSame(h1rho_avg,"cRho","LPE1","avg");

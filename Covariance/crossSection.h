@@ -71,6 +71,10 @@ public:
   { return fHistoNameBase + Form("%d",iVar); }
   TString histoNameV2(int iVar) const
   { return fHistoNameBaseV2 + Form("%d",iVar); }
+
+  int loadHistos(int sampleSize,
+		 std::vector<TH1D*> &rndVec,
+		 std::vector<TH1D*> *rndVec2=NULL) const;
 };
 
 // -----------------------------------------------------------
@@ -163,14 +167,17 @@ class CrossSection_t {
   void removeBkg(); // set bkg to 0
   void removeRho(); // set rho factor to 1
 
-  TH1D* calcCrossSection();
+  TH1D* calcCrossSection(int removeNegativeSignal=0);
   TH1D* calcCrossSection(TVaried_t new_var, int idx);
-  TCanvas* plotCrossSection(TString canvName="cs");
+  TCanvas* plotCrossSection(TString canvName="cs", int removeNegativeSignal=0);
   TCanvas* plotCrossSection_StepByStep(TString canvName="csStep");
 
   int sampleRndVec(TVaried_t new_var, int sampleSize,
 		   std::vector<TH1D*> &rndCS);
   int sampleRndVec(TVaried_t new_var, const std::vector<TH1D*> &rndHistos,
+		   std::vector<TH1D*> &rndCS);
+  int sampleRndVec(TVaried_t new_var, int sampleSize,
+		   const RndVecInfo_t &info,
 		   std::vector<TH1D*> &rndCS);
   int sampleRndResponse(TVaried_t new_var, int sampleSize,
 			std::vector<TH1D*> &rndCS,
@@ -229,18 +236,23 @@ class MuonCrossSection_t {
   double lumiTot() const { return (fCSa.lumi() + fCSb.lumi()); }
 
   const TH1D* h1Bkg() const { return fh1Bkg; }
-  void h1Bkg(const TH1D *h1, int clearVec=1);
+  // The latest version of muon results used backgrounds that were partially
+  // scaled by a SF.
+  // Instead of old h1Bkg(), call recalcBkg()
+  void h1Bkg_approximate(const TH1D *h1, int clearVec=1);
   const std::vector<TH1D*>& bkgV() const { return fh1BkgV; }
   const TVectorD& bkgWUnc() const { return fBkgWeightUnc; }
-  void setBkgV(const std::vector<TH1D*> &setBkg, const std::vector<double> &set_bkgWUncertainty);
-  int recalcBkg(const std::vector<double> &weights);
+  int setBkgV(const std::vector<TH1D*> &setBkg, const std::vector<double> &set_bkgWUncertainty);
+  int recalcBkg(const std::vector<double> *weights,
+		TH1D **h1bkg_fromMC=NULL, TH1D **h1bkg_fromData=NULL);
 
   const TH1D* h1CS() const { return fh1CS; }
   const TH1D* h1Theory() const { return fh1Theory; }
   void h1Theory(const TH1D* h1) { fh1Theory=fCSa.copy(h1,"h1Theory",fTag); }
 
-  TH1D* calcCrossSection();
-  TCanvas* plotCrossSection(TString canvName="cs", int recalculate=0);
+  TH1D* calcCrossSection(int removeNegativeSignal=0);
+  TCanvas* plotCrossSection(TString canvName="cs", int recalculate=0,
+			    int removeNegativeSignal=0);
 
   int sampleRndVec(TVaried_t new_var, int sampleSize,
 		   std::vector<TH1D*> &rndCS,

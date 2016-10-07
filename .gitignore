@@ -15,6 +15,10 @@ __init__.py
 *.png
 *.gif
 
+# execution and object files
+*.exe
+*.o
+
 # temporary/output files
 *.out
 

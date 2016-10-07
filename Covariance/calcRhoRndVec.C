@@ -20,13 +20,18 @@ void calcRhoRndVec(int nSamples=100)
   TString fnameChk="../../../v20160214_1st_CovarianceMatrixInputs/Input6/ROOTFile_Input6_CrossCheck.root";
   TVersion_t inpVersion=_verMu1;
   inpVersion=_verMu76X;
+  inpVersion=_verMuApproved;
+
+  if ((inpVersion!=_verMu1) && (DYtools::nMassBins!=DYtools::nMassBins43)) {
+    std::cout << "a potential DYbinning.h problem\n";
+    return;
+  }
 
   if (inpVersion==_verMu76X) {
-    if (DYtools::nMassBins!=DYtools::nMassBins43) {
-      std::cout << "a potential DYbinning.h problem\n";
-      return;
-    }
     fnameChk="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/Input6/ROOTFile_Input6_CrossCheck.root";
+  }
+  else if (inpVersion==_verMuApproved) {
+    fnameChk="/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/ROOTFile_Input6_CrossCheck.root";
   }
 
   // Load data

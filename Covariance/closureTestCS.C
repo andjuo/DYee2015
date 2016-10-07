@@ -31,6 +31,20 @@ void closureTestCS()
 
   if (0) {
     // replace Acc x Eff by my values
+    TH1D* h1effAcc=loadHisto("dyee_test_dressed_El2skim3.root","h1EffPUAcc",
+			     "h1effAcc_my",1,h1dummy);
+    cs.h1EffAcc(h1effAcc);
+    csOutFName.ReplaceAll(".root","_AJeffAcc.root");
+  }
+  if (1) {
+    // replace Acc x Eff by modified code values
+    TString fname="/home/andriusj/DY13TeV/DYanalysis-20160817/ElectronNtupler/test/Analysis_Codes/AccEff/dyee_preFSR_forAccEff_v2.root";
+    TH1D *h1effAcc= loadHisto(fname,"h1effAcc","h1effAcc_v2",1,h1dummy);
+    cs.h1EffAcc(h1effAcc);
+    csOutFName.ReplaceAll(".root","_effAccV2.root");
+  }
+  if (0) {
+    // replace Acc x Eff by my values
     TH1D* h1effAcc=loadHisto("dyee_test_El2skim2_excludeGap.root","h1EffPUAcc",
 			     "h1effAcc_my",1,h1dummy);
     cs.h1EffAcc(h1effAcc);

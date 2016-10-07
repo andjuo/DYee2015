@@ -124,22 +124,26 @@ void DYee13TeV_t::Loop()
 // -------------------------------------------------------------
 
 #ifndef Inputs_H
+#ifndef __CXX__
 std::ostream& operator<<(std::ostream &out, const TLorentzVector &v)
 {
   out << Form("(Pt,Eta,Phi,En)=(%lf,%lf,%lf,%lf)",v.Pt(),v.Eta(),v.Phi(),v.E());
   return out;
 }
 #endif
+#endif
 
 // -------------------------------------------------------------
 
 #ifndef Inputs_H
+#ifndef __CXX__
 std::ostream& operator<<(std::ostream &out, const TLorentzVector *v)
 {
   if (!v) out << "(null ptr to TLorentzVector)";
   else out << (*v);
   return out;
 }
+#endif
 #endif
 
 // -------------------------------------------------------------

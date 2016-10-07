@@ -637,10 +637,35 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
     }
     }
 
+    // evaluate uncertainty
+    double sumDRhoSqr=0.;
+    for (int ibin1=1; ibin1<=fh2EffBinDef->GetNbinsX(); ibin1++) {
+      for (int jbin1=1; jbin1<=fh2EffBinDef->GetNbinsY(); jbin1++) {
+	const int fi1= DYtools::FlatIndex(fh2EffBinDef,ibin1,jbin1,1) + 1;
+	//std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "\n";
+	for (int ibin2=1; ibin2<=fh2EffBinDef->GetNbinsX(); ibin2++) {
+	  for (int jbin2=1; jbin2<=fh2EffBinDef->GetNbinsY(); jbin2++) {
+	    const int fi2= DYtools::FlatIndex(fh2EffBinDef,ibin2,jbin2,1) + 1;
+	    //std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "\n";
+	    //if (!h2sp) HERE("h2sp is null"); else HERE("h2sp ok");
+	    //std::cout << " eSpace bin content=" << h2sp->GetBinContent(fi1,fi2) << std::endl;
+	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
+	    //std::cout << "requesting scale factor\n";
+	    double rho= eff.scaleFactorIdx(ibin1,jbin1,ibin2,jbin2, hlt4p3);
+	    //std::cout << "got rho=" << rho << "\n";
+	    sumDRhoSqr += pow( (rho - sumRho/sum)/sum *
+			       h2sp->GetBinError(fi1,fi2) , 2);
+	  }
+	}
+      }
+    }
+
+
     double avgRho= (sum==0.) ? 0. : sumRho/sum;
     //std::cout << "im=" << im << ", avgRho=" << avgRho << "\n";
     h1rho->SetBinContent( im+1, avgRho );
-    h1rho->SetBinError( im+1, 0. );
+    double dAvgRho=(sumDRhoSqr<0) ? -sqrt(-sumDRhoSqr) : sqrt(sumDRhoSqr);
+    h1rho->SetBinError( im+1, dAvgRho );
   }
   return h1rho;
 }

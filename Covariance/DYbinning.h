@@ -27,8 +27,13 @@ const Double_t massBinEdges43[nMassBins43+1] =
    830, 1000, 1500, 3000};
 
 
-const Int_t nMassBins= nMassBins43;
-const Double_t *massBinEdges= massBinEdges43;
+#ifdef __CXX__
+ extern const Int_t nMassBins;
+ extern const Double_t *massBinEdges;
+#else
+ const Int_t nMassBins= nMassBins43;
+ const Double_t *massBinEdges= massBinEdges43;
+#endif
 
 const Double_t minMass= massBinEdges[0];
 const Double_t maxMass= massBinEdges[nMassBins];

@@ -12,6 +12,7 @@ void processDYmm_avgRho(Int_t maxEntries=-1)
   std::cout << "DY range=" << DYtools::minMass << " .. " << DYtools::maxMass << "\n";
 
   TVersion_t inpVersion=_verMu76X;
+  inpVersion=_verMuApproved;
 
   if (DYtools::nMassBins!=DYtools::nMassBins43) {
     std::cout << "a potential DYbinning.h problem\n";
@@ -22,6 +23,14 @@ void processDYmm_avgRho(Int_t maxEntries=-1)
   TString fnameEff= srcPath + "Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
   TString dataFName=srcPath + "Input3/ROOTFile_Input_CovarianceMatrix.root";
   TString avgRhoFName=srcPath + "Input6/ROOTFile_Input6_CrossCheck.root";
+
+  if (inpVersion==_verMuApproved) {
+    TString srcPath76X="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
+    fnameEff= srcPath76X + "Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
+    srcPath= "/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/";
+    dataFName= srcPath + "ROOTFile_Input_CovarianceMatrix.root";
+    avgRhoFName= srcPath + "ROOTFile_Input6_CrossCheck.root";
+  }
 
   TFile finEff(fnameEff);
   if (!finEff.IsOpen()) {
@@ -61,7 +70,7 @@ void processDYmm_avgRho(Int_t maxEntries=-1)
   h2SF_Iso->Divide(h2Eff_Iso_Data,h2Eff_Iso_MC);
   h2SF_Iso->SetTitle("h2SF_Iso");
 
-  if (1) {
+  if (0) {
     printHisto(h2Eff_RecoID_Data);
     printHisto(h2Eff_Iso_Data);
     printHisto(h2Eff_HLT4p2_Data);

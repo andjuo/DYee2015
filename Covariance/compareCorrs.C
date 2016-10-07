@@ -1,82 +1,100 @@
-// Enhanced version of the code is compareVersions.C -- 2016.08.14
+#include "compareVersions.C"
 
-#include "inputs.h"
-#include "crossSection.h"
-#include <map>
 
-typedef enum { _fn_main=0, _fn_cmp1, _fn_cmp2, _fn_last } TSource_t;
-
-void compareCorrs(int theCase=1)
+void compareCorrs(int theCase=1, int noH2Ratios_user=0, TString showOnly="")
 {
-  TString mainFName;
-  TString cmpFName1, cmpFName2;
-  std::map<TVaried_t,TString> histoNames[_fn_last];
+  closeCanvases();
+
+  InfoBundle_t m,c1,c2;
+
+  TString fname="dyee_test_dressed_El2skim3.root";
+  TString fname_AK="/home/andriusj/DY13TeV/DYanalysis-20160817/ElectronNtupler/test/Analysis_Codes/AccEff/dyee_preFSR_forAccEff_v2.root";
+  TString fname_AK_steps="/home/andriusj/DY13TeV/DYanalysis-20160817/ElectronNtupler/test/Analysis_Codes/AccEff/dyee_preFSR_forAccEff_v1steps.root";
+  TString fname_RC="cs_DYee_13TeV_El3.root";
+  TString fname_RC_unf="/mnt/sdc/andriusj/DY13TeV/EgammaWork-20160912/ElectronNtupler/work_76x/Unfolding/RespObj_detUnfolding.root";
+  m.fileName= fname;
+  c1.fileName= fname;
 
   if (theCase==1) {
     std::cout << "compare DYee corrections\n";
-    mainFName="cs_DYee_13TeV_El2.root";
-    histoNames[_fn_main][_varEff]="h1Eff";
-    histoNames[_fn_main][_varRho]="h1Rho";
-    histoNames[_fn_main][_varAcc]="h1Acc";
-    histoNames[_fn_main][_varEffAcc]="h1EffAcc";
-    cmpFName1="dyee_test_El2skim_excludeGap.root";
-    histoNames[_fn_cmp1][_varEff]="h1Eff";
-    histoNames[_fn_cmp1][_varEff]="h1EffPU";
-    histoNames[_fn_cmp1][_varAcc]="h1Acc";
-    histoNames[_fn_cmp1][_varEffAcc]="h1EffPUAcc";
-    cmpFName2="dyee_test_RECO_El2skim.root";
-    histoNames[_fn_cmp2][_varRho]="h1rho";
+    m.fileName= fname;
+    m.add(_iSignal,"h1recoSel_MWPU");
+    m.add(_iUnf,"h1_postFsrInAccSel_MWPU");
+    c1.fileName= fname;
+    c1.add(_iSignal,"RRmeas+rooUnf_detResRespPU");
+    c1.add(_iUnf,"RRtrue+rooUnf_detResRespPU");
+    //c2.fileName= fname;
+    c2.add(_iUnf, "h1_postFsrInAccSel_DieleOk_MWPU");
+  }
+  else if (theCase==10) {
+    m.add(_iEffPass, "h1_postFsrInAccSel_DieleOk_MWPU" + lumiScale);
+    m.add(_iEffPass, "h1_postFsrInAccSel_MWPU" + lumiScale);
+    m.add(_iEffTot , "h1_postFsrInAcc_MW" + lumiScale);
+    //m.add(_iAccPass, "h1_postFsrInAcc_MW" + lumiScale);
+    //m.add(_iAcc, "h1Acc");
+    c1.fileName= fname_AK;
+    c1.add(_iEffPass,"h1_eff_sumPass");
+    c1.add(_iEffTot, "h1_eff_sumTot");
+    c1.add(_iAccPass,"h1_acc_sumPass");
+    c1.add(_iAccTot, "h1_acc_sumTot");
+    c1.add(_iEff, "h1eff");
+    c1.add(_iAcc, "h1acc");
+  }
+  else if (theCase==11) {
+    m.add(_iEff, "h1EffPU");
+    m.add(_iEffAcc, "h1EffPUAcc");
+    c2.fileName= fname;
+    c2.add(_iEff,"h1_postFsrInAccSel_DieleOk_MWPU:ratio:h1_postFsrInAcc_MW");//RC
+    c2.add(_iEff, "h1_postFsrInAccSel_MWPU:ratio:h1_postFsrInAcc_MW"); // MC
+    c1.fileName= fname_RC;
+    c1.add(_iEff, "h1Eff");
+    c1.add(_iEffAcc,"h1EffAcc");
+  }
+  else if (theCase==12) {
+    m.add(_iSignal,"h1recoSel_MWPU" + lumiScale);
+    m.add(_iUnf,"h1_postFsrInAccSel_MWPU" + lumiScale); // no eleMatching
+    c1.fileName= fname_RC;
+    c1.add(_iSignal,"RRmeas+detRes"); // RC meas
+    c1.add(_iUnf,"RRtrue+detRes"); // RC true
+  }
+  else if (theCase==121) {
+    m.add(_iSignal,"h1recoSel_MWPU" + lumiScale);
+    m.add(_iUnf,"h1_postFsrInAccSel_MWPU" + lumiScale); // no eleMatching
+    c1.fileName= fname_RC_unf;
+    c1.add(_iSignal,"RRmeas+Unfold_DetectorRes1"); // RC meas
+    c1.add(_iUnf,"RRtrue+Unfold_DetectorRes1"); // RC true
+  }
+  else if (theCase==13) {
+    m.add(_iEffPass,"h1_postFsrInAccSel_MWPU");
+    c1.add(_iEffPass,"h1_postFsrInAccSel_MissAndMig_MWPU");
+    c2.fileName= fname;
+    c2.add(_iEffPass,"h1_postFsrInAccSel_DieleOk_MWPU");
+  }
+  else if (theCase==131) { // same as 13. changed order
+    c1.add(_iEffPass,"h1_postFsrInAccSel_MWPU");
+    m.add(_iEffPass,"h1_postFsrInAccSel_MissAndMig_MWPU");
+    c2.fileName= fname;
+    c2.add(_iEffPass,"h1_postFsrInAccSel_DieleOk_MWPU");
+  }
+  else if (theCase==132) { // similar to 13. Compare to AK_steps
+    c1.add(_iEffPass,"h1_postFsrInAccSel_MWPU");
+    m.add(_iEffPass,"h1_postFsrInAccSel_MissAndMig_MWPU");
+    c2.fileName= fname_AK_steps;
+    c2.add(_iEffPass,"h1_eff_sumPass_noTrigObjMatching" + lumiInvScale);
+  }
+  else if (theCase==21) {
+    m.fileName= fname;
+    m.add(_iUnf,"RRtrue+rooUnf_detResRespPU");
+    c1.fileName= fname;
+    c1.add(_iUnf,"h1_postFsrInAccSel_MissAndMig_MWPU");
+  }
+  else if (theCase==22) {
+    m.add(_iEff,"h1EffPU");
+    c1.add(_iEff,"h1_postFsrInAccSel_MissAndMig_MWPU:ratio:h1_postFsrInAcc_MW");
   }
   else {
     std::cout << "not ready for theCase=" << theCase << "\n";
   }
 
-  for (std::map<TVaried_t,TString>::const_iterator it= histoNames[_fn_main].begin();
-       it!=histoNames[_fn_main].end(); it++) {
-    std::cout << variedVarName(it->first) << " " << it->second << "\n";
-
-    TString h1nameBase= "h1" + variedVarName(it->first);
-    TH1D *h1main= loadHisto(mainFName,it->second, h1nameBase+"_main",h1dummy);
-    if (!h1main) {
-      std::cout << "failed to get h1main " << it->second << "\n";
-      return;
-    }
-
-    TH1D *h1cmp1= NULL, *h1cmp2= NULL;
-
-    for (std::map<TVaried_t,TString>::const_iterator it1=histoNames[_fn_cmp1].begin();
-	 it1!=histoNames[_fn_cmp1].end(); it1++) {
-      if (it1->first == it->first) {
-	h1cmp1= loadHisto(cmpFName1,it1->second, h1nameBase+"_cmp1",h1dummy);
-	if (!h1cmp1) {
-	  std::cout << "failed to get h1cmp1 " << it1->second << "\n";
-	}
-	break;
-      }
-    }
-
-    for (std::map<TVaried_t,TString>::const_iterator it2=histoNames[_fn_cmp2].begin();
-	 it2!=histoNames[_fn_cmp2].end(); it2++) {
-      if (it2->first == it->first) {
-	h1cmp2= loadHisto(cmpFName2,it2->second, h1nameBase+"_cmp2",h1dummy);
-	if (!h1cmp2) {
-	  std::cout << "failed to get h1cmp2 " << it2->second << "\n";
-	}
-	break;
-      }
-    }
-
-    histoStyle(h1main,kBlue,24,1);
-    if (h1cmp1) histoStyle(h1cmp1,kGreen+1,5,1);
-    if (h1cmp2) histoStyle(h1cmp2,kRed,7,1);
-
-    TString cName="c" + h1nameBase;
-    plotHisto(h1main,cName,1,0,"LPE1","main");
-    if (h1cmp1) plotHistoSame(h1cmp1,cName,"LPE1","cmp1");
-    if (h1cmp2) plotHistoSame(h1cmp2,cName,"LPE1","cmp2");
-    if (1) {
-      if (h1cmp1) printRatio(h1main,h1cmp1);
-      if (h1cmp2) printRatio(h1main,h1cmp2);
-    }
-  }
+  drawComparison(m,c1,c2,noH2Ratios_user,showOnly);
 }

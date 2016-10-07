@@ -18,6 +18,7 @@
 #include <TRandom3.h>
 #include <TGraphAsymmErrors.h>
 #include <TLorentzVector.h>
+#include <stdarg.h>
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -26,8 +27,10 @@
 
 // -----------------------------------------------------------
 
-typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verEl1=200,
+typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verMuApproved=102,
+	       _verEl1=200,
 	       _verEl2=201, _verEl2skim=202, _verEl2skim2=203,
+	       _verEl2skim3=204,
 	       _verEl3=301
 } TVersion_t;
 
@@ -47,7 +50,9 @@ void clearVec(std::vector<ptr_t*> &vec)
   vec.clear();
 }
 
+// assign values
 void addToVector(std::vector<TString> &vec, TString strings);
+void addToVector(std::vector<int> &vec, int count, ...);
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="");
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
@@ -83,6 +88,10 @@ void removeError(th1_t *h1)
 }
 
 TH1D* errorAsCentral(const TH1D* h1, int relative=0);
+void removeNegatives(TH1D* h1);
+
+void scaleBin(TH1D *h1, int ibin, double x);
+void printBin(TH1D *h1, int ibin, int newLine=1);
 
 // -----------------------------------------------------------
 
@@ -99,8 +108,8 @@ void printObjStringField(TFile &f, TString keyName);
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
-const TH1D* h1dummy=NULL;
-const TH2D* h2dummy=NULL;
+extern const TH1D* h1dummy;
+extern const TH2D* h2dummy;
 
 
 template<class histo_t>
@@ -374,6 +383,17 @@ TVectorD convert2vec(const histo1D_t* h1)
 }
 
 
+template<class histo1D_t>
+inline
+TMatrixD convert2mat1D(const histo1D_t* h1)
+{
+  TMatrixD v(h1->GetNbinsX(),1);
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++)
+    v(ibin-1,0)= h1->GetBinContent(ibin);
+  return v;
+}
+
+
 template<class histo2D_t>
 inline
 TMatrixD convert2mat(const histo2D_t* h2)
@@ -413,6 +433,7 @@ TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
 
 TCanvas *findCanvas(TString canvName);
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
+void closeCanvases();
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
 void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
@@ -493,6 +514,14 @@ template<class type1_t, class type2_t>
 inline
 void HERE(const char *format, const type1_t x, const type2_t y)
 { std::cout << Form(format,x,y) << std::endl; }
+
+
+inline
+int PosOk(std::string s, std::string substr, size_t from_pos=0)
+{
+  size_t p=s.find(substr,from_pos);
+  return (p!=std::string::npos) ? int(p) : -1;
+}
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------

@@ -4,6 +4,11 @@
 
 // --------------------------------------------------------------
 
+const TH1D *h1dummy=NULL;
+const TH2D *h2dummy=NULL;
+
+// --------------------------------------------------------------
+
 TString versionName(TVersion_t ver)
 {
   TString name="versionNameUNKNOWN";
@@ -11,10 +16,12 @@ TString versionName(TVersion_t ver)
   case _verUndef: name="UndefVer"; break;
   case _verMu1: name="Mu1"; break;
   case _verMu76X: name="Mu76X"; break;
+  case _verMuApproved: name="MuApproved"; break;
   case _verEl1: name="El1"; break;
   case _verEl2: name="El2"; break;
   case _verEl2skim: name="El2skim"; break;
   case _verEl2skim2: name="El2skim2"; break;
+  case _verEl2skim3: name="El2skim3"; break;
   case _verEl3: name="El3"; break;
   default:
     std::cout << "versionName is not ready for this version type\n";
@@ -48,6 +55,18 @@ void addToVector(std::vector<TString> &vec, TString strings)
     ss >> s;
     if (s.Length()) vec.push_back(s);
   }
+}
+
+// -----------------------------------------------------------
+
+void addToVector(std::vector<int> &vec, int count, ...)
+{
+  va_list vl;
+  va_start(vl,count);
+  for (int i=0; i<count; i++) {
+    vec.push_back(va_arg(vl,int));
+  }
+  va_end(vl);
 }
 
 // -----------------------------------------------------------
@@ -281,6 +300,33 @@ TH1D* errorAsCentral(const TH1D* h1, int relative) {
     h1err->SetBinError (ibin, 0.);
   }
   return h1err;
+}
+
+// ---------------------------------------------------------
+
+void removeNegatives(TH1D* h1)
+{
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    if (h1->GetBinContent(ibin)<0) h1->SetBinContent(ibin,0.);
+  }
+}
+
+// ---------------------------------------------------------
+
+void scaleBin(TH1D* h1, int ibin, double x)
+{
+  h1->SetBinContent(ibin, x * h1->GetBinContent(ibin));
+  h1->SetBinError  (ibin, x * h1->GetBinError(ibin));
+}
+
+// ---------------------------------------------------------
+
+void printBin(TH1D *h1, int ibin, int newLine)
+{
+  std::cout << h1->GetName() << "[" << ibin << "]="
+	    << h1->GetBinContent(ibin) << " +- "
+	    << h1->GetBinError(ibin);
+  if (newLine) std::cout << "\n";
 }
 
 // ---------------------------------------------------------
@@ -749,6 +795,18 @@ int findCanvases(TString canvNames, std::vector<TCanvas*> &cV)
     if (keep) cV.push_back(c);
   }
   return int(cV.size()-iniSize);
+}
+
+// ---------------------------------------------------------
+
+void closeCanvases()
+{
+  TSeqCollection *seq=gROOT->GetListOfCanvases();
+  for (int i=0; i<=seq->LastIndex(); i++) {
+    TCanvas *c= (TCanvas*) seq->At(i);
+    delete c;
+  }
+  gSystem->ProcessEvents();
 }
 
 // ---------------------------------------------------------
