@@ -1,3 +1,3 @@
 {
-    gROOT->ProcessLine(".L Blue.C+");
+    gROOT->ProcessLine(".L Blue.cc+");
 }
