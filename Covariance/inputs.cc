@@ -92,12 +92,19 @@ TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
 
 // ---------------------------------------------------------
 
-TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy)
+TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy,
+		   double ytitleOffset, double centralZrange)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
+  cx->SetLeftMargin(0.15);
   cx->SetRightMargin(0.18);
   cx->SetLogx(logx);
   cx->SetLogy(logy);
+  h2->GetYaxis()->SetTitleOffset(ytitleOffset);
+  if (centralZrange!=0) {
+    h2->GetZaxis()->SetRangeUser(-centralZrange,centralZrange);
+    h2->GetZaxis()->SetDecimals(true);
+  }
   h2->Draw("COLZ");
   cx->Update();
   return cx;
@@ -105,11 +112,12 @@ TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy)
 
 // ---------------------------------------------------------
 
-TCanvas* plotHisto(const TH2D* h2_orig, TString cName, int logx, int logy)
+TCanvas* plotHisto(const TH2D* h2_orig, TString cName, int logx, int logy,
+		   double ytitleOffset, double centralZrange)
 {
   TH2D *h2=cloneHisto(h2_orig,h2_orig->GetName() + TString("__clone_plotHisto"),
 		      h2_orig->GetTitle());
-  return plotHisto(h2,cName,logx,logy);
+  return plotHisto(h2,cName,logx,logy,ytitleOffset,centralZrange);
 }
 
 // ---------------------------------------------------------
@@ -139,6 +147,24 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
     }
   }
   return cOut;
+}
+
+// ---------------------------------------------------------
+
+int moveLegend(TCanvas *c, double dx, double dy)
+{
+  c->cd();
+  TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
+  if (!leg) return 0;
+  if (dx!=0.) {
+    leg->SetX1NDC(leg->GetX1NDC() + dx);
+    leg->SetX2NDC(leg->GetX2NDC() + dx);
+  }
+  if (dy!=0.) {
+    leg->SetY1NDC(leg->GetY1NDC() + dy);
+    leg->SetY2NDC(leg->GetY2NDC() + dy);
+  }
+  return 1;
 }
 
 // ---------------------------------------------------------
@@ -567,6 +593,7 @@ TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
   const Double_t *x= xb->GetArray();
   TH2D *h2= new TH2D(h2name,h2title, xb->GetSize()-1,x, xb->GetSize()-1,x);
   h2->SetDirectory(0);
+  h2->SetStats(0);
   h2->Sumw2();
   if (h2title.Index(";")==-1) {
     TString label=h1_for_axes->GetXaxis()->GetTitle();
@@ -729,13 +756,19 @@ TH1D *uncFromCov(const TH2D* h2cov, const TH1D *h1centralVal,
 // ---------------------------------------------------------
 
 TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
-		     int autoZRange) {
+		     int autoZRange, double ytitleOffset) {
   h2Cov->GetXaxis()->SetMoreLogLabels();
   h2Cov->GetXaxis()->SetNoExponent();
   h2Cov->GetYaxis()->SetMoreLogLabels();
   h2Cov->GetYaxis()->SetNoExponent();
   TH2D* h2Corr= cov2corr(h2Cov);
   h2Cov->SetStats(0);
+
+  h2Cov->GetYaxis()->SetTitleOffset(ytitleOffset);
+  h2Corr->GetYaxis()->SetTitleOffset(ytitleOffset);
+  h2Cov->GetZaxis()->SetDecimals(true);
+  h2Corr->GetZaxis()->SetDecimals(true);
+
   TCanvas *cx= new TCanvas(canvName,canvName,1200,600);
   cx->Divide(2,1);
   cx->cd(1);
@@ -754,6 +787,18 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
   cx->Update();
   if (h2corr_out) (*h2corr_out)=h2Corr;
   return cx;
+}
+
+// ---------------------------------------------------------
+
+TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axes,
+		     TString histoName, TString canvName,
+		     TH2D **h2cov_out, TH2D **h2corr_out,
+		     int autoZRangeCorr, double ytitleOffset)
+{
+  TH2D *h2cov= convert2histo(cov,h1_for_axes,histoName,histoName);
+  if (h2cov_out) *h2cov_out = h2cov;
+  return plotCovCorr(h2cov,canvName,h2corr_out,autoZRangeCorr,ytitleOffset);
 }
 
 // ---------------------------------------------------------

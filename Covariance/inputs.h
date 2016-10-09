@@ -16,6 +16,7 @@
 #include <TArrayD.h>
 #include <TSystem.h>
 #include <TRandom3.h>
+#include <TGraphErrors.h>
 #include <TGraphAsymmErrors.h>
 #include <TLorentzVector.h>
 #include <stdarg.h>
@@ -55,9 +56,13 @@ void addToVector(std::vector<TString> &vec, TString strings);
 void addToVector(std::vector<int> &vec, int count, ...);
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="");
-TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0);
-TCanvas* plotHisto(const TH2D* h2, TString cName, int logX=0, int logY=0);
+TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0,
+		   double ytitleOffset=1.5, double centralZRange=0.);
+TCanvas* plotHisto(const TH2D* h2, TString cName, int logX=0, int logY=0,
+		   double ytitleOffset=1.5, double centralZRange=0.);
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain="");
+
+int moveLegend(TCanvas *c, double dxNDC, double dyNDC);
 
 void printHisto(const TH1D* h1, int extraRange=0);
 void printHisto(const TH2D* h2, int extraRange=0, int nonZero=0,
@@ -225,19 +230,47 @@ histoTarget_t* cloneHisto(const histo_t *hSrc,
 
 // -----------------------------------------------------------
 
+template<class histo_t>
 inline
-void histoStyle(TH1D* h1, int color, int markerStyle, int lineStyle=1)
+void histoStyle(histo_t* h1, int color, int markerStyle, int lineStyle=1,
+		double markerSize=1.)
 {
   h1->SetLineColor(color);
   h1->SetLineStyle(lineStyle);
   h1->SetMarkerColor(color);
   h1->SetMarkerStyle(markerStyle);
+  h1->SetMarkerSize(markerSize);
 }
 
 // -----------------------------------------------------------
 
 inline
-TString niceMassAxisLabel(int iLepton, TString extra)
+void graphStyle(TGraphErrors *gr, int color, int markerStyle, int lineStyle=1,
+		double markerSize=1.)
+{ return histoStyle(gr,color,markerStyle,lineStyle,markerSize); }
+
+// -----------------------------------------------------------
+
+template<class graph_t>
+inline
+void logAxis(graph_t *gr, int axis=1+2)
+{
+  gr->GetXaxis()->SetDecimals(true);
+  gr->GetYaxis()->SetDecimals(true);
+  if ((axis & 1)!=0) {
+    gr->GetXaxis()->SetNoExponent();
+    gr->GetXaxis()->SetMoreLogLabels();
+  }
+  if ((axis & 2)!=0) {
+    gr->GetYaxis()->SetNoExponent();
+    gr->GetYaxis()->SetMoreLogLabels();
+  }
+}
+
+// -----------------------------------------------------------
+
+inline
+TString niceMassAxisLabel(int iLepton, TString extra, int iLabel=0)
 {
   TString lepton;
   if (iLepton==0) lepton="e";
@@ -249,7 +282,9 @@ TString niceMassAxisLabel(int iLepton, TString extra)
     sublabel+=",\\,";
     label= sublabel + TString("\\text{") + extra + TString("}");
   }
-  return TString("M_{") + label + TString("}\\text{ [GeV]}");
+  TString start="M";
+  if (iLabel==1) { start="\\sigma"; label.Prepend("\\!"); }
+  return start + TString("_{") + label + TString("}\\text{ [GeV]}");
 }
 
 // -----------------------------------------------------------
@@ -429,7 +464,13 @@ TH1D* uncFromCov(const TH2D *h2cov, const TH1D *h1centralVal=NULL,
 
 TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
 		     TH2D** h2corr_out=NULL,
-		     int autoZRangeCorr=1);
+		     int autoZRangeCorr=1,
+		     double yTitleOffset=1.5);
+TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axis_def,
+		     TString histoName, TString canvName,
+		     TH2D **h2cov_out=NULL, TH2D **h2corr_out=NULL,
+		     int autoZRangeCorr=1,
+		     double yTitleOffset=1.5);
 
 TCanvas *findCanvas(TString canvName);
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
