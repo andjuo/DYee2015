@@ -356,7 +356,7 @@ int BLUEResult_t::estimate()
   if (corrOut) delete corrOut;
   chi2=0;
 
-  std::cout << "\nestimate()\n";
+  std::cout << "\nmain method: estimate()\n";
   print("meas",meas);
   print("covInp",covInp);
 
@@ -383,9 +383,23 @@ int BLUEResult_t::estimate()
 
   print("lambda*U should be ones", mult(lambda,U));
 
+  if (0) {
+    for (int ir=0; ir<lambda->GetNrows(); ir++)
+      for (int ic=0; ic<lambda->GetNcols(); ic++) {
+	double sum=0.;
+	for (int iri=0; iri<lambda->GetNrows(); iri++) {
+	  sum += denomM(ir,iri) * nom(iri,ic);
+	}
+	std::cout << "ir=" << ir << ", ic=" << ic << ", sum=" << sum
+		  << ", lambda=" << (*lambda)(ir,ic);
+	if (fabs(sum-(*lambda)(ir,ic)) > 1e-3*fabs(sum)) std::cout << "\t*!*";
+	std::cout << "\n";
+      }
+  }
+
   est= new TMatrixD( mult(lambda,meas) );
   print("estimate",est);
-  print("U*est",mult(U,est));
+  //print("U*est",mult(U,est));  // check dimension compatibility
 
   TMatrixD lambdaTr(TMatrixD::kTransposed,*lambda);
   //print("lambdaTr",lambdaTr);
