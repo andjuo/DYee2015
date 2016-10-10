@@ -35,6 +35,8 @@ TMatrixD reduceCorrelations(const TMatrixD &cov, double by_fraction);
 
 TMatrixD removeNaNs(const TMatrixD &m);
 
+TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift);
+
 TGraphErrors* createGraph(TString setTitle,
 			  const TMatrixD &meas, const TMatrixD &cov,
 			  int nXbins, const double *xBins,

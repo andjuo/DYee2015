@@ -159,6 +159,53 @@ TMatrixD removeNaNs(const TMatrixD &m)
 
 // -------------------------------------------------------------------
 
+TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift)
+{
+  int nXbins= h1->GetNbinsX();
+  double *xc= new double[nXbins];
+  double *yc= new double[nXbins];
+  double *ex= new double[nXbins];
+  double *ey= new double[nXbins];
+  double lastBin= h1->GetBinLowEdge(nXbins) + h1->GetBinWidth(nXbins);
+  for (int ibin=1; ibin<=nXbins; ibin++) {
+    double dx=0;
+    double xlow= h1->GetBinLowEdge(ibin);
+    double xhigh= xlow + h1->GetBinWidth(ibin);
+    if (lastBin >1000.) {
+      if (xlow<=60) dx=1.;
+      else if (xlow<=76) dx=0.8;
+      else if (xlow<=141) dx=1.25;
+      else if (xlow<=200) dx=2;
+      else if (xlow<=250) dx=5;
+      else if (xlow<=380) dx=8;
+      else if (xlow<=600) dx=10;
+      else if (xlow<=1000) dx=20;
+      else dx=50;
+    }
+    else {
+      dx=0.25;
+    }
+    dx*=shift;
+    int i=ibin-1;
+    xc[i]= 0.5*(xlow+xhigh) + dx;
+    yc[i]= h1->GetBinContent(ibin);
+    ex[i]= (shift==0) ?  0.5*(xhigh-xlow) : 0.;
+    ey[i]= h1->GetBinError(ibin);
+    if (1) {
+      std::cout << "i=" << i << " x range " << xlow << " .. "
+		<< xhigh << "\n";
+      std::cout << "i=" << i << " x=" << xlow << " +- " << ex[1]
+		<< ", y=" << yc[i] << " +- " << ey[i] << "\n";
+    }
+  }
+  TGraphErrors *gr= new TGraphErrors(nXbins,xc,yc,ex,ey);
+  gr->SetTitle(setTitle);
+  delete xc; delete yc; delete ex; delete ey;
+  return gr;
+}
+
+// -------------------------------------------------------------------
+
 TGraphErrors* createGraph(TString setTitle,
 			  const TMatrixD &meas, const TMatrixD &cov,
 			  int nXbins, const double *xBins,
