@@ -73,11 +73,12 @@ void addToVector(std::vector<int> &vec, int count, ...)
 // -----------------------------------------------------------
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
-		   TString explain)
+		   TString explain, int gridLines)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
   if (logX) cx->SetLogx();
   if (logY) cx->SetLogy();
+  if (gridLines) cx->SetGrid((gridLines&1)!=0,(gridLines&2)!=0);
   h1->Draw(drawOpt);
   if (explain.Length()) {
     const int smaller=1;
@@ -134,9 +135,16 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
       h1->Draw(drawOpt + TString(" same"));
 
       if (explain.Length()) {
+	const int smaller=1;
 	TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
-	if (leg) {
-	  const int smaller=1;
+	if (!leg) {
+	  std::cout << "new legend\n";
+	  leg= new TLegend(0.15,0.15,0.40,0.22-0.02*smaller);
+	  leg->SetName("myLegend");
+	  leg->AddEntry(h1,explain);
+	  leg->Draw();
+	}
+	else {
 	  leg->SetY2NDC(leg->GetY2NDC() + 0.07-0.02*smaller);
 	  leg->AddEntry(h1,explain);
 	  leg->Draw();
@@ -146,6 +154,44 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
       cOut=c;
     }
   }
+  cOut->Update();
+  return cOut;
+}
+
+// ---------------------------------------------------------
+
+TCanvas* plotGraphSame(TGraphErrors *gr, TString canvName, TString drawOpt, TString explain)
+{
+  TSeqCollection *seq=gROOT->GetListOfCanvases();
+  TCanvas *cOut=NULL;
+  for (int i=0; i<=seq->LastIndex(); i++) {
+    TCanvas *c= (TCanvas*) seq->At(i);
+    //std::cout << "i=" << i << " " << c->GetName() << "\n";
+    if (c->GetName() == canvName) {
+      c->cd();
+      gr->Draw(drawOpt + TString(" same"));
+
+      if (explain.Length()) {
+	const int smaller=1;
+	TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
+	if (!leg) {
+	  std::cout << "new legend\n";
+	  leg= new TLegend(0.15,0.15,0.40,0.22-0.02*smaller);
+	  leg->SetName("myLegend");
+	  leg->AddEntry(gr,explain,drawOpt);
+	  leg->Draw();
+	}
+	else {
+	  leg->SetY2NDC(leg->GetY2NDC() + 0.07-0.02*smaller);
+	  leg->AddEntry(gr,explain,drawOpt);
+	  leg->Draw();
+	}
+      }
+
+      cOut=c;
+    }
+  }
+  cOut->Update();
   return cOut;
 }
 
@@ -164,9 +210,81 @@ int moveLegend(TCanvas *c, double dx, double dy)
     leg->SetY1NDC(leg->GetY1NDC() + dy);
     leg->SetY2NDC(leg->GetY2NDC() + dy);
   }
+  c->Modified(); c->Update();
   return 1;
 }
 
+// ---------------------------------------------------------
+
+void setLeftMargin(TCanvas *c, double xMargin)
+{
+  c->cd();
+  c->SetLeftMargin(xMargin);
+  gPad->Modified();
+  c->Modified();
+  c->Update();
+}
+
+// ---------------------------------------------------------
+
+void setRightMargin(TCanvas *c, double xMargin)
+{
+  c->cd();
+  c->SetRightMargin(xMargin);
+  gPad->Modified();
+  c->Modified();
+  c->Update();
+}
+
+// ---------------------------------------------------------
+
+TCanvas *createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
+			 TString *canvName_out, TH2D **h2frame_out)
+{
+  const int nDivs=5;
+  const double divX[nDivs][2] = { { 15., 60.},
+				  { 60., 102.},
+				  { 100., 200.},
+				  { 200., 600.},
+				  { 500., 3000.} };
+  const double divY[nDivs][2] = { { 3., 300. }, // 10-60
+				  { 3., 300. }, // 60-100
+				  { 2e-2, 10.}, // 100-200
+				  { 1e-4, 0.1}, // 200-600
+				  { 1e-9,1e-3} }; // >600
+  int iD=iFrame;
+  TString rangeStr=Form("%d_%d",int(divX[iD][0]),int(divX[iD][1]));
+  if (titleStr.Index(";")!=-1) {
+    titleStr.Insert(titleStr.Index(";")," "+rangeStr);
+  }
+  else titleStr.Append(" " +rangeStr);
+  TH2D* h2frame= new TH2D("h2frame" + rangeStr,titleStr,
+			  100,divX[iD][0],divX[iD][1],
+			  100,divY[iD][0],divY[iD][1]);
+  h2frame->SetDirectory(0);
+  h2frame->SetStats(0);
+  TString cName= canvNameBase + rangeStr;
+  TCanvas *cx= new TCanvas(cName,cName,600,600);
+  cx->SetGrid(1,1);
+  cx->SetLogy();
+  logAxis(h2frame);
+  if (divY[iD][0]<1e-5) h2frame->GetYaxis()->SetNoExponent(0);
+  if (divX[iD][0]>490) {
+    cx->SetLeftMargin(0.15);
+    h2frame->GetYaxis()->SetTitleOffset(2.1);
+  }
+  else {
+    cx->SetLeftMargin(0.11);
+    h2frame->GetYaxis()->SetTitleOffset(1.4);
+  }
+  h2frame->Draw();
+  cx->Update();
+  if (canvName_out) *canvName_out= cName;
+  if (h2frame_out) *h2frame_out= h2frame;
+  return cx;
+}
+
+// ---------------------------------------------------------
 // ---------------------------------------------------------
 
 void printHisto(const TH1D *h1, int extraRange) {
