@@ -255,6 +255,26 @@ TGraphErrors* createGraph(TString setTitle,
 
 // -------------------------------------------------------------------
 
+TGraphErrors* createGraph(TString setTitle,
+			  const TMatrixD &meas, const TMatrixD &cov,
+			  const TH1D *h1_for_binning,
+			  int shift)
+{
+  if (meas.GetNrows()!=h1_for_binning->GetNbinsX()) {
+    std::cout << "measurement does not match the number of bins\n";
+    return NULL;
+  }
+  TH1D *h1= (TH1D*)h1_for_binning->Clone(setTitle + "_tmp");
+  h1->Reset();
+  for (int i=0; i<meas.GetNrows(); i++) {
+    h1->SetBinContent(i+1, meas(i,0));
+    h1->SetBinError  (i+1, sqrt(cov(i,i)));
+  }
+  return createGraph(h1,setTitle,shift);
+}
+
+// -------------------------------------------------------------------
+
 TH1D *createErrHisto(TString setName, TString setTitle,
 		     const TMatrixD &cov,
 		     int nXbins, const double *xBins)

@@ -42,6 +42,12 @@ TGraphErrors* createGraph(TString setTitle,
 			  int nXbins, const double *xBins,
 			  int shift);
 
+TGraphErrors* createGraph(TString setTitle,
+			  const TMatrixD &meas, const TMatrixD &cov,
+			  const TH1D *h1_for_binning,
+			  int shift);
+
+
 TH1D *createErrHisto(TString setName, TString setTitle,
 		     const TMatrixD &cov,
 		     int nXbins, const double *xBins);
