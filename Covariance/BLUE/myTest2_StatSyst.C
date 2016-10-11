@@ -27,8 +27,8 @@ void myTest2_StatSyst(int theCase, int printInfo=0)
       ) {
     caseName="4.3.3. Breakdown of error contributions";
     if (theCase==1) caseName.Append(" (uncorrelated, eq.54)");
-    else if (theCase==2) caseName.Append(" (correlated, eq.55)");
-    else if (theCase==3) caseName.Append(" (anti-correlated, eq.53)");
+    else if (theCase==2) caseName.Append(" (correlated, eq.53)");
+    else if (theCase==3) caseName.Append(" (anti-correlated, eq.55)");
     else if (theCase==4) caseName.Append(". No syst.err.; eq.56");
     else if ((theCase>=5) && (theCase<=8)) {
       caseName.Append(". Lepton universality");
