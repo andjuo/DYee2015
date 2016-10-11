@@ -39,6 +39,30 @@ TString versionName(TVersion_t);
 
 // -----------------------------------------------------------
 
+struct HistoStyle_t
+{
+  int color, markerStyle,lineStyle;
+  double markerSize;
+public:
+  HistoStyle_t(int set_color, int set_markerStyle, int set_lineStyle=1,
+	       double set_markerSize=1.);
+  HistoStyle_t(const HistoStyle_t &hs);
+
+  template<class graph_t>
+  void SetStyle(graph_t *gr) const {
+    gr->SetLineColor(color);
+    gr->SetLineStyle(lineStyle);
+    gr->SetMarkerColor(color);
+    gr->SetMarkerStyle(markerStyle);
+    gr->SetMarkerSize(markerSize);
+  }
+
+  template<class graph_t>
+  void operator()(graph_t *gr) const { this->SetStyle(gr); }
+};
+
+// -----------------------------------------------------------
+
 TString DayAndTimeTag(int eliminateSigns=1);
 
 
@@ -57,16 +81,24 @@ void addToVector(std::vector<int> &vec, int count, ...);
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="", int gridLines=3);
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0,
-		   double ytitleOffset=1.5, double centralZRange=0.);
+		   double ytitleOffset=1.5, int gridLines=1,
+		   double centralZRange=0.);
 TCanvas* plotHisto(const TH2D* h2, TString cName, int logX=0, int logY=0,
-		   double ytitleOffset=1.5, double centralZRange=0.);
+		   double ytitleOffset=1.5, int gridLines=1,
+		   double centralZRange=0.);
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain="");
 TCanvas* plotGraphSame(TGraphErrors *h1, TString canvName, TString drawOpt, TString explain="");
+TCanvas* plotRatio(TH1D* h1, TString cName, int logX=0, int logY=0,
+		   TString drawOpt="LPE", TString explain="", int gridLines=3,
+		   int lineAtOne=1);
 
 int moveLegend(TCanvas *c, double dxNDC, double dyNDC);
 void setLeftMargin(TCanvas *c, double xMargin);
 void setRightMargin(TCanvas *c, double xMargin);
+
+typedef enum { _massFrameCS=1, _massFrameYield } TMassFrameKind_t;
 TCanvas* createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
+			 int yRangeSet=_massFrameCS,
 			 TString *canvName_out=NULL, TH2D **h2frame_out=NULL);
 
 void printHisto(const TH1D* h1, int extraRange=0);
@@ -80,8 +112,9 @@ void printField(TString keyName);
 
 inline void plotHisto(TH1* h1, TString cName, int logX=0, int logY=0, TString drawOpt="hist", TString explain="", int gridLines=3)
 {  plotHisto((TH1D*)h1,cName,logX,logY,drawOpt,explain,gridLines); }
-inline void plotHisto(TH2* h2, TString cName, int logX=0, int logY=0)
-{  plotHisto((TH2D*)h2,cName,logX,logY); }
+inline void plotHisto(TH2* h2, TString cName, int logX=0, int logY=0,
+		      int gridLines=1)
+{  plotHisto((TH2D*)h2,cName,logX,logY,1.5,gridLines,0.); }
 
 inline void printHisto(TH1* h1)
 {  printHisto((TH1D*)h1); }
@@ -256,12 +289,43 @@ void graphStyle(TGraphErrors *gr, int color, int markerStyle, int lineStyle=1,
 
 // -----------------------------------------------------------
 
+inline void histoStyle(TH1D *h1, const HistoStyle_t &hs) { hs.SetStyle(h1); }
+inline void graphStyle(TGraphErrors *gr, const HistoStyle_t &hs)
+{ hs.SetStyle(gr); }
+
+// -----------------------------------------------------------
+
 template<class graph_t>
 inline
 void logAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="")
 {
   gr->GetXaxis()->SetDecimals(true);
   gr->GetYaxis()->SetDecimals(true);
+  if ((axis & 1)!=0) {
+    gr->GetXaxis()->SetNoExponent();
+    gr->GetXaxis()->SetMoreLogLabels();
+  }
+  if ((axis & 2)!=0) {
+    gr->GetYaxis()->SetNoExponent();
+    //gr->GetYaxis()->SetMoreLogLabels();
+  }
+  if (xlabel.Length()) gr->GetXaxis()->SetTitle(xlabel);
+  if (ylabel.Length()) gr->GetYaxis()->SetTitle(ylabel);
+}
+
+// -----------------------------------------------------------
+
+template<class graph_t>
+inline
+void ratioAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="")
+{
+  gr->GetXaxis()->SetDecimals(true);
+  gr->GetYaxis()->SetDecimals(true);
+  gr->GetYaxis()->SetTitleSize(0.07);
+  gr->GetYaxis()->SetTitleOffset(0.69);
+  gr->GetYaxis()->SetLabelSize(0.07);
+  gr->GetXaxis()->SetTitleSize(0.07);
+  gr->GetXaxis()->SetLabelSize(0.07);
   if ((axis & 1)!=0) {
     gr->GetXaxis()->SetNoExponent();
     gr->GetXaxis()->SetMoreLogLabels();
@@ -289,9 +353,9 @@ TString niceMassAxisLabel(int iLepton, TString extra, int iLabel=0)
     sublabel+=",\\,";
     label= sublabel + TString("\\text{") + extra + TString("}");
   }
-  TString start="M";
-  if (iLabel==1) { start="\\sigma"; label.Prepend("\\!"); }
-  return start + TString("_{") + label + TString("}\\text{ [GeV]}");
+  TString start="M", units="[GeV]";
+  if (iLabel==1) { start="\\sigma"; label.Prepend("\\!"); units="[pb/GeV]"; }
+  return start + TString("_{") + label + TString("}\\text{ " + units + "}");
 }
 
 // -----------------------------------------------------------
@@ -435,6 +499,16 @@ TMatrixD convert2mat1D(const histo1D_t* h1)
   return v;
 }
 
+template<class histo1D_t>
+inline
+TMatrixD convert2cov1D(const histo1D_t* h1)
+{
+  TMatrixD m(h1->GetNbinsX(),h1->GetNbinsX());
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++)
+    m(ibin-1,ibin-1)= pow(h1->GetBinError(ibin), 2);
+  return m;
+}
+
 
 template<class histo2D_t>
 inline
@@ -452,6 +526,9 @@ TMatrixD convert2mat(const histo2D_t* h2)
 TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
 		    TString h2name, TString h2title,
 		    const TMatrixD *mErr=NULL);
+TH1D* convert2histo1D(const TMatrixD &m, const TMatrixD &cov,
+		      TString h1name, TString h1title,
+		      const TH1D *h1_for_axes, int iCol=0);
 
 // chi^2_estimate= (vec1-vec2)^T Mcov^{-1} (vec1-vec2)
 double chi2estimate(const TVectorD &vec1, const TVectorD &vec2,
@@ -472,11 +549,13 @@ TH1D* uncFromCov(const TH2D *h2cov, const TH1D *h1centralVal=NULL,
 TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
 		     TH2D** h2corr_out=NULL,
 		     int autoZRangeCorr=1,
+		     int gridLines=1,
 		     double yTitleOffset=1.5);
 TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axis_def,
 		     TString histoName, TString canvName,
 		     TH2D **h2cov_out=NULL, TH2D **h2corr_out=NULL,
 		     int autoZRangeCorr=1,
+		     int gridLines=1,
 		     double yTitleOffset=1.5);
 
 TCanvas *findCanvas(TString canvName);
@@ -485,6 +564,8 @@ void closeCanvases();
 
 void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
 void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
+int  SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout=NULL);
+void writeTimeTag(TFile *fout=NULL);
 
 // -----------------------------------------------------------
 

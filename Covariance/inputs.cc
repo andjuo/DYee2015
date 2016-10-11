@@ -1,6 +1,8 @@
 #include "inputs.h"
 #include <sstream>
 #include <algorithm>
+#include <cstring>
+#include <TLine.h>
 
 // --------------------------------------------------------------
 
@@ -28,6 +30,22 @@ TString versionName(TVersion_t ver)
   }
   return name;
 }
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+HistoStyle_t::HistoStyle_t(int set_color, int set_markerStyle,
+			   int set_lineStyle, double set_markerSize) :
+  color(set_color), markerStyle(set_markerStyle), lineStyle(set_lineStyle),
+  markerSize(set_markerSize)
+{}
+
+// -----------------------------------------------------------
+
+HistoStyle_t::HistoStyle_t(const HistoStyle_t &hs) :
+  color(hs.color), markerStyle(hs.markerStyle), lineStyle(hs.lineStyle),
+  markerSize(hs.markerSize)
+{}
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------
@@ -94,9 +112,10 @@ TCanvas* plotHisto(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
 // ---------------------------------------------------------
 
 TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy,
-		   double ytitleOffset, double centralZrange)
+		   double ytitleOffset, int gridLines, double centralZrange)
 {
   TCanvas *cx= new TCanvas(cName,cName,600,600);
+  if (gridLines) cx->SetGrid(1,1);
   cx->SetLeftMargin(0.15);
   cx->SetRightMargin(0.18);
   cx->SetLogx(logx);
@@ -114,11 +133,11 @@ TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy,
 // ---------------------------------------------------------
 
 TCanvas* plotHisto(const TH2D* h2_orig, TString cName, int logx, int logy,
-		   double ytitleOffset, double centralZrange)
+		   double ytitleOffset, int gridLines, double centralZrange)
 {
   TH2D *h2=cloneHisto(h2_orig,h2_orig->GetName() + TString("__clone_plotHisto"),
 		      h2_orig->GetTitle());
-  return plotHisto(h2,cName,logx,logy,ytitleOffset,centralZrange);
+  return plotHisto(h2,cName,logx,logy,ytitleOffset,gridLines,centralZrange);
 }
 
 // ---------------------------------------------------------
@@ -138,7 +157,6 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
 	const int smaller=1;
 	TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
 	if (!leg) {
-	  std::cout << "new legend\n";
 	  leg= new TLegend(0.15,0.15,0.40,0.22-0.02*smaller);
 	  leg->SetName("myLegend");
 	  leg->AddEntry(h1,explain);
@@ -175,7 +193,6 @@ TCanvas* plotGraphSame(TGraphErrors *gr, TString canvName, TString drawOpt, TStr
 	const int smaller=1;
 	TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
 	if (!leg) {
-	  std::cout << "new legend\n";
 	  leg= new TLegend(0.15,0.15,0.40,0.22-0.02*smaller);
 	  leg->SetName("myLegend");
 	  leg->AddEntry(gr,explain,drawOpt);
@@ -193,6 +210,39 @@ TCanvas* plotGraphSame(TGraphErrors *gr, TString canvName, TString drawOpt, TStr
   }
   cOut->Update();
   return cOut;
+}
+
+// -----------------------------------------------------------
+
+TCanvas* plotRatio(TH1D* h1, TString cName, int logX, int logY, TString drawOpt,
+		   TString explain, int gridLines, int lineAtOne)
+{
+  TCanvas *cx= new TCanvas(cName,cName,600,300);
+  cx->SetBottomMargin(0.15);
+  if (logX) cx->SetLogx();
+  if (logY) cx->SetLogy();
+  if (gridLines) cx->SetGrid((gridLines&1)!=0,(gridLines&2)!=0);
+
+  ratioAxis(h1,logX+2*logY);
+  h1->Draw(drawOpt);
+
+  if (explain.Length()) {
+    const int smaller=1;
+    TLegend *leg= new TLegend(0.15,0.15,0.40,0.22-0.02*smaller);
+    leg->SetName("myLegend");
+    leg->AddEntry(h1,explain);
+    leg->Draw();
+  }
+  if (lineAtOne) {
+    int nBins= h1->GetNbinsX();
+    TLine *line= new TLine(h1->GetBinLowEdge(1),1.,
+			   h1->GetBinLowEdge(nBins) + h1->GetBinWidth(nBins),1.);
+    line->SetLineStyle(3);
+    line->SetLineColor(kBlack);
+    line->Draw();
+  }
+  cx->Update();
+  return cx;
 }
 
 // ---------------------------------------------------------
@@ -239,6 +289,7 @@ void setRightMargin(TCanvas *c, double xMargin)
 // ---------------------------------------------------------
 
 TCanvas *createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
+			 int yRangeSet,
 			 TString *canvName_out, TH2D **h2frame_out)
 {
   const int nDivs=5;
@@ -247,11 +298,21 @@ TCanvas *createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
 				  { 100., 200.},
 				  { 200., 600.},
 				  { 500., 3000.} };
-  const double divY[nDivs][2] = { { 3., 300. }, // 10-60
-				  { 3., 300. }, // 60-100
-				  { 2e-2, 10.}, // 100-200
-				  { 1e-4, 0.1}, // 200-600
-				  { 1e-9,1e-3} }; // >600
+  const double divY_cs[nDivs][2] = { { 3., 300. }, // 10-60
+				     { 3., 300. }, // 60-100
+				     { 2e-2, 10.}, // 100-200
+				     { 1e-4, 0.1}, // 200-600
+				     { 1e-9,1e-3} }; // >600
+
+  const double divY_yield[nDivs][2] = { { 0.1, 10. }, // 10-60
+					{ 1., 400. }, // 60-100
+					{ 0.1, 30.}, // 100-200
+					{ 0.01, 1.}, // 200-600
+					{ 1e-5,0.1} }; // >600
+
+  double divY[nDivs][2];
+  if (yRangeSet==_massFrameCS) memcpy(divY,divY_cs,nDivs*2*sizeof(double));
+  else memcpy(divY,divY_yield,nDivs*2*sizeof(double));
   int iD=iFrame;
   TString rangeStr=Form("%d_%d",int(divX[iD][0]),int(divX[iD][1]));
   if (titleStr.Index(";")!=-1) {
@@ -269,13 +330,15 @@ TCanvas *createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
   cx->SetLogy();
   logAxis(h2frame);
   if (divY[iD][0]<1e-5) h2frame->GetYaxis()->SetNoExponent(0);
-  if (divX[iD][0]>490) {
-    cx->SetLeftMargin(0.15);
-    h2frame->GetYaxis()->SetTitleOffset(2.1);
-  }
-  else {
-    cx->SetLeftMargin(0.11);
-    h2frame->GetYaxis()->SetTitleOffset(1.4);
+  if (yRangeSet==1) {
+    if (0 && (divX[iD][0]>490)) {
+      cx->SetLeftMargin(0.15);
+      h2frame->GetYaxis()->SetTitleOffset(2.1);
+    }
+    else {
+      cx->SetLeftMargin(0.11);
+      h2frame->GetYaxis()->SetTitleOffset(1.4);
+    }
   }
   h2frame->Draw();
   cx->Update();
@@ -731,6 +794,44 @@ TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
 
 // ---------------------------------------------------------
 
+TH1D* convert2histo1D(const TMatrixD &m, const TMatrixD &cov,
+		      TString h1name, TString h1title,
+		      const TH1D *h1_for_axes, int iCol)
+{
+  if (m.GetNcols()<=iCol) {
+    std::cout << "convert2histo1D: matrix has fewer columns than requested iCol\n";
+    std::cout << "  dims: " << m.GetNrows() << " x " << m.GetNcols()
+	      << ", iCol=" << iCol << "\n";
+    return NULL;
+  }
+  if (m.GetNrows() != h1_for_axes->GetNbinsX()) {
+    std::cout << "convert2histo1D: matrix has different number of elements "
+	      << "than histogram provides bins\n";
+    std::cout << "m[" << m.GetNrows() << "," << m.GetNcols() << "], histo["
+	      << h1_for_axes->GetNbinsX() << "\n";
+    return NULL;
+  }
+  if ((m.GetNrows() != cov.GetNrows()) || (m.GetNrows() != cov.GetNcols())) {
+    std::cout << "convert2histo1D: meas "
+	      << m.GetNrows() << "x" << m.GetNcols() << ", cov "
+	      << cov.GetNrows() << "x" << cov.GetNcols() << "\n";
+    return NULL;
+  }
+
+  TH1D *h1= (TH1D*)h1_for_axes->Clone(h1name);
+  h1->SetStats(0);
+  h1->SetDirectory(0);
+  h1->SetTitle(h1title);
+
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    h1->SetBinContent( ibin, m(ibin-1,iCol) );
+    h1->SetBinError( ibin, sqrt(cov(ibin-1,ibin-1)) );
+  }
+  return h1;
+}
+
+// ---------------------------------------------------------
+
 // chi^2_estimate= (vec1-vec2)^T Mcov^{-1} (vec1-vec2)
 double chi2estimate(const TVectorD &vec1, const TVectorD &vec2,
 		    const TMatrixD &Mcov)
@@ -874,7 +975,8 @@ TH1D *uncFromCov(const TH2D* h2cov, const TH1D *h1centralVal,
 // ---------------------------------------------------------
 
 TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
-		     int autoZRange, double ytitleOffset) {
+		     int autoZRange, int gridLines, double ytitleOffset)
+{
   h2Cov->GetXaxis()->SetMoreLogLabels();
   h2Cov->GetXaxis()->SetNoExponent();
   h2Cov->GetYaxis()->SetMoreLogLabels();
@@ -890,12 +992,14 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
   TCanvas *cx= new TCanvas(canvName,canvName,1200,600);
   cx->Divide(2,1);
   cx->cd(1);
+  if (gridLines) gPad->SetGrid(1,1);
   gPad->SetLogx();
   gPad->SetLogy();
   gPad->SetRightMargin(0.15);
   gPad->SetLeftMargin(0.15);
   h2Cov->Draw("COLZ");
   cx->cd(2);
+  if (gridLines) gPad->SetGrid(1,1);
   gPad->SetLogx();
   gPad->SetLogy();
   gPad->SetRightMargin(0.15);
@@ -912,11 +1016,13 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
 TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axes,
 		     TString histoName, TString canvName,
 		     TH2D **h2cov_out, TH2D **h2corr_out,
-		     int autoZRangeCorr, double ytitleOffset)
+		     int autoZRangeCorr, int gridLines,
+		     double ytitleOffset)
 {
   TH2D *h2cov= convert2histo(cov,h1_for_axes,histoName,histoName);
   if (h2cov_out) *h2cov_out = h2cov;
-  return plotCovCorr(h2cov,canvName,h2corr_out,autoZRangeCorr,ytitleOffset);
+  return plotCovCorr(h2cov,canvName,h2corr_out,autoZRangeCorr,
+		     gridLines,ytitleOffset);
 }
 
 // ---------------------------------------------------------
@@ -1019,6 +1125,35 @@ void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout)
     if (fout) canv->Write();
   }
   return;
+}
+
+// ---------------------------------------------------------
+
+int SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout)
+{
+  if (listOfCanvNames.Length()==0) return 0;
+  std::stringstream ss(listOfCanvNames.Data());
+  TString cName;
+  std::vector<TCanvas*> cV;
+  while (!ss.eof()) {
+    ss >> cName;
+    if (cName.Length()) {
+      TCanvas *c= findCanvas(cName);
+      if (!c) { std::cout << "\tCanvas " << cName << " was not found\n"; }
+      else cV.push_back(c);
+    }
+  }
+  if (cV.size()) SaveCanvases(cV,destDir,fout);
+  return int(cV.size());
+}
+
+// ---------------------------------------------------------
+
+void writeTimeTag(TFile *fout)
+{
+  if (fout) fout->cd();
+  TObjString timeTag(DayAndTimeTag(0));
+  timeTag.Write(timeTag.String());
 }
 
 // ---------------------------------------------------------
