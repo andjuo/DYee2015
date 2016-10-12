@@ -297,23 +297,24 @@ int combineData(const TMatrixD &measEE_inp, const TMatrixD &covEE_inp,
   TMatrixD covEMFinal( blue.contributedCov(blue.measCovMatrix(covEM,2)) );
   TMatrixD finalCov(*blue.getCov());
 
+  PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
+
   h1binning->GetXaxis()->SetTitle(massStr);
-  TCanvas *cFinCov= plotCovCorr(finalCov,h1binning,"h2finCov","cFinCov",
-				NULL,NULL,1,1.8);
+  TCanvas *cFinCov= plotCovCorr(finalCov,h1binning,"h2finCov","cFinCov",optCC);
   cFinCov->SetGrid(1,1);
 
   h1binning->GetXaxis()->SetTitle(eemassStr);
   TH2D* h2eeCorrPart= convert2histo(covToCorrPartial(covEEFinal,finalCov),
 				    h1binning,"h2eeCorrPart","h2eeCorrPart");
   logAxis(h2eeCorrPart);
-  TCanvas *cCorrPartEE= plotHisto(h2eeCorrPart,"cCorrPartEE",1,1,1.8,1,1.);
+  TCanvas *cCorrPartEE= plotHisto(h2eeCorrPart,"cCorrPartEE",optCC);
   cCorrPartEE->SetGrid(1,1);
 
   h1binning->GetXaxis()->SetTitle(mmmassStr);
   TH2D* h2mmCorrPart= convert2histo(covToCorrPartial(covMMFinal,finalCov),
 				    h1binning,"h2mmCorrPart","h2mmCorrPart");
   logAxis(h2mmCorrPart);
-  TCanvas *cCorrPartMM= plotHisto(h2mmCorrPart,"cCorrPartMM",1,1,1.8,1,1.);
+  TCanvas *cCorrPartMM= plotHisto(h2mmCorrPart,"cCorrPartMM",optCC);
   cCorrPartMM->SetGrid(1,1);
 
   return 1;

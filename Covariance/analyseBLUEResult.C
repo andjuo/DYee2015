@@ -10,6 +10,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  TString fileTag, TString plotTag,
 			  int printCanvases)
 {
+  double scale=1; //100000.; // 1000000
 
   TString plotTagSafe=plotTag;
   plotTagSafe.ReplaceAll(" ","_");
@@ -52,8 +53,18 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   h1csEE->GetXaxis()->SetTitle(eemassStr);
   h1csMM->GetXaxis()->SetTitle(mmmassStr);
 
+  TMatrixD measEE = convert2mat1D(h1csEE);
+  TMatrixD covEE  = (covEE_inp) ? (*covEE_inp) : convert2cov1D(h1csEE);
+  TMatrixD measMM = convert2mat1D(h1csMM);
+  TMatrixD covMM  = (covMM_inp) ? (*covMM_inp) : convert2cov1D(h1csMM);
+  TMatrixD covEM = (covEM_inp) ? (*covEM_inp) : TMatrixD(TMatrixD::kZero,covEE);
+  if (covEE_inp) { setError(h1csEE,*covEE_inp); }
+  if (covMM_inp) { setError(h1csMM,*covMM_inp); }
+
   printHisto(h1csEE);
   printHisto(h1csMM);
+
+  PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
 
   if (1) {
     TH1D *h1frame= cloneHisto(h1csEE,"h1frame_inpCS","frame");
@@ -75,7 +86,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   hsEE.SetStyle(grCSEE);
   hsMM.SetStyle(grCSMM);
 
-  if (0) {
+  if (1) {
     std::vector<TCanvas*> canvasCSV;
     for (int i=0; i<5; i++) {
       TString canvName="";
@@ -103,16 +114,17 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       fout.Close();
       std::cout << "file <" << fout.GetName() << "> created\n";
     }
-    return NULL;
+    //return NULL;
   }
 
-  TMatrixD measEE = convert2mat1D(h1csEE);
-  TMatrixD covEE  = (covEE_inp) ? (*covEE_inp) : convert2cov1D(h1csEE);
-  TMatrixD measMM = convert2mat1D(h1csMM);
-  TMatrixD covMM  = (covMM_inp) ? (*covMM_inp) : convert2cov1D(h1csMM);
-  TMatrixD covEM = (covEM_inp) ? (*covEM_inp) : TMatrixD(TMatrixD::kZero,covEE);
-
   BLUEResult_t *blue= new BLUEResult_t();
+  if (scale!=1.) {
+    measEE *= scale;
+    covEE *= scale*scale;
+    measMM *= scale;
+    covMM *= scale*scale;
+    covEM *= scale*scale;
+  }
   if (!blue->estimate(measEE,covEE,measMM,covMM,covEM)) {
     std::cout << "combineData failed\n";
     return NULL;
@@ -203,33 +215,53 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 
   // plot the covariances
   if (1) {
+    if (1 && (covEE_inp || covMM_inp || covEM_inp)) {
+      std::cout << "plot input covariances\n";
+      plotCovCorr(covEE,h1csEE,"h2eeCov","cEECov",optCC);
+      plotCovCorr(covMM,h1csMM,"h2mmCov","cMMCov",optCC);
+      std::cout << "covEM_inp is " << ((covEM_inp==NULL) ? "" : "NON ")
+		<< "null";
+      if (covEM_inp) std::cout << "; " << covEM_inp->NonZeros() << " non zeros";
+      std::cout << "\n";
+      if (covEM_inp && (covEM_inp->NonZeros()>0)) {
+	TMatrixD inpCov(*blue->getInpCov());
+	TH1D *h1binDef= new TH1D("h1binDef","h1binDef;binIdx;count",
+				 inpCov.GetNrows(),1,inpCov.GetNrows()+1);
+	PlotCovCorrOpt_t optCCNoLog(optCC);
+	optCCNoLog.logScale=0;
+	optCCNoLog.autoZRangeCorr=0;
+	plotCovCorr(inpCov,h1binDef,"h2TotInpCov","cTotInpCov",optCCNoLog);
+      }
+    }
+
+
     TMatrixD covEEFinal( blue->contributedCov(blue->measCovMatrix(covEE,1)) );
     TMatrixD covMMFinal( blue->contributedCov(blue->measCovMatrix(covMM,0)) );
     TMatrixD covEMFinal( blue->contributedCov(blue->measCovMatrix(covEM,2)) );
     TMatrixD finalCov(*blue->getCov());
 
-    std::cout << "h1comb->GetXaxis()->GetTitle=" << h1comb->GetXaxis()->GetTitle() << "\n";
-    std::cout << "h1csEE title " << h1csEE->GetXaxis()->GetTitle() << "\n";
-    std::cout << "h1csMM title " << h1csMM->GetXaxis()->GetTitle() << "\n";
+    //std::cout << "h1comb->GetXaxis()->GetTitle=" << h1comb->GetXaxis()->GetTitle() << "\n";
+    //std::cout << "h1csEE title " << h1csEE->GetXaxis()->GetTitle() << "\n";
+    //std::cout << "h1csMM title " << h1csMM->GetXaxis()->GetTitle() << "\n";
 
-    plotCovCorr(finalCov,h1comb,"h2finCov","cFinCov",
-		NULL,NULL,1,1,1.8);
+    plotCovCorr(finalCov,h1comb,"h2finCov","cFinCov",optCC);
 
     TH2D* h2eeCorrPart= convert2histo(covToCorrPartial(covEEFinal,finalCov),
 				      h1csEE,"h2eeCorrPart","h2eeCorrPart");
     logAxis(h2eeCorrPart);
-    TCanvas *cCorrPartEE= plotHisto(h2eeCorrPart,"cCorrPartEE",1,1,1.8,1,1.);
+    TCanvas *cCorrPartEE= plotHisto(h2eeCorrPart,"cCorrPartEE",optCC);
     cCorrPartEE->SetGrid(1,1);
 
     TH2D* h2mmCorrPart= convert2histo(covToCorrPartial(covMMFinal,finalCov),
 				      h1csMM,"h2mmCorrPart","h2mmCorrPart");
     logAxis(h2mmCorrPart);
-    TCanvas *cCorrPartMM= plotHisto(h2mmCorrPart,"cCorrPartMM",1,1,1.8,1,1.);
+    TCanvas *cCorrPartMM= plotHisto(h2mmCorrPart,"cCorrPartMM",optCC);
     cCorrPartMM->SetGrid(1,1);
 
     if (printCanvases) {
       TFile fout("foutCanvas_DYCSCov" + fileTag + ".root","RECREATE");
-      int count=SaveCanvases("cFinCov cCorrPartEE cCorrPartMM",
+      int count=SaveCanvases("cEECov cMMCov cTotInpCov " +
+			     TString("cFinCov cCorrPartEE cCorrPartMM"),
 			     "dir-plot-DYCSCov" + fileTag,&fout);
       std::cout << "saved " << count << " canvases\n";
       writeTimeTag();
