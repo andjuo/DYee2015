@@ -191,7 +191,7 @@ TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift)
     yc[i]= h1->GetBinContent(ibin);
     ex[i]= (shift==0) ?  0.5*(xhigh-xlow) : 0.;
     ey[i]= h1->GetBinError(ibin);
-    if (1) {
+    if (0) {
       std::cout << "i=" << i << " x range " << xlow << " .. "
 		<< xhigh << "\n";
       std::cout << "i=" << i << " x=" << xlow << " +- " << ex[1]
@@ -271,6 +271,22 @@ TGraphErrors* createGraph(TString setTitle,
     h1->SetBinError  (i+1, sqrt(cov(i,i)));
   }
   return createGraph(h1,setTitle,shift);
+}
+
+// -------------------------------------------------------------------
+
+int setError(TH1D *h1, const TMatrixD &cov)
+{
+  int nBins=h1->GetNbinsX();
+  if ((nBins!=cov.GetNrows()) || (nBins!=cov.GetNcols())) {
+    std::cout << "setError: dim mismatch: h1[" << nBins << "],  cov["
+	      << cov.GetNrows() << "x" << cov.GetNcols() << "\n";
+    return 0;
+  }
+  for (int ibin=1; ibin<=nBins; ibin++) {
+    h1->SetBinError(ibin, sqrt(cov(ibin-1,ibin-1)));
+  }
+  return 1;
 }
 
 // -------------------------------------------------------------------
@@ -434,6 +450,10 @@ int BLUEResult_t::estimate()
   TMatrixD covInpInv(*covInp);
   double det=0;
   covInpInv.Invert(&det);
+  if (det==0.) {
+    std::cout << "determinant of covInp is 0\n";
+    return 0;
+  }
   print(Form("covTotInv [det=%g]",det),covInpInv);
 
   TMatrixD nom = Ut * covInpInv; // eq.8
