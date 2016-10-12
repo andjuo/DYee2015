@@ -50,6 +50,25 @@ HistoStyle_t::HistoStyle_t(const HistoStyle_t &hs) :
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
+PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
+		    int set_logScale, double set_yTitleOffset,
+		    double set_leftMargin, double set_rightMargin) :
+  autoZRangeCorr(set_autoZRangeCorr), gridLines(set_gridLines),
+  logScale(set_logScale), yTitleOffset(set_yTitleOffset),
+  leftMargin(set_leftMargin), rightMargin(set_rightMargin)
+{}
+
+// -----------------------------------------------------------
+
+PlotCovCorrOpt_t::PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o) :
+  autoZRangeCorr(o.autoZRangeCorr), gridLines(o.gridLines),
+  logScale(o.logScale), yTitleOffset(o.yTitleOffset),
+  leftMargin(o.leftMargin), rightMargin(o.rightMargin)
+{}
+
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
 TString DayAndTimeTag(int eliminateSigns)
 {
    time_t ltime;
@@ -128,6 +147,14 @@ TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy,
   h2->Draw("COLZ");
   cx->Update();
   return cx;
+}
+
+// ---------------------------------------------------------
+
+TCanvas *plotHisto(TH2D* h2, TString cName, const PlotCovCorrOpt_t &o)
+{
+  return plotHisto(h2,cName,o.logScale,o.logScale,o.yTitleOffset,
+		   o.gridLines,(o.autoZRangeCorr) ? 1. : 0.);
 }
 
 // ---------------------------------------------------------
@@ -743,11 +770,15 @@ TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
     std::cout << "  dims: " << m.GetNrows() << " x " << m.GetNcols() << "\n";
     return NULL;
   }
-  if (m.GetNrows() != h1_for_axes->GetNbinsX()) {
+  TH1D *h1axes=NULL;
+  if (h1_for_axes) h1axes= cloneHisto(h1_for_axes,"h1axes","h1axes");
+  else h1axes= new TH1D("h1axes","h1axes;binIdx;count",
+			m.GetNrows(),1,m.GetNrows()+1);
+  if (m.GetNrows() != h1axes->GetNbinsX()) {
     std::cout << "convert2histo: matrix has different number of elements "
 	      << "than histogram provides bins\n";
     std::cout << "m[" << m.GetNrows() << "," << m.GetNcols() << "], histo["
-	      << h1_for_axes->GetNbinsX() << "\n";
+	      << h1axes->GetNbinsX() << "\n";
     return NULL;
   }
   if (mErr) {
@@ -765,30 +796,41 @@ TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
     }
   }
 
-  const TArrayD *xb= h1_for_axes->GetXaxis()->GetXbins();
-  if (xb->GetSize()==0) {
-    std::cout << "convert2histo: histogram has fixed axis. This case"
-	      << " is not implemented\n";
-    return NULL;
+  const TArrayD *xb= h1axes->GetXaxis()->GetXbins();
+  int nBins=xb->GetSize();
+  Double_t *myXArr=NULL;
+  if (nBins==0) {
+    //std::cout << "convert2histo: histogram has fixed axis. This case"
+    //	      << " is not implemented\n";
+    //return NULL;
+    nBins= h1axes->GetNbinsX();
+    myXArr= new Double_t[nBins+1];
+    for (int ibin=1; ibin<=nBins; ibin++) {
+      myXArr[ibin-1]= h1axes->GetBinLowEdge(ibin);
+    }
+    myXArr[nBins]= h1axes->GetBinLowEdge(nBins) +
+      h1axes->GetBinWidth(nBins);
   }
-  const Double_t *x= xb->GetArray();
-  TH2D *h2= new TH2D(h2name,h2title, xb->GetSize()-1,x, xb->GetSize()-1,x);
+  const Double_t *x= (xb->GetSize()!=0) ? xb->GetArray() : myXArr;
+  TH2D *h2= new TH2D(h2name,h2title, nBins-1,x, nBins-1,x);
   h2->SetDirectory(0);
   h2->SetStats(0);
   h2->Sumw2();
   if (h2title.Index(";")==-1) {
-    TString label=h1_for_axes->GetXaxis()->GetTitle();
+    TString label=h1axes->GetXaxis()->GetTitle();
     h2->GetXaxis()->SetTitle(label);
     h2->GetYaxis()->SetTitle(label);
   }
 
-  for (int ibin=1; ibin<xb->GetSize(); ibin++) {
-    for (int jbin=1; jbin<xb->GetSize(); jbin++) {
+  for (int ibin=1; ibin<nBins; ibin++) {
+    for (int jbin=1; jbin<nBins; jbin++) {
       h2->SetBinContent( ibin, jbin, m(ibin-1,jbin-1) );
       double err= (mErr) ? (*mErr)(ibin-1,jbin-1) : 0.;
       h2->SetBinError( ibin, jbin, err );
     }
   }
+  if (myXArr) delete myXArr;
+  if (h1axes) delete h1axes;
   return h2;
 }
 
@@ -804,7 +846,7 @@ TH1D* convert2histo1D(const TMatrixD &m, const TMatrixD &cov,
 	      << ", iCol=" << iCol << "\n";
     return NULL;
   }
-  if (m.GetNrows() != h1_for_axes->GetNbinsX()) {
+  if (h1_for_axes && (m.GetNrows() != h1_for_axes->GetNbinsX())) {
     std::cout << "convert2histo1D: matrix has different number of elements "
 	      << "than histogram provides bins\n";
     std::cout << "m[" << m.GetNrows() << "," << m.GetNcols() << "], histo["
@@ -818,7 +860,9 @@ TH1D* convert2histo1D(const TMatrixD &m, const TMatrixD &cov,
     return NULL;
   }
 
-  TH1D *h1= (TH1D*)h1_for_axes->Clone(h1name);
+  TH1D *h1= NULL;
+  if (h1_for_axes) h1=(TH1D*)h1_for_axes->Clone(h1name);
+  else h1= new TH1D(h1name,h1name,m.GetNrows(),1.,m.GetNrows()+1.);
   h1->SetStats(0);
   h1->SetDirectory(0);
   h1->SetTitle(h1title);
@@ -974,8 +1018,9 @@ TH1D *uncFromCov(const TH2D* h2cov, const TH1D *h1centralVal,
 
 // ---------------------------------------------------------
 
-TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
-		     int autoZRange, int gridLines, double ytitleOffset)
+TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName,
+		     const PlotCovCorrOpt_t o,
+		     TH2D** h2corr_out)
 {
   h2Cov->GetXaxis()->SetMoreLogLabels();
   h2Cov->GetXaxis()->SetNoExponent();
@@ -984,27 +1029,31 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
   TH2D* h2Corr= cov2corr(h2Cov);
   h2Cov->SetStats(0);
 
-  h2Cov->GetYaxis()->SetTitleOffset(ytitleOffset);
-  h2Corr->GetYaxis()->SetTitleOffset(ytitleOffset);
+  h2Cov->GetYaxis()->SetTitleOffset(o.yTitleOffset);
+  h2Corr->GetYaxis()->SetTitleOffset(o.yTitleOffset);
   h2Cov->GetZaxis()->SetDecimals(true);
   h2Corr->GetZaxis()->SetDecimals(true);
 
   TCanvas *cx= new TCanvas(canvName,canvName,1200,600);
   cx->Divide(2,1);
   cx->cd(1);
-  if (gridLines) gPad->SetGrid(1,1);
-  gPad->SetLogx();
-  gPad->SetLogy();
-  gPad->SetRightMargin(0.15);
-  gPad->SetLeftMargin(0.15);
+  if (o.gridLines) gPad->SetGrid(1,1);
+  if (o.logScale) {
+    gPad->SetLogx();
+    gPad->SetLogy();
+  }
+  gPad->SetRightMargin(o.rightMargin);
+  gPad->SetLeftMargin(o.leftMargin);
   h2Cov->Draw("COLZ");
   cx->cd(2);
-  if (gridLines) gPad->SetGrid(1,1);
-  gPad->SetLogx();
-  gPad->SetLogy();
-  gPad->SetRightMargin(0.15);
-  gPad->SetLeftMargin(0.15);
-  if (autoZRange) h2Corr->GetZaxis()->SetRangeUser(-1,1);
+  if (o.gridLines) gPad->SetGrid(1,1);
+  if (o.logScale) {
+    gPad->SetLogx();
+    gPad->SetLogy();
+  }
+  gPad->SetRightMargin(o.rightMargin);
+  gPad->SetLeftMargin(o.leftMargin);
+  if (o.autoZRangeCorr) h2Corr->GetZaxis()->SetRangeUser(-1,1);
   h2Corr->Draw("COLZ");
   cx->Update();
   if (h2corr_out) (*h2corr_out)=h2Corr;
@@ -1015,14 +1064,12 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName, TH2D** h2corr_out,
 
 TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axes,
 		     TString histoName, TString canvName,
-		     TH2D **h2cov_out, TH2D **h2corr_out,
-		     int autoZRangeCorr, int gridLines,
-		     double ytitleOffset)
+		     const PlotCovCorrOpt_t o,
+		     TH2D **h2cov_out, TH2D **h2corr_out)
 {
   TH2D *h2cov= convert2histo(cov,h1_for_axes,histoName,histoName);
   if (h2cov_out) *h2cov_out = h2cov;
-  return plotCovCorr(h2cov,canvName,h2corr_out,autoZRangeCorr,
-		     gridLines,ytitleOffset);
+  return plotCovCorr(h2cov,canvName,o,h2corr_out);
 }
 
 // ---------------------------------------------------------

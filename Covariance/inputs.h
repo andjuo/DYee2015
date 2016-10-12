@@ -63,6 +63,19 @@ public:
 
 // -----------------------------------------------------------
 
+struct PlotCovCorrOpt_t
+{
+  int autoZRangeCorr, gridLines, logScale;
+  double yTitleOffset, leftMargin, rightMargin;
+public:
+  PlotCovCorrOpt_t(int set_autoZRangeCorr=1, int set_gridLines=1,
+		   int set_logScale=1, double set_yTitleOffset=1.5,
+		   double set_leftMargin=0.15, double set_rightMargin=0.15);
+  PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o);
+};
+
+// -----------------------------------------------------------
+
 TString DayAndTimeTag(int eliminateSigns=1);
 
 
@@ -83,6 +96,7 @@ TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString draw
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0,
 		   double ytitleOffset=1.5, int gridLines=1,
 		   double centralZRange=0.);
+TCanvas* plotHisto(TH2D* h2, TString cName, const PlotCovCorrOpt_t &o);
 TCanvas* plotHisto(const TH2D* h2, TString cName, int logX=0, int logY=0,
 		   double ytitleOffset=1.5, int gridLines=1,
 		   double centralZRange=0.);
@@ -546,17 +560,27 @@ TH2D* cov2corr(const TH2D* h2cov);
 TH1D* uncFromCov(const TH2D *h2cov, const TH1D *h1centralVal=NULL,
 		 int zeroCentralMeansZeroRelError=0);
 
+/*
 TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
 		     TH2D** h2corr_out=NULL,
 		     int autoZRangeCorr=1,
-		     int gridLines=1,
+		     int gridLines=1, int logScale=1,
 		     double yTitleOffset=1.5);
 TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axis_def,
 		     TString histoName, TString canvName,
 		     TH2D **h2cov_out=NULL, TH2D **h2corr_out=NULL,
 		     int autoZRangeCorr=1,
-		     int gridLines=1,
+		     int gridLines=1, int logScale=1,
 		     double yTitleOffset=1.5);
+*/
+
+TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
+		     const PlotCovCorrOpt_t o=PlotCovCorrOpt_t(),
+		     TH2D** h2corr_out=NULL);
+TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axis_def,
+		     TString histoName, TString canvName,
+		     const PlotCovCorrOpt_t o=PlotCovCorrOpt_t(),
+		     TH2D **h2cov_out=NULL, TH2D **h2corr_out=NULL);
 
 TCanvas *findCanvas(TString canvName);
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
