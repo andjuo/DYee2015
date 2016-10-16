@@ -42,16 +42,17 @@ TString versionName(TVersion_t);
 struct HistoStyle_t
 {
   int color, markerStyle,lineStyle;
-  double markerSize;
+  double markerSize, lineWidth;
 public:
   HistoStyle_t(int set_color, int set_markerStyle, int set_lineStyle=1,
-	       double set_markerSize=1.);
+	       double set_markerSize=1., double set_lineWidth=1.);
   HistoStyle_t(const HistoStyle_t &hs);
 
   template<class graph_t>
   void SetStyle(graph_t *gr) const {
     gr->SetLineColor(color);
     gr->SetLineStyle(lineStyle);
+    gr->SetLineWidth(lineWidth);
     gr->SetMarkerColor(color);
     gr->SetMarkerStyle(markerStyle);
     gr->SetMarkerSize(markerSize);

@@ -35,16 +35,17 @@ TString versionName(TVersion_t ver)
 // -----------------------------------------------------------
 
 HistoStyle_t::HistoStyle_t(int set_color, int set_markerStyle,
-			   int set_lineStyle, double set_markerSize) :
+			   int set_lineStyle, double set_markerSize,
+			   double set_lineWidth) :
   color(set_color), markerStyle(set_markerStyle), lineStyle(set_lineStyle),
-  markerSize(set_markerSize)
+  markerSize(set_markerSize), lineWidth(set_lineWidth)
 {}
 
 // -----------------------------------------------------------
 
 HistoStyle_t::HistoStyle_t(const HistoStyle_t &hs) :
   color(hs.color), markerStyle(hs.markerStyle), lineStyle(hs.lineStyle),
-  markerSize(hs.markerSize)
+  markerSize(hs.markerSize), lineWidth(hs.lineWidth)
 {}
 
 // -----------------------------------------------------------
