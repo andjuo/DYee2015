@@ -147,6 +147,8 @@ void removeError(th1_t *h1)
 
 TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 void removeNegatives(TH1D* h1);
+int checkRange(const TH1D* h1, double rangeMin, double rangeMax, int silent=0);
+
 
 void scaleBin(TH1D *h1, int ibin, double x);
 void printBin(TH1D *h1, int ibin, int newLine=1);
@@ -307,6 +309,20 @@ void graphStyle(TGraphErrors *gr, int color, int markerStyle, int lineStyle=1,
 inline void histoStyle(TH1D *h1, const HistoStyle_t &hs) { hs.SetStyle(h1); }
 inline void graphStyle(TGraphErrors *gr, const HistoStyle_t &hs)
 { hs.SetStyle(gr); }
+
+// -----------------------------------------------------------
+
+template<class graph1_t, class graph2_t>
+inline
+void copyStyle(graph1_t *grDest, const graph2_t *gr)
+{
+  grDest->SetLineColor(gr->GetLineColor());
+  grDest->SetLineStyle(gr->GetLineStyle());
+  grDest->SetLineWidth(gr->GetLineWidth());
+  grDest->SetMarkerColor(gr->GetMarkerColor());
+  grDest->SetMarkerStyle(gr->GetMarkerStyle());
+  grDest->SetMarkerSize(gr->GetMarkerSize());
+}
 
 // -----------------------------------------------------------
 

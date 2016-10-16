@@ -548,6 +548,25 @@ void removeNegatives(TH1D* h1)
 
 // ---------------------------------------------------------
 
+int checkRange(const TH1D *h1, double yrangeMin, double yrangeMax, int silent)
+{
+  int ok=1;
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    double v=h1->GetBinContent(ibin);
+    if ((v<yrangeMin) || (v>yrangeMax)) {
+      ok=0;
+      if (!silent) {
+	std::cout << "Warning histo " << h1->GetName() << " has value v=" << v
+		  << " that is not in range "
+		  << yrangeMin << " .. " << yrangeMax << "\n";
+      }
+    }
+  }
+  return ok;
+}
+
+// ---------------------------------------------------------
+
 void scaleBin(TH1D* h1, int ibin, double x)
 {
   h1->SetBinContent(ibin, x * h1->GetBinContent(ibin));
