@@ -553,13 +553,45 @@ int checkRange(const TH1D *h1, double yrangeMin, double yrangeMax, int silent)
   int ok=1;
   for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
     double v=h1->GetBinContent(ibin);
-    if ((v<yrangeMin) || (v>yrangeMax)) {
+    double dv=h1->GetBinError(ibin);
+    if ((v-dv<yrangeMin) || (v+dv>yrangeMax)) {
       ok=0;
       if (!silent) {
 	std::cout << "Warning histo " << h1->GetName() << " has value v=" << v
 		  << " that is not in range "
 		  << yrangeMin << " .. " << yrangeMax << "\n";
       }
+    }
+  }
+  return ok;
+}
+
+// ---------------------------------------------------------
+
+int checkRange(const std::vector<TH1D*> &h1V,
+	       double &rangeMin, double &rangeMax,
+	       const std::vector<std::pair<double,double> > &ranges)
+{
+  // determine the widest y range
+  double vMin=1e9, vMax=-1e9;
+  for (unsigned int i=0; i<h1V.size(); i++) {
+    const TH1D *h1= h1V[i];
+    for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+      double v =h1->GetBinContent(ibin);
+      double dv=h1->GetBinError(ibin);
+      if (v-dv < vMin) vMin= v-dv;
+      if (v+dv > vMax) vMax= v+dv;
+    }
+  }
+
+  int ok=0;
+  for (std::vector<std::pair<double,double> >::const_iterator it=ranges.begin();
+       !ok && (it!=ranges.end()); it++) {
+    std::pair<double,double> p=*it;
+    if ((p.first<vMin) && (p.second>vMax)) {
+      ok=1;
+      rangeMin=p.first;
+      rangeMax=p.second;
     }
   }
   return ok;

@@ -148,6 +148,9 @@ void removeError(th1_t *h1)
 TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 void removeNegatives(TH1D* h1);
 int checkRange(const TH1D* h1, double rangeMin, double rangeMax, int silent=0);
+int checkRange(const std::vector<TH1D*> &h1V,
+	       double &rangeMin, double &rangeMax,
+	       const std::vector<std::pair<double,double> > &ranges);
 
 
 void scaleBin(TH1D *h1, int ibin, double x);
