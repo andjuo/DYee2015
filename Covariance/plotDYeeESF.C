@@ -39,7 +39,7 @@ void plotDYeeESF()
   TH2D* h2effData_tag= cloneHisto(h2bin,"h2effData_tag","h2effData_tag");
   TH2D* h2effData_Zrange= cloneHisto(h2bin,"h2effData_Zrange","h2effData_Zrange");
 
-  const char *fname="CutBasedID_MediumWP_76X_18Feb.txt";
+  const char *fname="dyee_CutBasedID_MediumWP_76X_18Feb.txt";
   std::ifstream fin(fname);
   if (!fin.is_open()) {
     std::cout << "failed to open the file <" << fname << ">\n";
