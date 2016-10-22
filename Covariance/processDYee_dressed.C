@@ -8,8 +8,9 @@
 
 // --------------------------------------------------------------
 
+template<class histo_t>
 inline
-void prepareHisto(TH1D *h1) {
+void prepareHisto(histo_t *h1) {
   h1->SetDirectory(0);
   //if (!h1->GetSumw2())
   h1->Sumw2();
@@ -119,6 +120,18 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   prepareHisto(h1postFsrInAccSel_MissAndMig_MWPU);
   prepareHisto(h1postFsrInAccSel_Mig_MWPU);
   prepareHisto(h1postFsrInAccSel_DieleOk_MWPU);
+
+  TH1D *h1detRes_Miss= new TH1D("h1detRes_Miss","h1detRes_Miss;M_{postFSR};count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH1D *h1detRes_Fake= new TH1D("h1detRes_Fake","h1detRes_Fake;M_{RECO};count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH1D *h1detRes_Meas= new TH1D("h1detRes_Meas","h1detRes_Meas;M_{RECO};count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH1D *h1detRes_True= new TH1D("h1detRes_True","h1detRes_True;M_{postFSR};count",DYtools::nMassBins,DYtools::massBinEdges);
+  TH2D *h2detRes_Mig= new TH2D("h2detRes_Mig","h2detRes_Mig;M_{RECO};M_{postFSR}",DYtools::nMassBins,DYtools::massBinEdges, DYtools::nMassBins,DYtools::massBinEdges);
+
+  prepareHisto(h1detRes_Miss);
+  prepareHisto(h1detRes_Fake);
+  prepareHisto(h1detRes_Meas);
+  prepareHisto(h1detRes_True);
+  prepareHisto(h2detRes_Mig);
 
   TH2D* h2DetResMig= new TH2D("h2DetResMig","Det.resolution migration", DYtools::nMassBins, DYtools::massBinEdges, DYtools::nMassBins, DYtools::massBinEdges);
   h2DetResMig->Sumw2();
@@ -255,6 +268,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
 	  //std::cout << "fake " << mPostFsr << " (mReco=" << mReco << ")\n";
 	  detResResp.Fake(mReco, w);
 	  detResRespPU.Fake(mReco, wPU);
+	  h1detRes_Fake->Fill(mReco, wPU);
 	}
       }
       else if ( DYtools::InsideMassRange(mPostFsr) && inAccPostFsr &&
@@ -264,6 +278,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
 	detResResp.Miss(mPostFsr, w);
 	detResRespPU.Miss(mPostFsr, wPU);
 	h1postFsrInAccSel_MissAndMig_MWPU->Fill(mPostFsr, wPU);
+	h1detRes_Miss->Fill(mPostFsr, wPU);
       }
       else {
 	if (inAccReco && inAccPostFsr) {
@@ -278,6 +293,9 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
 	  h2DetResMig->Fill( mReco, mPostFsr, w );
 	  h1postFsrInAccSel_MissAndMig_MWPU->Fill(mPostFsr, wPU);
 	  h1postFsrInAccSel_Mig_MWPU->Fill(mPostFsr, wPU);
+	  h1detRes_Meas->Fill( mReco, wPU );
+	  h1detRes_True->Fill( mPostFsr, wPU );
+	  h2detRes_Mig->Fill( mReco, mPostFsr, wPU);
 	}
       }
     }
@@ -517,6 +535,11 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   h1rho_recoInPostFsrAcc->Write();
   detResResp.Write();
   detResRespPU.Write();
+  h1detRes_Miss->Write();
+  h1detRes_Fake->Write();
+  h1detRes_Meas->Write();
+  h1detRes_True->Write();
+  h2detRes_Mig->Write();
   h1recoSel_M->Write();
   h1recoSel_MW->Write();
   h1recoSel_MWPU->Write();
