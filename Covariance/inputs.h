@@ -119,6 +119,7 @@ TCanvas* createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
 void printHisto(const TH1D* h1, int extraRange=0);
 void printHisto(const TH2D* h2, int extraRange=0, int nonZero=0,
 		const TH2D* h2DenomHisto=NULL, double treshold=1e-3);
+void printHistoRange(const TH2D* h2);
 void printRatio(const TH1D* h1a, const TH1D* h1b, int extraRange=0,
 		int includeErr=0);
 void printRatio(const TH2D* h2a, const TH2D* h2b, int extraRange=0,
@@ -150,7 +151,8 @@ void removeNegatives(TH1D* h1);
 int checkRange(const TH1D* h1, double rangeMin, double rangeMax, int silent=0);
 int checkRange(const std::vector<TH1D*> &h1V,
 	       double &rangeMin, double &rangeMax,
-	       const std::vector<std::pair<double,double> > &ranges);
+	       const std::vector<std::pair<double,double> > &ranges,
+	       int ignoreZeroValues=0);
 
 
 void scaleBin(TH1D *h1, int ibin, double x);
@@ -335,13 +337,14 @@ void logAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="")
 {
   gr->GetXaxis()->SetDecimals(true);
   gr->GetYaxis()->SetDecimals(true);
+  gr->GetZaxis()->SetDecimals(true);
   if ((axis & 1)!=0) {
     gr->GetXaxis()->SetNoExponent();
     gr->GetXaxis()->SetMoreLogLabels();
   }
-  if ((axis & 2)!=0) {
+  if (((axis & 2)!=0) || ((axis & 4)!=0)) {
     gr->GetYaxis()->SetNoExponent();
-    //gr->GetYaxis()->SetMoreLogLabels();
+    if ((axis&4)!=0) gr->GetYaxis()->SetMoreLogLabels();
   }
   if (xlabel.Length()) gr->GetXaxis()->SetTitle(xlabel);
   if (ylabel.Length()) gr->GetYaxis()->SetTitle(ylabel);
@@ -606,7 +609,8 @@ TCanvas *findCanvas(TString canvName);
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
 void closeCanvases();
 
-void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir);
+void SaveCanvas(TCanvas* canv, TString canvName, TString destDir,
+		int correctName=0);
 void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
 int  SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout=NULL);
 void writeTimeTag(TFile *fout=NULL);

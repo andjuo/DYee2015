@@ -424,6 +424,27 @@ void printHisto(const TH2D *h2, int extraRange, int nonZero,
 
 // ---------------------------------------------------------
 
+void printHistoRange(const TH2D *h2)
+{
+  std::cout << "\nhisto " << h2->GetName() << " " << h2->GetTitle() << "\n";
+  std::cout << " x range: ";
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    std::cout << "  " << h2->GetXaxis()->GetBinLowEdge(ibin);
+  }
+  int nBinsX=h2->GetNbinsX();
+  std::cout << "  " << (h2->GetXaxis()->GetBinLowEdge(nBinsX)+
+			h2->GetXaxis()->GetBinWidth(nBinsX)) << "\n";
+  std::cout << " y range: ";
+  for (int ibin=1; ibin<=h2->GetNbinsY(); ibin++) {
+    std::cout << "  " << h2->GetYaxis()->GetBinLowEdge(ibin);
+  }
+  int nBinsY=h2->GetNbinsY();
+  std::cout << "  " << (h2->GetYaxis()->GetBinLowEdge(nBinsY)+
+			h2->GetYaxis()->GetBinWidth(nBinsY)) << "\n";
+}
+
+// ---------------------------------------------------------
+
 void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange,
 		int includeErr) {
   int d=(extraRange) ? 1:0;
@@ -570,7 +591,8 @@ int checkRange(const TH1D *h1, double yrangeMin, double yrangeMax, int silent)
 
 int checkRange(const std::vector<TH1D*> &h1V,
 	       double &rangeMin, double &rangeMax,
-	       const std::vector<std::pair<double,double> > &ranges)
+	       const std::vector<std::pair<double,double> > &ranges,
+	       int ignoreZeroValues)
 {
   // determine the widest y range
   double vMin=1e9, vMax=-1e9;
@@ -579,6 +601,7 @@ int checkRange(const std::vector<TH1D*> &h1V,
     for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
       double v =h1->GetBinContent(ibin);
       double dv=h1->GetBinError(ibin);
+      if (ignoreZeroValues && (v==0)) continue;
       if (v-dv < vMin) vMin= v-dv;
       if (v+dv > vMax) vMax= v+dv;
     }
@@ -1179,8 +1202,15 @@ void closeCanvases()
 
 // ---------------------------------------------------------
 
-void SaveCanvas(TCanvas* canv, const TString &canvName, TString destDir)
+void SaveCanvas(TCanvas* canv, TString canvName, TString destDir,
+		int correctName)
 {
+  if (correctName==1) {
+    canvName.ReplaceAll(" ","_");
+    canvName.ReplaceAll(":","_");
+    canvName.ReplaceAll(";","_");
+  }
+
   gSystem->mkdir(destDir,kTRUE);
   gSystem->mkdir(destDir+TString("/png"),kTRUE);
   gSystem->mkdir(destDir+TString("/pdf"),kTRUE);
