@@ -121,9 +121,9 @@ void printHisto(const TH2D* h2, int extraRange=0, int nonZero=0,
 		const TH2D* h2DenomHisto=NULL, double treshold=1e-3);
 void printHistoRange(const TH2D* h2);
 void printRatio(const TH1D* h1a, const TH1D* h1b, int extraRange=0,
-		int includeErr=0);
+		int includeErr=0, double markIfDiff_RelTol=0.);
 void printRatio(const TH2D* h2a, const TH2D* h2b, int extraRange=0,
-		int includeErr=0);
+		int includeErr=0, double markIfDiffRelTol=0.);
 void printField(TString keyName);
 
 inline void plotHisto(TH1* h1, TString cName, int logX=0, int logY=0, TString drawOpt="hist", TString explain="", int gridLines=3)

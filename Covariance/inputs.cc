@@ -446,7 +446,7 @@ void printHistoRange(const TH2D *h2)
 // ---------------------------------------------------------
 
 void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange,
-		int includeErr) {
+		int includeErr, double markIfDiff_relTol) {
   int d=(extraRange) ? 1:0;
   std::cout << "\nhisto A " << h1a->GetName() << " " << h1a->GetTitle()
 	    << " [" << h1a->GetNbinsX() << "]\n";
@@ -465,10 +465,34 @@ void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange,
 	      << "  " << h1a->GetBinContent(ibin) << " +- "
 	      << h1a->GetBinError(ibin)
 	      << "  " << h1b->GetBinContent(ibin) << " +- "
-	      << h1b->GetBinError(ibin)
-	      << "  " << h1a->GetBinContent(ibin)/h1b->GetBinContent(ibin);
+	      << h1b->GetBinError(ibin);
+    double r=h1a->GetBinContent(ibin)/h1b->GetBinContent(ibin);
+    int isDiff=0;
+    // correct for nan
+    if (r!=r) {
+      if ((h1a->GetBinContent(ibin)==0.) && (h1b->GetBinContent(ibin)==0.)) {
+	r=1.;
+      }
+      else isDiff=1;
+    }
+    std::cout << "  " << r;
     if (includeErr)
       std::cout << " " << h1a->GetBinError(ibin)/h1b->GetBinError(ibin);
+
+    if ((markIfDiff_relTol!=0.) && !isDiff) {
+      double d= h1a->GetBinContent(ibin);
+      if (d==0.) d=h1b->GetBinContent(ibin);
+      if (fabs((h1a->GetBinContent(ibin)-h1b->GetBinContent(ibin))/d) >
+	  markIfDiff_relTol) isDiff=1;
+      if (!isDiff && includeErr) {
+	double d= h1a->GetBinError(ibin);
+	if (d==0.) d=h1b->GetBinError(ibin);
+	if ((d!=0.) &&
+	    (fabs((h1a->GetBinError(ibin)-h1b->GetBinError(ibin))/d) >
+	     markIfDiff_relTol)) isDiff=2;
+      }
+    }
+    if (isDiff) std::cout << std::string(isDiff,'*');
     std::cout << "\n";
   }
 }
@@ -477,7 +501,7 @@ void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange,
 // ---------------------------------------------------------
 
 void printRatio(const TH2D *h2a, const TH2D *h2b, int extraRange,
-		int includeErr) {
+		int includeErr, double markIfDiff_relTol) {
   int d=(extraRange) ? 1:0;
   std::cout << "\nhisto A " << h2a->GetName() << " " << h2a->GetTitle()
 	    << " [" << h2a->GetNbinsX() << "]\n";
@@ -512,11 +536,38 @@ void printRatio(const TH2D *h2a, const TH2D *h2b, int extraRange,
 		<< ")  " << h2a->GetBinContent(ibin,jbin) << " +- "
 		<< h2a->GetBinError(ibin,jbin)
 		<< "  " << h2b->GetBinContent(ibin,jbin) << " +- "
-		<< h2b->GetBinError(ibin,jbin)
-		<< "  " << h2a->GetBinContent(ibin,jbin)/h2b->GetBinContent(ibin,jbin);
+		<< h2b->GetBinError(ibin,jbin);
+      double r=h2a->GetBinContent(ibin,jbin)/h2b->GetBinContent(ibin,jbin);
+      int isDiff=0;
+      if (r!=r) {
+	if ((h2a->GetBinContent(ibin,jbin)==0.) &&
+	    (h2b->GetBinContent(ibin,jbin)==0.)) {
+	  r=1;
+	}
+	else isDiff=1;
+      }
+      std::cout << "  " << r;
       if (includeErr) {
 	std::cout << " " << h2a->GetBinError(ibin,jbin)/h2b->GetBinError(ibin,jbin);
       }
+
+      if ((markIfDiff_relTol!=0.) && !isDiff) {
+	double d= h2a->GetBinContent(ibin,jbin);
+	if (d==0.) d=h2b->GetBinContent(ibin,jbin);
+	if (fabs((h2a->GetBinContent(ibin,jbin)-h2b->GetBinContent(ibin,jbin))/d)
+	    > markIfDiff_relTol) {
+	  //std::cout << "\ndebug: h2a=" << h2a->GetBinContent(ibin,jbin) << ", h2b=" << h2b->GetBinContent(ibin,jbin) << ", d=" << d << ", diff=" << (h2a->GetBinContent(ibin,jbin)/h2b->GetBinContent(ibin,jbin)) << ", the ratio=" << fabs((h2a->GetBinContent(ibin,jbin)-h2b->GetBinContent(ibin,jbin))/d) << ", markIfDiff_relTol=" << markIfDiff_relTol << "\n";
+	  isDiff=1;
+	}
+	if (!isDiff && includeErr) {
+	  double d= h2a->GetBinError(ibin,jbin);
+	  if (d==0.) d= h2b->GetBinError(ibin,jbin);
+	  if ((d!=0.) &&
+	      (fabs((h2a->GetBinError(ibin,jbin)-h2b->GetBinError(ibin,jbin))/d)
+	       > markIfDiff_relTol)) isDiff=2;
+	}
+      }
+      if (isDiff) std::cout << " " << std::string(isDiff,'*');
       std::cout << "\n";
     }
   }
