@@ -26,7 +26,7 @@ void plotEffs_separate(std::vector<TH2D*> &hV,
 
 // ----------------------------------------------------------------
 
-void plotDYeeESF(TString theSet="ID")
+void plotDYeeESF(TString theSet="ID", int save=0)
 {
   TH2D *h2bin= NULL;
   if (theSet=="ID")
@@ -35,9 +35,12 @@ void plotDYeeESF(TString theSet="ID")
   else if (theSet=="RECO")
     h2bin=new TH2D("h2bin","h2bin;#eta;p_{T} [GeV]",
 		   nEta,SC_eta,nPt,Ele_pt);
-  else if (theSet=="HLT")
+  else if (theSet=="HLT_finePt")
     h2bin=new TH2D("h2bin","h2bin;#eta;p_{T} [GeV]",
 		   nEta,SC_eta,nPtHLT,Ele_ptHLT);
+  else if (theSet=="HLT")
+    h2bin=new TH2D("h2bin","h2bin;#eta;p_{T} [GeV]",
+		   nEta,SC_eta,nPt,Ele_pt);
   else {
     std::cout << "h2bin is not ready for theSet=" << theSet << "\n";
     return;
@@ -51,14 +54,25 @@ void plotDYeeESF(TString theSet="ID")
   TH2D* h2effData_tag= cloneHisto(h2bin,"h2effData_tag","h2effData_tag");
   TH2D* h2effData_Zrange= cloneHisto(h2bin,"h2effData_Zrange","h2effData_Zrange");
 
+  std::vector<TH2D*> allHistosV;
+  allHistosV.push_back(h2effData);
+  allHistosV.push_back(h2effMC);
+  allHistosV.push_back(h2effData_bkgPdf);
+  allHistosV.push_back(h2effData_sigPdf);
+  allHistosV.push_back(h2effMC_NLOvsLO);
+  allHistosV.push_back(h2effData_tag);
+  allHistosV.push_back(h2effData_Zrange);
+
   TString fname_RECO="dyee_eleRECO_76X.txt";
   TString fname_ID="dyee_CutBasedID_MediumWP_76X_18Feb.txt";
+  TString fname_HLT_finePt="dyee_triggerEff_76X_finePt.txt";
   TString fname_HLT="dyee_triggerEff_76X.txt";
   TString effName="RECO";
   TString fname;
   if (theSet=="ID") { fname=fname_ID; effName="ID"; }
   else if (theSet=="RECO") { fname=fname_RECO; effName="RECO"; }
   else if (theSet=="HLT") { fname=fname_HLT; effName="HLT"; }
+  else if (theSet=="HLT_finePt") { fname=fname_HLT_finePt; effName="HLT_finePt"; }
   else {
     std::cout << "code is not ready for theSet=" << theSet << "\n";
     return;
@@ -106,7 +120,7 @@ void plotDYeeESF(TString theSet="ID")
 
     deff=0;
 
-    if (effName!="HLT") {
+    if ((effName!="HLT") && (effName!="HLT_finePt")) {
       fin >> eff;
       h2effData_bkgPdf->SetBinContent(iEta,iPt, eff);
       h2effData_bkgPdf->SetBinError(iEta,iPt, deff);
@@ -185,6 +199,53 @@ void plotDYeeESF(TString theSet="ID")
     hs_mc_var.push_back(hsMCNLO);
     plotEffs(h2_mc_var,hs_mc_var,label_mc_var, "MC",effName,0);
   }
+
+
+  if (save) {
+    if (theSet=="ID") {
+      TH2D *h2signed= new TH2D("h2signed","h2signed",nEta,SC_eta,nPt,Ele_pt);
+      h2signed->SetStats(0);
+      unsigned int nHistos=allHistosV.size();
+      for (unsigned int i=0; i<nHistos; i++) {
+	const TH2D *h2eff= allHistosV[i];
+	if (h2eff->Integral()==0) continue;
+	std::cout << " working with " << h2eff->GetName() << "\n";
+	TH2D *h2=cloneHisto(h2eff,h2eff->GetName() + TString("_inEta"),
+			    h2eff->GetTitle());
+	allHistosV.push_back(h2);
+	for (int ibin=1; ibin<=h2signed->GetNbinsX(); ibin++) {
+	  double eta= h2signed->GetXaxis()->GetBinLowEdge(ibin)
+	    + 0.5*h2signed->GetXaxis()->GetBinWidth(ibin);
+	  int iEta= h2->GetXaxis()->FindBin(abs(eta));
+	  for (int jbin=1; jbin<=h2signed->GetNbinsY(); jbin++) {
+	    h2signed->SetBinContent(ibin, jbin, h2->GetBinContent(iEta,jbin));
+	    h2signed->SetBinError  (ibin, jbin, h2->GetBinError(iEta,jbin));
+	    //std::cout << " set eta=" << eta << ", " << h2signed->GetYaxis()->GetBinLowEdge(jbin) << " .. " << (h2signed->GetYaxis()->GetBinLowEdge(jbin)+h2signed->GetYaxis()->GetBinWidth(jbin)) << " to  iEta=" << iEta << " eff=" << h2->GetBinContent(iEta,jbin) << " +- " << h2->GetBinError(iEta,jbin) << "\n";
+	  }
+	}
+      }
+    }
+
+    TString foutName="dyee_effSyst_" + theSet + ".root";
+    TFile fout(foutName,"RECREATE");
+    if (!fout.IsOpen()) {
+      std::cout << "failed to create a file <" << fout.GetName() << ">\n";
+      return;
+    }
+    for (unsigned int ih=0; ih<allHistosV.size(); ih++) {
+      TH2D *h2=allHistosV[ih];
+      if (h2->Integral()==0) {
+	std::cout << "histogram " << h2->GetName() << " is empty\n";
+      }
+      else {
+	h2->Write();
+	h2->SetDirectory(0);
+	std::cout << "histogram " << h2->GetName() << " saved\n";
+      }
+    }
+    fout.Close();
+  }
+
 }
 
 // --------------------------------------------------------------
@@ -253,6 +314,24 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
 
     TH2D *h2= h2V[ih];
 
+    if (1 && (h2->Integral()!=0)) {
+      TString cName=TString("canv") + h2->GetName();
+      TH2D *h2Clone= cloneHisto(h2,
+				h2->GetName() + TString("_log"),h2->GetTitle());
+      h2Clone->SetStats(0);
+      logAxis(h2Clone,4);
+      TCanvas *cx= plotHisto(h2Clone,cName,0,1);
+      cx->SetCanvasSize(800,600);
+      cx->Update();
+      if (gROOT->IsBatch()==true) {
+	std::cout << "saving H2 canvas\n";
+	SaveCanvas(cx,cx->GetName(),plotOutDir,1);
+      }
+      else {
+	std::cout << "H2 canvas not saved\n";
+      }
+    }
+
     if ((ih>0) && (h2->Integral()!=0)) {
       TString h2name=effName + "__" + h2->GetName() + TString("_div_")
 	+ h2V[0]->GetName();
@@ -261,13 +340,12 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
       TH2D *h2ratio= cloneHisto(h2,h2name,h2title);
       h2ratio->Divide(h2V[0]);
       h2ratio->SetStats(0);
-      TCanvas *cx=plotHisto(h2ratio,"canv" + h2name);
+      logAxis(h2ratio,4);
+      TCanvas *cx=plotHisto(h2ratio,"canv" + h2name,0,1);
+      cx->SetCanvasSize(800,600);
       if (gROOT->IsBatch()==true) {
 	std::cout << "saving H2 canvas\n";
- 	TString outName=cx->GetName();
-	outName.ReplaceAll(" ","_");
-	outName.ReplaceAll(":","_");
-	SaveCanvas(cx,outName,plotOutDir);
+	SaveCanvas(cx,cx->GetName(),plotOutDir);
       }
       else {
 	std::cout << "H2 canvas not saved\n";
@@ -355,10 +433,10 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
       yRangeRatio.push_back(ddpair_t(0.60,1.40));
       yRangeRatio.push_back(ddpair_t(0.50,1.50));
 
-      if (!checkRange(h1mecV,effRange_min,effRange_max,yRange)) {
+      if (!checkRange(h1mecV,effRange_min,effRange_max,yRange,1)) {
 	std::cout << "auto range on efficiency failed\n";
       }
-      if (!checkRange(h1ratioV,yrange_min,yrange_max,yRangeRatio)) {
+      if (!checkRange(h1ratioV,yrange_min,yrange_max,yRangeRatio,1)) {
 	std::cout << "auto range on ratio failed\n";
       }
     }
@@ -397,9 +475,26 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
       TString formatGap="%5.3lf #leq |#eta| #leq %5.3lf";
       TString formatPostGap="%5.3lf #leq |#eta| #leq %3.1lf";
       TString etaFormat=formatNoGap;
-      if (iEta==1) etaFormat= formatPreGap;
-      else if (iEta==2) etaFormat= formatGap;
-      else if (iEta==3) etaFormat= formatPostGap;
+      double absEta1=h2->GetXaxis()->GetBinLowEdge(iEta+1);
+      double absEta2=fabs(absEta1 + h2->GetXaxis()->GetBinWidth(iEta+1));
+      if (absEta1<0) absEta1=-absEta1;
+      std::cout << "absEta1=" << absEta1 << ", absEta2=" << absEta2 << "  ";
+      if (((fabs(absEta1-1.444)<1e-3) && (fabs(absEta2-1.566)<1e-3)) ||
+	  ((fabs(absEta1-1.566)<1e-3) && (fabs(absEta2-1.444)<1e-3)))
+	{
+	  std::cout << "gap\n";
+	  etaFormat= formatGap;
+	}
+      else if ((fabs(absEta2-1.444)<1e-3) ||
+	       (fabs(absEta2-1.566)<1e-3)){
+	std::cout << "preGap\n";
+	etaFormat= formatPreGap;
+      }
+      else if ((fabs(absEta1-1.444)<1e-3) ||
+	       (fabs(absEta1-1.566)<1e-3)) {
+	std::cout << "postGap\n";
+	etaFormat= formatPostGap;
+      }
       if (effName!="ID") etaFormat.ReplaceAll("|#eta|","#eta");
       TString etaRange=Form(etaFormat,
 			    h2->GetXaxis()->GetBinLowEdge(iEta+1),
@@ -439,6 +534,7 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
       copyStyle(h1ratio,h2);
       logAxis(h1ratio,1);
       h1ratio->GetXaxis()->SetTitleSize(0.08);
+      h1ratio->GetXaxis()->SetTitleOffset(1.);
       h1ratio->GetXaxis()->SetLabelSize(0.08);
       h1ratio->GetXaxis()->SetLabelOffset(0.02);
       h1ratio->GetYaxis()->SetTitleSize(0.08);
