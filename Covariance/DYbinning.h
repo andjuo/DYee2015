@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cmath>
 
+#define def_fewMassBins
+
 namespace DYtools {
 
 const Int_t nMassBins45 = 45;
@@ -26,13 +28,20 @@ const Double_t massBinEdges43[nMassBins43+1] =
    200, 220, 243, 273, 320, 380, 440, 510, 600, 700,
    830, 1000, 1500, 3000};
 
+const Int_t nMassBinsFew = 3;
+const Double_t massBinEdgesFew[nMassBinsFew+1] = { 15, 25, 45, 75 };
 
 #ifdef __CXX__
  extern const Int_t nMassBins;
  extern const Double_t *massBinEdges;
 #else
+#ifndef def_fewMassBins
  const Int_t nMassBins= nMassBins43;
  const Double_t *massBinEdges= massBinEdges43;
+#else
+ const Int_t nMassBins = nMassBinsFew;
+ const Double_t *massBinEdges = massBinEdgesFew;
+#endif
 #endif
 
 const Double_t minMass= massBinEdges[0];
@@ -73,6 +82,16 @@ int massIdx(Double_t mass) {
     }
   }
   return idx;
+}
+
+// -------------------------------------------------------------
+
+inline
+Double_t massBinCenter(int massIdx) {
+  if ((massIdx>=0) && (massIdx<nMassBins)) {
+    return 0.5*(massBinEdges[massIdx]+massBinEdges[massIdx+1]);
+  }
+  return -999.;
 }
 
 // -------------------------------------------------------------
