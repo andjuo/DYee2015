@@ -611,11 +611,140 @@ TH1D* errorAsCentral(const TH1D* h1, int relative) {
 
 // ---------------------------------------------------------
 
+TH2D* errorAsCentral(const TH2D* h2, int relative) {
+  TH2D* h2err= cloneHisto(h2,
+			  h2->GetName() + TString("_err"),
+			  h2->GetTitle() + TString(" err"));
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) {
+      double err= h2->GetBinError(ibin,jbin);
+      if (relative) {
+	double val=h2->GetBinContent(ibin,jbin);
+	if (val==double(0)) {
+	  if (err==double(0)) err=0;
+	  else if (err<double(0)) err=-1e4;
+	  else err=1e4;
+	}
+	else err/=val;
+      }
+      h2err->SetBinContent(ibin,jbin, err);
+      h2err->SetBinError  (ibin,jbin, 0.);
+    }
+  }
+  return h2err;
+}
+
+// ---------------------------------------------------------
+
+int setError(TH1D *h1dest, const TH1D* h1src)
+{
+  if (!compareRanges(h1dest,h1src,0)) {
+    std::cout << "setError(TH1D): different ranges\n";
+    return 0;
+  }
+  for (int ibin=1; ibin<=h1src->GetNbinsX(); ibin++) {
+    h1dest->SetBinError(ibin, h1src->GetBinError(ibin));
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
+int setError(TH2D *h2dest, const TH2D* h2src)
+{
+  if (!compareRanges(h2dest,h2src,0)) {
+    std::cout << "setError(TH2D): different ranges\n";
+    return 0;
+  }
+  for (int ibin=1; ibin<=h2src->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2src->GetNbinsY(); jbin++) {
+      h2dest->SetBinError(ibin,jbin, h2src->GetBinError(ibin,jbin));
+    }
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
+int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative)
+{
+  if (!compareRanges(h2target,h2nominal,0)) {
+    std::cout << "assignDiffAsUnc: ranges are different\n";
+    return 0;
+  }
+  for (int ibin=1; ibin<=h2target->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2target->GetNbinsY(); jbin++) {
+      double diff= h2target->GetBinContent(ibin,jbin) -
+	h2nominal->GetBinContent(ibin,jbin);
+      double vCentral= 0;
+      if (relative) {
+	vCentral=1;
+	if (h2nominal->GetBinContent(ibin,jbin)!=0) {
+	  diff/= h2nominal->GetBinContent(ibin,jbin);
+	}
+	else if (diff!=0) {
+	  diff/= h2target->GetBinContent(ibin,jbin);
+	}
+      }
+      h2target->SetBinContent(ibin,jbin, vCentral);
+      h2target->SetBinError  (ibin,jbin, fabs(diff));
+    }
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
 void removeNegatives(TH1D* h1)
 {
   for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
     if (h1->GetBinContent(ibin)<0) h1->SetBinContent(ibin,0.);
   }
+}
+
+// ---------------------------------------------------------
+
+int compareRanges(const TH1D *h1a, const TH1D *h1b, int verbose)
+{
+  int d=0;
+  if (h1a->GetNbinsX()!=h1b->GetNbinsX()) {
+    if (verbose) std::cout << "different number of x bins\n";
+    return 0;
+  }
+  for (int ibin=1-d; ibin<=h1a->GetNbinsX()+d; ibin++) {
+    if (h1a->GetXaxis()->GetBinLowEdge(ibin) !=
+	h1b->GetXaxis()->GetBinLowEdge(ibin)) {
+      if (verbose) std::cout << "x-bining mismatch at ibin=" << ibin << "\n";
+      return 0;
+    }
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
+int compareRanges(const TH2D *h2a, const TH2D *h2b, int verbose)
+{
+  int d=0;
+  for (int ibin=1-d; ibin<=h2a->GetNbinsX()+d; ibin++) {
+    if ( (h2a->GetXaxis()->GetBinLowEdge(ibin) !=
+	  h2b->GetXaxis()->GetBinLowEdge(ibin)) ||
+	 (h2a->GetXaxis()->GetBinWidth(ibin) !=
+	  h2b->GetXaxis()->GetBinWidth(ibin)) ) {
+      if (verbose) std::cout << "x-bining mismatch at ibin=" << ibin << "\n";
+      return 0;
+    }
+    for (int jbin=1-d; jbin<=h2a->GetNbinsY()+d; jbin++) {
+      if ( (h2a->GetYaxis()->GetBinLowEdge(jbin) !=
+	    h2b->GetYaxis()->GetBinLowEdge(jbin)) ||
+	   (h2a->GetYaxis()->GetBinWidth(jbin) !=
+	    h2b->GetYaxis()->GetBinWidth(jbin)) ) {
+	if (verbose) std::cout << "y-bining mismatch at jbin=" << jbin << "\n";
+	return 0;
+      }
+    }
+  }
+  return 1;
 }
 
 // ---------------------------------------------------------
@@ -848,6 +977,154 @@ TTree* loadTree(TString fname, TString treeName, TFile **fout_ptr)
   }
   return tree;
 }
+
+// ---------------------------------------------------------
+// ---------------------------------------------------------
+
+void randomizeWithinErr(const TH1D *hSrc, TH1D *hDest, int nonNegative,
+			int poissonRnd, int systematic)
+{
+  if (!hSrc) { std::cout << "randomizeWithinErr(1D): hSrc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinErr(1D): hDest is null\n"; return; }
+  if (!systematic) {
+    for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+      double val=	(poissonRnd) ?
+	gRandom->Poisson(hSrc->GetBinContent(ibin)) :
+	gRandom->Gaus(hSrc->GetBinContent(ibin),
+		      hSrc->GetBinError(ibin));
+      if (nonNegative && (val<0)) val=0;
+      hDest->SetBinContent(ibin,val);
+      hDest->SetBinError  (ibin,0); //hSrc->GetBinError(ibin));
+    }
+  }
+  else {
+    if (poissonRnd) {
+      hDest->Reset();
+      std::cout << "randomizeWithinErr(TH1D*): poissonRnd is not ready for "
+		<< "systematic uncertainty\n";
+      return;
+    }
+    double rnd=	gRandom->Gaus(0.,1.);
+    for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+      double val= hSrc->GetBinContent(ibin) + rnd * hSrc->GetBinError(ibin);
+      if (nonNegative && (val<0)) val=0;
+      hDest->SetBinContent(ibin,val);
+      hDest->SetBinError  (ibin,0);
+    }
+  }
+}
+
+// ---------------------------------------------------------
+
+void randomizeWithinRelErr(const TH1D *hSrc, TH1D *hDest, double relErr,
+			   int nonNegative, int systematic)
+{
+  if (!hSrc) { std::cout << "randomizeWithinRelErr(1D): hSrc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinRelErr(1D): hDest is null\n"; return; }
+  double rnd0= gRandom->Gaus(0.,1.);
+  for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+    double rnd= (systematic) ? rnd0 : gRandom->Gaus(0.,1.);
+    double val=	hSrc->GetBinContent(ibin) +
+      rnd * relErr * hSrc->GetBinContent(ibin);
+    if (nonNegative && (val<0)) val=0;
+    hDest->SetBinContent(ibin,val);
+    hDest->SetBinError  (ibin,0); //hSrc->GetBinError(ibin));
+  }
+}
+
+// ---------------------------------------------------------
+
+void randomizeWithinErr(const TH2D *hSrc, TH2D *hDest, int nonNegative,
+			int poissonRnd, int systematic)
+{
+  if (!hSrc) { std::cout << "randomizeWithinErr(2D): hSrc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinErr(2D): hDest is null\n"; return; }
+  if (!systematic) {
+    for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+      for (int jbin=1; jbin<=hSrc->GetNbinsY(); jbin++) {
+	double val=  (poissonRnd) ?
+	  gRandom->Poisson(hSrc->GetBinContent(ibin,jbin)) :
+	  gRandom->Gaus(hSrc->GetBinContent(ibin,jbin),
+			hSrc->GetBinError(ibin,jbin));
+	if (nonNegative && (val<0)) val=0;
+	hDest->SetBinContent(ibin,jbin,val);
+	hDest->SetBinError  (ibin,jbin,0); //hSrc->GetBinError(ibin,jbin));
+      }
+    }
+  }
+  else {
+    if (poissonRnd) {
+      hDest->Reset();
+      std::cout << "randomizeWithinErr(TH2D): Poisson error is not ready with "
+		<< "flag systematic\n";
+      return;
+    }
+    double rnd= gRandom->Gaus(0.,1.);
+    for (int ibin=1; ibin<=hSrc->GetNbinsX(); ibin++) {
+      for (int jbin=1; jbin<=hSrc->GetNbinsY(); jbin++) {
+	double val= hSrc->GetBinContent(ibin,jbin) +
+	  rnd * hSrc->GetBinError(ibin,jbin);
+	if (nonNegative && (val<0)) val=0;
+	hDest->SetBinContent(ibin,jbin,val);
+	hDest->SetBinError  (ibin,jbin,0); //hSrc->GetBinError(ibin,jbin));
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------
+
+void randomizeWithinRelErrSetCentral(const TH2D *h2Central,
+				     const TH2D *h2RelUnc,
+				     TH2D *hDest, int nonNegative,
+				     int systematic)
+{
+  if (!h2Central) { std::cout << "randomizeWithinRelErrSetCentral(2D): h2Central is null\n"; return; }
+  if (!h2RelUnc) { std::cout << "randomizeWithinRelErrSetCentral(2D): h2RelUnc is null\n"; return; }
+  if (!hDest) { std::cout << "randomizeWithinRelErrSetCentral(2D): hDest is null\n"; return; }
+  double rnd0= gRandom->Gaus(0,1);
+  for (int ibin=1; ibin<=h2RelUnc->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2RelUnc->GetNbinsY(); jbin++) {
+      double rnd= (systematic) ? rnd0 : gRandom->Gaus(0,1);
+      double v0 = h2Central->GetBinContent(ibin,jbin);
+      double val= v0 + rnd * v0 * h2RelUnc->GetBinError(ibin,jbin);
+      if (nonNegative && (val<0)) val=0;
+      hDest->SetBinContent(ibin,jbin,val);
+      hDest->SetBinError  (ibin,jbin,0); //hSrc->GetBinError(ibin,jbin));
+    }
+  }
+}
+
+// -----------------------------------------------------------
+
+int randomizeWithinPosNegErr(const TH2D *h2_errPos,
+			     const TH2D *h2_errNeg,
+			     TH2D *h2Dest,
+			     int bound01, int systematic)
+{
+  if (!h2_errPos || !h2_errNeg || !h2Dest) {
+    std::cout << "randomizeWithinPosNegErr: Null ptrs detected\n";
+    return 0;
+  }
+  double rnd0= gRandom->Gaus(0.,1.);
+  for (int ibin=1; ibin<=h2Dest->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2Dest->GetNbinsY(); jbin++) {
+      double r= (systematic) ? rnd0 : gRandom->Gaus(0.,1.);
+      double err=0;
+      if (r<0) err= h2_errNeg->GetBinError(ibin,jbin);
+      else if (r>0) err= h2_errPos->GetBinError(ibin,jbin);
+      double v= h2_errPos->GetBinContent(ibin,jbin) + r * err;
+      if (bound01) {
+	if (v<0.) v=0.;
+	else if (v>1.) v=1.;
+      }
+      h2Dest->SetBinContent(ibin,jbin, v);
+      h2Dest->SetBinError  (ibin,jbin, 0.);
+    }
+  }
+  return 1;
+}
+
 
 // ---------------------------------------------------------
 // ---------------------------------------------------------
