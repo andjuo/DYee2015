@@ -169,6 +169,22 @@ public:
     return NULL;
   }
 
+  unsigned int fullListSize() const
+  { return (h2VReco.size()+h2VIso.size()+h2VHLT.size()); }
+
+  const TH2D* h2fullList(unsigned int i) const
+  {
+    if (i>=h2VReco.size()) i-=h2VReco.size();
+    else return h2VReco[i];
+    if (i>=h2VIso.size()) i-=h2VIso.size();
+    else return h2VIso[i];
+    if (i>=h2VHLT.size()) {
+      std::cout << "h2fullList: i=" << i << " is too large\n";
+      return NULL;
+    }
+    return h2VHLT[i];
+  }
+
   void removeError();
   void setError(const DYTnPEff_t &e);
   void resetAll();
@@ -329,11 +345,12 @@ public:
 
   const DYTnPEff_t& getTnPWithStatUnc() const { return fTnPEff; }
   DYTnPEff_t* getTnPWithSystUnc(int idx) const;
-  DYTnPEff_t* getTnPWithTotUnc() const;
+  DYTnPEff_t* getTnPWithTotUnc(TString tag="_totUnc") const;
   template<class idx_t>
   const DYTnPEff_t* getTnPSystUncSource(idx_t idx) const {return fTnPEffSrcV[idx];}
   template<class idx_t>
   const DYTnPEff_t* getTnPSystUnc(idx_t idx) const { return fTnPEffSystV[idx]; }
+  DYTnPEff_t* getTnPSource(int srcIdx) const;
 
   int isElChannel() const { return fElChannel; }
   int ptrsOk() const;
@@ -424,9 +441,12 @@ public:
   TH1D* calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 			     TString hName, TString hTitle) const;
   TH1D* calculateScaleFactor_misc(const DYTnPEff_t &eff, int miscFlag,
-				  TString hName, TString hTitle) const;
+				  TString hName, TString hTitle,
+				  int followFIBin1=0, int followFIBin2=0,
+				  TH1D *h1followedBin=NULL) const;
 
   void displayAll() const;
+  void listAll() const;
   std::vector<TH1D*> avgAxisValues(std::vector<TH2D*> *h2ptSpace=NULL,
 				   std::vector<TH2D*> *h2etaSpace=NULL) const;
 

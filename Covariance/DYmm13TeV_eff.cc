@@ -84,6 +84,8 @@ void DYTnPEff_t::removeError()
 
 void DYTnPEff_t::setError(const DYTnPEff_t &e)
 {
+  //std::cout << "current DYTnPEff: "; listNumbers();
+  //std::cout << "setError from e: "; e.listNumbers();
   for (int ikind=0; ikind<3; ikind++) {
     std::vector<TH2D*> *h2V= this->h2vecPtr(ikind);
     const std::vector<TH2D*> *h2srcV= e.h2vecPtr(ikind);
@@ -215,6 +217,12 @@ double DYTnPEff_t::scaleFactorIdx_misc(int ibin1, int jbin1,
   //std::cout << " totalEffMC=" << effMC << "\n";
   double rho= (effMC==0.) ? 0. : effData/effMC;
   //std::cout << " rho=" << rho << "\n";
+  if (0) {
+    std::cout << "(ibin,jbin) = "
+	      << Form("(%d,%d) (%d,%d) ",ibin1,jbin1,ibin2,jbin2)
+	      << " effData=" << effData << ", effMC=" << effMC
+	      << ", rho_misc" << miscFlag << "=" << rho << "\n";
+  }
   return rho;
 }
 
@@ -268,6 +276,14 @@ int DYTnPEff_t::randomize(const DYTnPEff_t &e, TString tag, int systematic)
     return 0;
   }
   int nonNegative=0;
+
+  for (unsigned int i=0; i<e.fullListSize(); i++) {
+    if (hasDoubleZero(e.h2fullList(i))) {
+      std::cout << "Warning: DYTnPEff_t::randomize(e): double zero detected\n";
+      break;
+    }
+  }
+
   //std::cout << "randomize within error : "; printHisto(e.h2Eff_RecoID_Data);
   randomizeWithinErr(e.h2Eff_RecoID_Data, h2Eff_RecoID_Data, nonNegative,0,systematic);
   randomizeWithinErr(e.h2Eff_Iso_Data, h2Eff_Iso_Data, nonNegative,0,systematic);
@@ -933,11 +949,43 @@ DYTnPEff_t* DYTnPEffColl_t::getTnPWithSystUnc(int idx) const
 
 // -------------------------------------------------------------
 
-DYTnPEff_t* DYTnPEffColl_t::getTnPWithTotUnc() const
+DYTnPEff_t* DYTnPEffColl_t::getTnPWithTotUnc(TString tag) const
 {
-  DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,"_totUnc");
+  DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,tag);
   for (unsigned int i=0; i<fTnPEffSystV.size(); i++) {
     e->add(*fTnPEffSystV[i]);
+  }
+  return e;
+}
+
+// -------------------------------------------------------------
+
+DYTnPEff_t* DYTnPEffColl_t::getTnPSource(int srcIdx) const
+{
+  TString tag=Form("_srcIdx%d",srcIdx);
+  DYTnPEff_t *e= NULL;
+  int res=1;
+  if ((srcIdx==9999) || (srcIdx==-1111)) {
+    e= this->getTnPWithTotUnc();
+  }
+  else if (srcIdx==0) {
+    e= new DYTnPEff_t(fTnPEff,tag);
+  }
+  else if (srcIdx<0) {
+    srcIdx=-srcIdx-1; // correction for index
+    if (srcIdx<int(fTnPEffSystV.size())) {
+      e= new DYTnPEff_t(*fTnPEffSystV[srcIdx],tag);
+    }
+  }
+  else if (srcIdx>0) {
+    // systematic error
+    srcIdx--; // -1 - correction for index
+    std::cout << "calling getTnPWithSystUnc srcIdx=" << srcIdx << "\n";
+    e= this->getTnPWithSystUnc(srcIdx);
+  }
+  if (!res) {
+    if (e) { delete e; e=NULL; }
+    std::cout << "DYTnPEffColl_t::getTnPSource failed\n";
   }
   return e;
 }
@@ -1027,6 +1075,9 @@ DYTnPEff_t* DYTnPEffColl_t::randomize(int srcIdx, TString tag) const
     if (srcIdx<int(fTnPEffSystV.size())) {
       e= new DYTnPEff_t(fElChannel);
       res= e->randomize(*fTnPEffSystV[srcIdx],tag,1);
+      std::cout << "\n\t\tRandomized source " << srcIdx << "\n";
+      fTnPEffSystV[srcIdx]->listNumbers();
+      std::cout << "\tresult "; e->listNumbers();
     }
     else res=0;
   }
@@ -1035,6 +1086,8 @@ DYTnPEff_t* DYTnPEffColl_t::randomize(int srcIdx, TString tag) const
     srcIdx--; // correction for index
     if (srcIdx<int(fTnPEffSystV.size())) {
       DYTnPEff_t *src= getTnPWithSystUnc(srcIdx);
+      std::cout << "\n\t\tRandomized source " << srcIdx << "\n";
+      src->listNumbers();
       e= new DYTnPEff_t(fElChannel);
       res= e->randomize(*src,tag,1);
       delete src;
@@ -1065,10 +1118,12 @@ void DYTnPEffColl_t::listNumbers() const
 {
   std::cout << "\n" << std::string(20,'=') << "\n";
   fTnPEff.listNumbers();
-  std::cout << "\n" << std::string(10,'=') << " SOURCES " << std::string(10,'=')
-	    << "\n";
-  for (unsigned int i=0; i<fTnPEffSrcV.size(); i++) {
-    fTnPEffSrcV[i]->listNumbers();
+  if (0) {
+    std::cout << "\n" << std::string(10,'=') << " SOURCES "
+	      << std::string(10,'=') << "\n";
+    for (unsigned int i=0; i<fTnPEffSrcV.size(); i++) {
+      fTnPEffSrcV[i]->listNumbers();
+    }
   }
   std::cout << "\n" << std::string(10,'=') << " ABSOLUTE SYST "
 	    << std::string(10,'=') << "\n";
@@ -1188,7 +1243,11 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
 	    //std::cout << "requesting scale factor\n";
 	    double rho= eff.scaleFactorIdx(ibin1,jbin1,ibin2,jbin2, hlt4p3);
-	    //std::cout << "got rho=" << rho << "\n";
+	    if (0 && (rho!=0.)) {
+	      std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "; ";
+	      std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "; ";
+	      std::cout << "got rho=" << rho << "\n";
+	    }
 	    sumRho += rho* h2sp->GetBinContent(fi1,fi2);
 	    sum += h2sp->GetBinContent(fi1,fi2);
 	  }
@@ -1233,8 +1292,10 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 // -------------------------------------------------------------
 
 TH1D* EventSpace_t::calculateScaleFactor_misc(const DYTnPEff_t &eff,
-			  int hlt4p3, TString hName, TString hTitle) const
+			      int hlt4p3, TString hName, TString hTitle,
+	      int followFIBin1, int followFIBin2, TH1D *h1followedBin) const
 {
+
   TH1D* h1rho= new TH1D(hName,hTitle, DYtools::nMassBins, DYtools::massBinEdges);
   if (!h1rho) {
     std::cout << "cannot create h1rho\n";
@@ -1265,12 +1326,25 @@ TH1D* EventSpace_t::calculateScaleFactor_misc(const DYTnPEff_t &eff,
 	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
 	    //std::cout << "requesting scale factor\n";
 	    double rho= eff.scaleFactorIdx_misc(ibin1,jbin1,ibin2,jbin2, hlt4p3);
+	    if (0 && (rho!=0.)) {
+	      std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "; ";
+	      std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "; ";
+	      std::cout << "got rho_misc=" << rho << "\n";
+	      std::cout << " + " << (rho*h2sp->GetBinContent(fi1,fi2)) << ", +" << h2sp->GetBinContent(fi1,fi2) << "\n";
+	    }
+	    if (h1followedBin && (followFIBin1==fi1) && (followFIBin2==fi2)) {
+	      h1followedBin->Fill(rho);
+	    }
 	    //std::cout << "got rho=" << rho << "\n";
 	    sumRho += rho* h2sp->GetBinContent(fi1,fi2);
 	    sum += h2sp->GetBinContent(fi1,fi2);
 	  }
 	}
       }
+    }
+
+    if (0) {
+      std::cout << " avgRho=" << sumRho << "/" << sum << "\n";
     }
 
     // evaluate uncertainty
@@ -1314,6 +1388,21 @@ void EventSpace_t::displayAll() const
     plotHisto(fh2ESV[im],"cES_"+ fName + "_" + mStr,
 	      PlotCovCorrOpt_t(0,1,0,1.5,0.15,0.15));
   }
+}
+
+// -------------------------------------------------------------
+
+void EventSpace_t::listAll() const
+{
+  std::cout << std::string(20,'-') << "\n";
+  std::cout << "EventSpace: " << fName << "\n";
+  for (unsigned int im=0; im<fh2ESV.size(); im++) {
+    TString mStr= DYtools::massStr(im,1);
+    std::cout << "\n\tim=" << im << ", mass=" << mStr << "\n";
+    const int nonZero=1;
+    printHisto(fh2ESV[im],0,nonZero);
+  }
+  std::cout << std::string(20,'-') << "\n";
 }
 
 // -------------------------------------------------------------
