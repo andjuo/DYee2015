@@ -810,12 +810,26 @@ void scaleBin(TH1D* h1, int ibin, double x)
 
 // ---------------------------------------------------------
 
-void printBin(TH1D *h1, int ibin, int newLine)
+void printBin(const TH1D *h1, int ibin, int newLine)
 {
   std::cout << h1->GetName() << "[" << ibin << "]="
 	    << h1->GetBinContent(ibin) << " +- "
 	    << h1->GetBinError(ibin);
   if (newLine) std::cout << "\n";
+}
+
+// ---------------------------------------------------------
+
+int hasDoubleZero(const TH2D *h2)
+{
+  int ok=1;
+  for (int ibin=1; ok && (ibin<=h2->GetNbinsX()); ibin++) {
+    for (int jbin=1; ok && (jbin<=h2->GetNbinsY()); jbin++) {
+      if ((h2->GetBinContent(ibin,jbin) == 0) &&
+	  (h2->GetBinError(ibin,jbin) == 0)) ok=0;
+    }
+  }
+  return (!ok);
 }
 
 // ---------------------------------------------------------

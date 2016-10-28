@@ -171,7 +171,8 @@ int checkRange(const std::vector<TH1D*> &h1V,
 
 
 void scaleBin(TH1D *h1, int ibin, double x);
-void printBin(TH1D *h1, int ibin, int newLine=1);
+void printBin(const TH1D *h1, int ibin, int newLine=1);
+int hasDoubleZero(const TH2D *h2);
 
 // -----------------------------------------------------------
 
