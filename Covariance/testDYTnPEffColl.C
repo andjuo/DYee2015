@@ -2,6 +2,8 @@
 #include "crossSection.h"
 #include "DYmm13TeV_eff.h"
 
+#define _locdef_debugMode 0
+
   const int nEtaBins=2;
   const double etaArr[nEtaBins+1]= { -2.5, 0., 2.5 };
   //const int nPtBins=3;
@@ -19,14 +21,21 @@ void setValue(TH2D *h2, int ibin, int jbin, double v, double dv)
 
 // ----------------------------------------------------------
 
-//std::vector<TH1D*>* randomizeSF(const DYTnPEffColl_t &eff, const EventSpace_t &es,
-//				int nToys, TString nameBase);
+DYTnPEff_t* randomizeEffs(const DYTnPEffColl_t &coll, int srcIdx, int nToys,
+			  TString tag);
 
-DYTnPEff_t* randomizeEffs(const DYTnPEffColl_t &coll, int srcIdx, int nToys, TString tag);
+std::vector<TH1D*>* randomizeSF(const DYTnPEffColl_t &eff,
+				int rndSrcIdx,
+				const EventSpace_t &es,
+				int nToys, TString nameBase);
+
+void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
+		 int nToys, int testCase);
+
 
 // ----------------------------------------------------------
 
-void testDYTnPEffColl(int nExps_input=100)
+void testDYTnPEffColl(int nExps_input=100, int testCase=0)
 {
 
   TH2D *h2def= new TH2D("h2def","h2def;eta;pt", nEtaBins,etaArr,nPtBins,ptArr);
@@ -55,9 +64,9 @@ void testDYTnPEffColl(int nExps_input=100)
   DYTnPEff_t eSystA(tnpDef,"systA");
   DYTnPEff_t eSystB(tnpDef,"systB");
 
-  setValue(eStat.h2Eff_RecoID_Data,1,1, 0.5,0.5);
-  setValue(eStat.h2Eff_RecoID_Data,2,1, 1.25,0.75);
-  setValue(eSystB.h2Eff_Iso_MC,2,1, 0.75, 100.);
+  setValue(eStat.h2Eff_RecoID_Data,1,1, 0.5,0.05);
+  setValue(eStat.h2Eff_RecoID_Data,2,1, 1.15,0.25);
+  setValue(eSystB.h2Eff_Iso_MC,2,1, 0.85, 100.);
 
 
   DYTnPEffColl_t coll(0);
@@ -107,7 +116,7 @@ void testDYTnPEffColl(int nExps_input=100)
     return;
   }
 
-  if (1) {
+  if (0) {
     DYTnPEff_t *effTot= coll.getTnPWithTotUnc();
     effTot->listNumbers();
     DYTnPEff_t *effTotRnd= randomizeEffs(coll,-1111, nToys,"_all");
@@ -115,11 +124,7 @@ void testDYTnPEffColl(int nExps_input=100)
     effTotRnd->displayAll();
   }
 
-    return;
-  randomizeEffs(coll,-1,nToys,"_systAOnly");
-  randomizeEffs(coll,-2,nToys,"_systBOnly");
-
-  return;
+  //return;
 
 
   EventSpace_t esTest("esTest",h2def);
@@ -144,8 +149,9 @@ void testDYTnPEffColl(int nExps_input=100)
     esTest.fill(v1+im, &v2, 1.);
   }
   esTest.displayAll();
+  esTest.listAll();
 
-  //deriveUn
+  deriveSFUnc(coll,esTest,nToys,testCase);
 }
 
 // ----------------------------------------------------------
@@ -246,19 +252,80 @@ DYTnPEff_t* randomizeEffs(const DYTnPEffColl_t &coll, int srcIdx, int nToys, TSt
 
 // ----------------------------------------------------------
 // ----------------------------------------------------------
-/*
+
 std::vector<TH1D*>* randomizeSF(const DYTnPEffColl_t &coll,
 				int rndSrcIdx,
 				const EventSpace_t &es,
 				int nToys, TString nameBase)
 {
   std::vector<TH1D*> *h1V= new std::vector<TH1D*>();
+  h1V->reserve(nToys);
+  int fibin1=1, fibin2=1;
+  TH1D *h1follow= new TH1D("h1follow",Form("h1follow_%d_%d",fibin1,fibin2),
+			   100,-1.,3.);
+  h1follow->SetDirectory(0);
+  const int debugMode=_locdef_debugMode;
   for (int iToy=0; iToy<nToys; iToy++) {
-    //DYTnPEff_t *rndEff= coll.randomize(srcIdx,
-    //rndEff.randomize(
-    //TH1D *h1toy= es.calculateScaleFactor(eff
+    TString tag=Form("_srcIdx%d_rnd%d",rndSrcIdx,iToy);
+    DYTnPEff_t *rndEff= coll.randomize(rndSrcIdx,tag);
+    TH1D *h1toy= NULL;
+    if (debugMode) { // debug mode
+      h1toy=es.calculateScaleFactor_misc(*rndEff,
+					 DYTnPEff_t::_misc_hlt4p2_leadLep,
+					 "h1"+tag,"h1"+tag,
+					 fibin1,fibin2,h1follow);
+    }
+    else { // realistic mode
+      h1toy= es.calculateScaleFactor(*rndEff,0,
+				     "h1"+tag,"h1"+tag);
+    }
+    h1V->push_back(h1toy);
   }
-  return NULL;
+  if (h1follow && (h1follow->Integral()!=0))
+    plotHisto(h1follow,"cFollowedBin",0,1,"LPE");
+  return h1V;
 }
-*/
+
+
+// ----------------------------------------------------------
+// ----------------------------------------------------------
+
+void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
+		 int nToys, int testCase)
+{
+  int rndSrcIdx=testCase;
+  //if (testCase==-1111) rndSrcIdx=-1111;
+  TString nameBase="_rnd";
+  std::vector<TH1D*> *h1V = randomizeSF(coll,rndSrcIdx,es,nToys,nameBase);
+  DYTnPEff_t *baseEff= coll.getTnPSource(rndSrcIdx);
+  std::cout << "baseEff "; baseEff->listNumbers();
+  std::cout << "calculateSF from baseEff\n";
+
+  TH1D *h1sf= NULL;
+  const int debugMode=_locdef_debugMode;
+  if (debugMode) { // debug mode
+    h1sf=es.calculateScaleFactor_misc(*baseEff,DYTnPEff_t::_misc_hlt4p2_leadLep,"h1sf_misc","h1sf_misc");
+  }
+  else {
+    h1sf=es.calculateScaleFactor(*baseEff,0,"h1sf","h1sf");
+  }
+  TH1D *h1avgSF=NULL;
+  TH2D *h2cov=NULL;
+  if (!deriveCovariance(*h1V,"h1sf_avg",Form("sf from src=%d",rndSrcIdx),
+			&h1avgSF,&h2cov)) {
+    std::cout << "failed to derive the covariance\n";
+    return;
+  }
+  printHisto(h1sf);
+  printHisto(h1avgSF);
+  plotHisto(h1avgSF,"cAvgSF",0,0,"LPE1","avg");
+  HistoStyle_t(kRed,24).SetStyle(h1sf);
+  plotHistoSame(h1sf,"cAvgSF","LPE1","sf");
+  return;
+  printHisto(h2cov);
+  TH2D* h2corr=NULL;
+  plotCovCorr(h2cov,"cSFCov",PlotCovCorrOpt_t(1,1,0),&h2corr);
+  printHisto(h2corr);
+}
+
 // ----------------------------------------------------------
