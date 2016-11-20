@@ -5,7 +5,7 @@
 // ----------------------------------------------------------------
 
 const int nPt=5;
-const double Ele_pt[nPt+1] = { 10.,20.,30.,40.,50.,200. };
+const double Ele_pt[nPt+1] = { 10.,20.,30.,40.,50.,2000. };
 const int nPtHLT=12;
 const double Ele_ptHLT[nPtHLT+1] = {10,22,23,24,25,26,28,30,35,40,50,60,100};
 const int nAbsEta=5;
@@ -210,17 +210,18 @@ void plotDYeeESF(TString theSet="ID", int save=0)
 	const TH2D *h2eff= allHistosV[i];
 	if (h2eff->Integral()==0) continue;
 	std::cout << " working with " << h2eff->GetName() << "\n";
-	TH2D *h2=cloneHisto(h2eff,h2eff->GetName() + TString("_inEta"),
+	TH2D *h2=cloneHisto(h2signed,h2eff->GetName() + TString("_inEta"),
 			    h2eff->GetTitle());
 	allHistosV.push_back(h2);
 	for (int ibin=1; ibin<=h2signed->GetNbinsX(); ibin++) {
 	  double eta= h2signed->GetXaxis()->GetBinLowEdge(ibin)
 	    + 0.5*h2signed->GetXaxis()->GetBinWidth(ibin);
-	  int iEta= h2->GetXaxis()->FindBin(abs(eta));
+	  int iEta= h2eff->GetXaxis()->FindBin(abs(eta));
+	  //std::cout << "ibin=" << ibin << ", eta=" << eta << ", iEta=" << iEta << "\n";
 	  for (int jbin=1; jbin<=h2signed->GetNbinsY(); jbin++) {
-	    h2signed->SetBinContent(ibin, jbin, h2->GetBinContent(iEta,jbin));
-	    h2signed->SetBinError  (ibin, jbin, h2->GetBinError(iEta,jbin));
-	    //std::cout << " set eta=" << eta << ", " << h2signed->GetYaxis()->GetBinLowEdge(jbin) << " .. " << (h2signed->GetYaxis()->GetBinLowEdge(jbin)+h2signed->GetYaxis()->GetBinWidth(jbin)) << " to  iEta=" << iEta << " eff=" << h2->GetBinContent(iEta,jbin) << " +- " << h2->GetBinError(iEta,jbin) << "\n";
+	    h2->SetBinContent(ibin, jbin, h2eff->GetBinContent(iEta,jbin));
+	    h2->SetBinError  (ibin, jbin, h2eff->GetBinError(iEta,jbin));
+	    //std::cout << " set eta=" << eta << ", " << h2signed->GetYaxis()->GetBinLowEdge(jbin) << " .. " << (h2signed->GetYaxis()->GetBinLowEdge(jbin)+h2signed->GetYaxis()->GetBinWidth(jbin)) << " to  iEta=" << iEta << ", " << h2eff->GetXaxis()->GetBinLowEdge(iEta) << " .. " << (h2eff->GetXaxis()->GetBinLowEdge(iEta)+h2eff->GetXaxis()->GetBinWidth(iEta)) << ", eff=" << h2eff->GetBinContent(iEta,jbin) << " +- " << h2eff->GetBinError(iEta,jbin) << "\n";
 	  }
 	}
       }
