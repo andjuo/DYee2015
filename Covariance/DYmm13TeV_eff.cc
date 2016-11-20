@@ -52,6 +52,33 @@ DYTnPEff_t::~DYTnPEff_t()
 
 // -------------------------------------------------------------
 
+int DYTnPEff_t::setHisto(int kind, int isMC, TH2D *h2)
+{
+  if (kind== _kind_RecoID) {
+    if (isMC) h2Eff_RecoID_MC= h2;
+    else h2Eff_RecoID_Data= h2;
+  }
+  else if (kind== _kind_Iso) {
+    if (isMC) h2Eff_Iso_MC= h2;
+    else h2Eff_Iso_Data= h2;
+  }
+  else if (kind== _kind_HLT4p2) {
+    if (isMC) h2Eff_HLT4p2_MC= h2;
+    else h2Eff_HLT4p2_Data= h2;
+  }
+  else if (kind== _kind_HLT4p3) {
+    if (isMC) h2Eff_HLT4p3_MC= h2;
+    else h2Eff_HLT4p3_Data= h2;
+  }
+  else {
+    std::cout << "DYTnPEff::setHisto is not ready for kind=" << kind << "\n";
+    return 0;
+  }
+  return 1;
+}
+
+// -------------------------------------------------------------
+
 int DYTnPEff_t::updateVectors()
 {
   h2VReco.clear();
@@ -254,14 +281,53 @@ int DYTnPEff_t::assign(const DYTnPEff_t &e, TString tag)
 
 int DYTnPEff_t::assign_DiffAsUnc(const DYTnPEff_t &e, int relative)
 {
-  int res=assignDiffAsUnc(h2Eff_RecoID_Data, e.h2Eff_RecoID_Data, relative);
-  if (res) res=assignDiffAsUnc(h2Eff_Iso_Data, e.h2Eff_Iso_Data, relative);
-  if (res) res=assignDiffAsUnc(h2Eff_HLT4p2_Data, e.h2Eff_HLT4p2_Data, relative);
-  if (res) res=assignDiffAsUnc(h2Eff_HLT4p3_Data, e.h2Eff_HLT4p3_Data, relative);
-  if (res) res=assignDiffAsUnc(h2Eff_RecoID_MC, e.h2Eff_RecoID_MC, relative);
-  if (res) res=assignDiffAsUnc(h2Eff_Iso_MC, e.h2Eff_Iso_MC, relative);
-  if (res) res=assignDiffAsUnc(h2Eff_HLT4p2_MC, e.h2Eff_HLT4p2_MC, relative);
-  if (res) res=assignDiffAsUnc(h2Eff_HLT4p3_MC, e.h2Eff_HLT4p3_MC, relative);
+  int listRanges=1;
+  int res=1;
+  if (res) {
+    if (h2Eff_RecoID_Data->Integral()!=0) {
+      assignDiffAsUnc(h2Eff_RecoID_Data, e.h2Eff_RecoID_Data, relative, listRanges);
+    }
+  }
+  if (res) {
+    if (h2Eff_Iso_Data->Integral()!=0) {
+      res=assignDiffAsUnc(h2Eff_Iso_Data, e.h2Eff_Iso_Data, relative, listRanges);
+    }
+  }
+  if (res) {
+    if (h2Eff_HLT4p2_Data->Integral()!=0) {
+      res=assignDiffAsUnc(h2Eff_HLT4p2_Data, e.h2Eff_HLT4p2_Data, relative, listRanges);
+    }
+  }
+  if (res) {
+    if (h2Eff_HLT4p3_Data->Integral()!=0) {
+      res=assignDiffAsUnc(h2Eff_HLT4p3_Data, e.h2Eff_HLT4p3_Data, relative, listRanges);
+    }
+  }
+  if (res) {
+    if (h2Eff_RecoID_MC->Integral()!=0) {
+      res=assignDiffAsUnc(h2Eff_RecoID_MC, e.h2Eff_RecoID_MC, relative, listRanges);
+    }
+  }
+  if (res) {
+    if (h2Eff_Iso_MC->Integral()!=0) {
+      //HERE("\nassign MC\n");
+      //printHisto(h2Eff_Iso_MC);
+      //printHisto(e.h2Eff_Iso_MC);
+      res=assignDiffAsUnc(h2Eff_Iso_MC, e.h2Eff_Iso_MC, relative, listRanges);
+      //printHisto(h2Eff_Iso_MC);
+      //HERE("\ndone\n");
+    }
+  }
+  if (res) {
+    if (h2Eff_HLT4p2_MC->Integral()!=0) {
+      res=assignDiffAsUnc(h2Eff_HLT4p2_MC, e.h2Eff_HLT4p2_MC, relative, listRanges);
+    }
+  }
+  if (res) {
+    if (h2Eff_HLT4p3_MC->Integral()!=0) {
+      res=assignDiffAsUnc(h2Eff_HLT4p3_MC, e.h2Eff_HLT4p3_MC, relative, listRanges);
+    }
+  }
   fElChannel= e.fElChannel;
   if (res) res= updateVectors();
   return res;
@@ -370,6 +436,35 @@ int DYTnPEff_t::add(const DYTnPEff_t &e)
   h2Eff_HLT4p2_MC->Add(e.h2Eff_HLT4p2_MC);
   h2Eff_HLT4p3_MC->Add(e.h2Eff_HLT4p3_MC);
   return 1;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::addShiftByUnc(const DYTnPEff_t &e,
+			      double nSigmas_data, double nSigmas_mc)
+{
+  int res=
+    ::addShiftByUnc(h2Eff_RecoID_Data, e.h2Eff_RecoID_Data,nSigmas_data) &&
+    ::addShiftByUnc(h2Eff_Iso_Data, e.h2Eff_Iso_Data,nSigmas_data) &&
+    ::addShiftByUnc(h2Eff_HLT4p2_Data, e.h2Eff_HLT4p2_Data,nSigmas_data) &&
+    ::addShiftByUnc(h2Eff_HLT4p3_Data, e.h2Eff_HLT4p3_Data,nSigmas_data) &&
+    ::addShiftByUnc(h2Eff_RecoID_MC, e.h2Eff_RecoID_MC,nSigmas_mc) &&
+    ::addShiftByUnc(h2Eff_Iso_MC, e.h2Eff_Iso_MC,nSigmas_mc) &&
+    ::addShiftByUnc(h2Eff_HLT4p2_MC, e.h2Eff_HLT4p2_MC,nSigmas_mc) &&
+    ::addShiftByUnc(h2Eff_HLT4p3_MC, e.h2Eff_HLT4p3_MC,nSigmas_mc);
+  for (unsigned int i=0; i<fullListSize(); i++) {
+    const TH2D *h2= h2fullList(i);
+    if (hasValueBelow(h2,0.)) {
+      std::cout << "efficiencies became negative for: "
+		<< h2->GetName() << "\n";
+    }
+    const double topValue=1.;
+    if (hasValueAbove(h2,topValue)) {
+      std::cout << "efficiencies became larger than " << topValue << " for "
+		<< h2->GetName() << "\n";
+    }
+  }
+  return res;
 }
 
 // -------------------------------------------------------------
@@ -682,7 +777,7 @@ void DYTnPEff_t::displayEffTot(int data_or_mc, TString tag, int hlt4p3,
 
 void DYTnPEff_t::listNumbers() const
 {
-  std::cout << "\n" << string(20,'-') << "\n";
+  std::cout << "\n" << std::string(20,'-') << "\n";
   printHisto(h2Eff_RecoID_Data);
   /*
   printHisto(h2Eff_RecoID_MC);
@@ -695,12 +790,13 @@ void DYTnPEff_t::listNumbers() const
   printHisto(h2Eff_HLT4p3_Data);
   printHisto(h2Eff_HLT4p3_MC);
   */
-  std::cout << string(20,'-') << "\n";
+  std::cout << std::string(20,'-') << "\n";
 }
 
 // -------------------------------------------------------------
 
-void DYTnPEff_t::printEffRatios(const DYTnPEff_t &e, int compareErrs) const
+void DYTnPEff_t::printEffRatios(const DYTnPEff_t &e, int compareErrs,
+				double markIfDiffRelTol) const
 {
   if (!h2Eff_RecoID_Data || !e.h2Eff_RecoID_Data) {
     std::cout << "printEffRatios: initial check failed\n";
@@ -722,7 +818,10 @@ void DYTnPEff_t::printEffRatios(const DYTnPEff_t &e, int compareErrs) const
       return;
     }
     for (unsigned int i=0; i<h2va->size(); i++) {
-      printRatio(h2va->at(i),h2vb->at(i),0,compareErrs);
+      std::cout << "compare ranges of " << h2va->at(i)->GetName() << ", and "
+		<< h2vb->at(i)->GetName() << "\n";
+      compareRanges(h2va->at(i),h2vb->at(i),1);
+      printRatio(h2va->at(i),h2vb->at(i),0,compareErrs,markIfDiffRelTol);
     }
   }
 }
@@ -787,6 +886,25 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
   if (subdir.Length()) fin.cd();
 
   return updateVectors();
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::load(TString fname, TString subdir, TString tag)
+{
+  TFile fin(fname);
+  if (!fin.IsOpen()) {
+    std::cout << "DYTnPEff_t::load(fname,subdir,tag) error: failed "
+	      << "to open file <" << fname << ">\n";
+    return 0;
+  }
+  int res= this->load(fin,subdir,tag);
+  fin.Close();
+  if (!res) {
+    std::cout << "DYTnPEff_t::load(fname,subdir,tag) error: failed "
+	      << "to load from file <" << fname << ">\n";
+  }
+  return res;
 }
 
 // -------------------------------------------------------------
@@ -992,6 +1110,18 @@ DYTnPEff_t* DYTnPEffColl_t::getTnPSource(int srcIdx) const
 
 // -------------------------------------------------------------
 
+DYTnPEff_t* DYTnPEffColl_t::getTnPShiftByUnc(TString tag,
+			     double nSigmas_data, double nSigmas_mc) const
+{
+  DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,tag);
+  for (unsigned int i=0; i<fTnPEffSystV.size(); i++) {
+    e->addShiftByUnc(*fTnPEffSystV[i],nSigmas_data,nSigmas_mc);
+  }
+  return e;
+}
+
+// -------------------------------------------------------------
+
 int DYTnPEffColl_t::ptrsOk() const
 {
   int ok= (fTnPEff.ptrsOk() && (fTnPEffSrcV.size()==fTnPEffSystV.size())) ? 1:0;
@@ -1103,6 +1233,87 @@ DYTnPEff_t* DYTnPEffColl_t::randomize(int srcIdx, TString tag) const
 
 // -------------------------------------------------------------
 
+DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
+					    int maxSigma,
+	    TH2D **h2chk, unsigned int ihChk, unsigned int iSrcChk) const
+{
+  DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,tag);
+  if (h2chk) (*h2chk)->Reset();
+
+  for (unsigned int ih=0; ih<e->fullListSize(); ih++) {
+    TH2D *h2dest= e->h2fullList(ih);
+    for (unsigned int iSrc=0; iSrc<fTnPEffSrcV.size(); iSrc++) {
+      const DYTnPEff_t *eff= fTnPEffSrcV[iSrc];
+      const TH2D *h2src= eff->h2fullList(ih);
+      const TH2D *h2nominal= fTnPEff.h2fullList(ih);
+      if (h2src->Integral()==0) continue;
+      if ( hlt4p3 && (TString(h2src->GetName()).Index("HLT4p2")!=-1)) continue;
+      if (!hlt4p3 && (TString(h2src->GetName()).Index("HLT4p3")!=-1)) continue;
+      if (0) {
+	TH2D* h2srcClone= cloneHisto(h2src,h2src->GetName()+TString("_clone"),
+				     h2src->GetTitle());
+	plotHisto(h2srcClone,Form("cSrc_ih%d_isrc%d",ih,iSrc),0,1,"COLZ");
+      }
+      TH2D *h2diff= cloneHisto(h2src,"h2diff","h2diff");
+      h2diff->Add(h2nominal,-1);
+      switch (kind) {
+      case _rnd_ampl: {
+	double r= gRandom->Gaus(0,1);
+	if (maxSigma!=0) r=double(maxSigma);
+	//std::cout << "r=" << r << "\n";
+	h2dest->Add(h2diff,r);
+	if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
+	  (*h2chk)->Add(h2diff,r);
+	}
+      } break;
+      case _rnd_barrel_vs_endcap: {
+	double r= gRandom->Gaus(0,1);
+	if (maxSigma!=0) r=double(maxSigma);
+	for (int ibin=1; ibin<=h2diff->GetNbinsX(); ibin++) {
+	  int useSign=
+	    (fabs(h2diff->GetXaxis()->GetBinCenter(ibin))<0.5*(1.444+1.566)) ?
+	    1:-1;
+	  //std::cout << " center " << h2diff->GetXaxis()->GetBinCenter(ibin) << " use sign " << useSign << "\n";
+	  for (int jbin=1; jbin<=h2diff->GetNbinsY(); jbin++) {
+	    double v= h2dest->GetBinContent(ibin,jbin);
+	    double dv=r*useSign*fabs(h2diff->GetBinContent(ibin,jbin));
+	    //if ((ibin==2) && (jbin==1)) std::cout << "chk dv=" << dv << "\n";
+	    h2dest->SetBinContent(ibin,jbin, v + dv);
+	    if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
+	      (*h2chk)->SetBinContent(ibin,jbin,dv);
+	    }
+	  }
+	}
+      } break;
+      case _rnd_low_vs_high_pt: {
+	double r= gRandom->Gaus(0,1);
+	if (maxSigma!=0) r=double(maxSigma);
+	for (int ibin=1; ibin<=h2diff->GetNbinsX(); ibin++) {
+	  for (int jbin=1; jbin<=h2diff->GetNbinsY(); jbin++) {
+	    const double nb= h2diff->GetNbinsY();
+	    double a= (2*jbin/nb-1)*r;
+	    double v= h2dest->GetBinContent(ibin,jbin);
+	    double dv= a*fabs(h2diff->GetBinContent(ibin,jbin));
+	    h2dest->SetBinContent(ibin,jbin, v+dv);
+	    if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
+	      (*h2chk)->SetBinContent(ibin,jbin,dv);
+	    }
+	  }
+	}
+      } break;
+      default:
+	std::cout << "error in DYTnPEffColl_t::randomizeByKind: "
+		  << "code is not ready for kind=" << kind << "\n";
+	return NULL;
+      }
+      delete h2diff;
+    }
+  }
+  return e;
+}
+
+// -------------------------------------------------------------
+
 void DYTnPEffColl_t::displayAll() const
 {
   for (unsigned int i=0; i<fTnPEffSrcV.size(); i++)
@@ -1186,6 +1397,7 @@ int EventSpace_t::assign(const EventSpace_t &es) {
 TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 					 TString hName, TString hTitle) const
 {
+  std::cout << "\n\ncalculateScaleFactor : for hName=" << hName << ", title=" << hTitle << "\n";
   TH1D* h1rho= new TH1D(hName,hTitle, DYtools::nMassBins, DYtools::massBinEdges);
   if (!h1rho) {
     std::cout << "cannot create h1rho\n";
@@ -1243,7 +1455,7 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
 	    //std::cout << "requesting scale factor\n";
 	    double rho= eff.scaleFactorIdx(ibin1,jbin1,ibin2,jbin2, hlt4p3);
-	    if (0 && (rho!=0.)) {
+	    if (0 && (im==0) && (rho!=0.)) {
 	      std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "; ";
 	      std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "; ";
 	      std::cout << "got rho=" << rho << "\n";
@@ -1443,6 +1655,24 @@ int EventSpace_t::load(TFile &fin, TString subdir)
   return checkPtrs();
 }
 
+// -------------------------------------------------------------
+
+int EventSpace_t::load(TString fname, TString subdir)
+{
+  TFile fin(fname);
+  if (!fin.IsOpen()) {
+    std::cout << "EventSpace_t::load(fname,subdir) error: failed to open file <"
+	      << fname << ">\n";
+    return 0;
+  }
+  int res= this->load(fin,subdir);
+  fin.Close();
+  if (!res) {
+    std::cout << "EventSpace_t::load(fname,subdir) error: failed to load from "
+	      << "file <" << fname << ">\n";
+  }
+  return res;
+}
 
 // -------------------------------------------------------------
 

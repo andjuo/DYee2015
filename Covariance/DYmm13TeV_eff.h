@@ -124,6 +124,8 @@ int GetValueIdx(const TH2D* h2, int iEta, int iPt, double &v, double &err,
 
 class DYTnPEff_t {
 public:
+  typedef enum { _kind_RecoID=0, _kind_Iso, _kind_HLT4p2, _kind_HLT4p3
+  } TEffKind_t;
   typedef enum { _misc_empty=0, _misc_hlt4p2_plain=1, _misc_hlt4p3_plain,
 		 _misc_hlt4p2_leadLep, _misc_hlt4p3_leadLep,
 		 _misc_Last } TMiscStudyFlag_t;
@@ -169,8 +171,23 @@ public:
     return NULL;
   }
 
+  int setHisto(int kind, int isMC, TH2D *h2);
+
   unsigned int fullListSize() const
   { return (h2VReco.size()+h2VIso.size()+h2VHLT.size()); }
+
+  TH2D* h2fullList(unsigned int i)
+  {
+    if (i>=h2VReco.size()) i-=h2VReco.size();
+    else return h2VReco[i];
+    if (i>=h2VIso.size()) i-=h2VIso.size();
+    else return h2VIso[i];
+    if (i>=h2VHLT.size()) {
+      std::cout << "h2fullList: i=" << i << " is too large\n";
+      return NULL;
+    }
+    return h2VHLT[i];
+  }
 
   const TH2D* h2fullList(unsigned int i) const
   {
@@ -309,6 +326,7 @@ public:
 
   int multiply(const DYTnPEff_t &e);
   int add(const DYTnPEff_t &e);
+  int addShiftByUnc(const DYTnPEff_t &e, double nSigmas_data,double nSigmas_mc);
 
   // (x,dx) * (1,e0* dRelUnc)
   int includeRelUnc(const DYTnPEff_t &e0, const DYTnPEff_t &eRelUnc);
@@ -320,11 +338,13 @@ public:
   void displayEffTot(int data_or_mc= 1+2, TString tag="", int hlt4p3=-1,
 		     int misc=_misc_empty) const;
   void listNumbers() const;
-  void printEffRatios(const DYTnPEff_t &e, int compareErrs=0) const;
+  void printEffRatios(const DYTnPEff_t &e, int compareErrs=0,
+		      double markIfDiffRelTol=0.) const;
 
   // internal save/load
   int save(TFile &fout, TString subdirTag="");
   int load(TFile &fin, TString subdir="DYTnPEff", TString tag="");
+  int load(TString fname, TString subdir="DYTnPEff", TString tag="");
 
   // load from Kyeongpil's files
   int load_DYMM_TnP(TFile &fin, int version, TString tag="");
@@ -335,6 +355,11 @@ public:
 // -------------------------------------------------------------
 
 class DYTnPEffColl_t {
+public:
+  typedef enum { _rnd_ampl=0, _rnd_barrel_vs_endcap,
+		 _rnd_low_vs_high_pt } TRandomizationKind_t;
+
+protected:
   DYTnPEff_t fTnPEff; // efficiencies with statistical uncertainty
   std::vector<DYTnPEff_t*> fTnPEffSrcV;  // alternative efficiencies for systematics
   std::vector<DYTnPEff_t*> fTnPEffSystV; // derived systematic uncertainties
@@ -351,6 +376,8 @@ public:
   template<class idx_t>
   const DYTnPEff_t* getTnPSystUnc(idx_t idx) const { return fTnPEffSystV[idx]; }
   DYTnPEff_t* getTnPSource(int srcIdx) const;
+  DYTnPEff_t* getTnPShiftByUnc(TString tag,
+			       double nSigmas_data, double nSigmas_mc) const;
 
   int isElChannel() const { return fElChannel; }
   int ptrsOk() const;
@@ -373,6 +400,10 @@ public:
   // srcIdx= -number -- the central value of randomization would be 1, the uncertainty - relative
   // srcIdx= 9999 -- no randomization, just put it together
   DYTnPEff_t* randomize(int srcIdx, TString tag) const;
+
+  DYTnPEff_t* randomizeByKind(int rndKind, int hlt4p3, TString tag,
+			      int maxSigma=0,
+      TH2D **h2chk=NULL, unsigned int ihChk=0, unsigned int iSrcChk=0) const;
 
   //void printNumbers() const;
   void displayAll() const;
@@ -452,6 +483,7 @@ public:
 
   int save(TFile &fout);
   int load(TFile &fin, TString subdir);
+  int load(TString fname, TString subdir);
 
  protected:
   int prepareVector();
