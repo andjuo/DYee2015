@@ -92,6 +92,7 @@ void clearVec(std::vector<ptr_t*> &vec)
 // assign values
 void addToVector(std::vector<TString> &vec, TString strings);
 void addToVector(std::vector<int> &vec, int count, ...);
+void addToVector(std::vector<double> &vec, int count, ...);
 
 TCanvas* plotHisto(TH1D* h1, TString cName, int logX=0, int logY=0, TString drawOpt="LPE", TString explain="", int gridLines=3);
 TCanvas* plotHisto(TH2D* h2, TString cName, int logX=0, int logY=0,
@@ -102,6 +103,9 @@ TCanvas* plotHisto(const TH2D* h2, TString cName, int logX=0, int logY=0,
 		   double ytitleOffset=1.5, int gridLines=1,
 		   double centralZRange=0.);
 TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString explain="");
+// combination of plotHisto & plotHistoSame
+TCanvas *plotHistoAuto(TH1D *h1, TString canvName, int logX=0, int logY=0,
+	       TString drawOpt="LPE", TString explain="", int gridLines=3);
 TCanvas* plotGraphSame(TGraphErrors *h1, TString canvName, TString drawOpt, TString explain="");
 TCanvas* plotRatio(TH1D* h1, TString cName, int logX=0, int logY=0,
 		   TString drawOpt="LPE", TString explain="", int gridLines=3,
@@ -159,7 +163,12 @@ TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 TH2D* errorAsCentral(const TH2D* h2, int relative=0);
 int setError(TH1D *h1dest, const TH1D *h1src);
 int setError(TH2D *h2dest, const TH2D *h2src);
-int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative);
+int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative,
+		    int listRangesOnError=0);
+int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
+		  int listRangesOnError=0);
+int hasValueAbove(const TH2D *h2, double limit);
+int hasValueBelow(const TH2D *h2, double limit);
 void removeNegatives(TH1D* h1);
 int compareRanges(const TH1D *h1a, const TH1D *h1b, int verbose=0);
 int compareRanges(const TH2D *h2a, const TH2D *h2b, int verbose=0);
@@ -173,6 +182,7 @@ int checkRange(const std::vector<TH1D*> &h1V,
 void scaleBin(TH1D *h1, int ibin, double x);
 void printBin(const TH1D *h1, int ibin, int newLine=1);
 int hasDoubleZero(const TH2D *h2);
+void setToOne(TH2D* h2);
 
 // -----------------------------------------------------------
 
@@ -534,6 +544,8 @@ TH2D* cov2corr(const TH2D* h2cov);
 TH1D* uncFromCov(const TH2D *h2cov, const TH1D *h1centralVal=NULL,
 		 int zeroCentralMeansZeroRelError=0);
 
+double totUnc(const std::vector<double> &errV, int returnSqrValue=0);
+
 /*
 TCanvas *plotCovCorr(TH2D* h2cov, TString canvName,
 		     TH2D** h2corr_out=NULL,
@@ -558,7 +570,7 @@ TCanvas *plotCovCorr(const TMatrixD &cov, const TH1D *h1_for_axis_def,
 
 TCanvas *findCanvas(TString canvName);
 int findCanvases(TString canvNames, std::vector<TCanvas*> &cV);
-void closeCanvases();
+void closeCanvases(int itimes=3);
 
 void SaveCanvas(TCanvas* canv, TString canvName, TString destDir,
 		int correctName=0);

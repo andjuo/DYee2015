@@ -102,7 +102,23 @@ void addToVector(std::vector<int> &vec, int count, ...)
   va_list vl;
   va_start(vl,count);
   for (int i=0; i<count; i++) {
-    vec.push_back(va_arg(vl,int));
+    int val=va_arg(vl,int);
+    std::cout << " adding int " << val << "\n";
+    vec.push_back(val);
+  }
+  va_end(vl);
+}
+
+// -----------------------------------------------------------
+
+void addToVector(std::vector<double> &vec, int count, ...)
+{
+  va_list vl;
+  va_start(vl,count);
+  for (int i=0; i<count; i++) {
+    double val=va_arg(vl,double);
+    std::cout << " adding double " << val << "\n";
+    vec.push_back(val);
   }
   va_end(vl);
 }
@@ -202,6 +218,16 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
   }
   cOut->Update();
   return cOut;
+}
+
+// ---------------------------------------------------------
+
+TCanvas* plotHistoAuto(TH1D *h1, TString canvName, int logX, int logY,
+		       TString drawOpt, TString explain, int gridLines) {
+  TCanvas *c= findCanvas(canvName);
+  if (!c) c=plotHisto(h1,canvName,logX,logY,drawOpt,explain,gridLines);
+  else plotHistoSame(h1,canvName,drawOpt,explain);
+  return c;
 }
 
 // ---------------------------------------------------------
@@ -510,20 +536,28 @@ void printRatio(const TH2D *h2a, const TH2D *h2b, int extraRange,
   std::cout << std::string(5,' ') << h2a->GetName() << std::string(10,' ')
 	    << h2b->GetName() << std::string(10,' ') << "ratio\n";
   for (int ibin=1-d; ibin<=h2a->GetNbinsX()+d; ibin++) {
+    if (ibin-d>h2b->GetNbinsX()) {
+      std::cout << "different number of x bins\n";
+      continue;
+    }
     if ( (h2a->GetXaxis()->GetBinLowEdge(ibin) !=
 	  h2b->GetXaxis()->GetBinLowEdge(ibin)) ||
 	 (h2a->GetXaxis()->GetBinWidth(ibin) !=
 	  h2b->GetXaxis()->GetBinWidth(ibin)) ) {
       std::cout << "x-bining mismatch at ibin=" << ibin << "\n";
-      return;
+      //return;
     }
     for (int jbin=1-d; jbin<=h2a->GetNbinsY()+d; jbin++) {
+      if (jbin-d>h2b->GetNbinsY()) {
+	std::cout << "different number of y bins\n";
+	continue;
+      }
       if ( (h2a->GetYaxis()->GetBinLowEdge(jbin) !=
 	    h2b->GetYaxis()->GetBinLowEdge(jbin)) ||
 	   (h2a->GetYaxis()->GetBinWidth(jbin) !=
 	    h2b->GetYaxis()->GetBinWidth(jbin)) ) {
 	std::cout << "y-bining mismatch at jbin=" << jbin << "\n";
-	return;
+	//return;
       }
 
       std::cout << "xybin=(" << ibin << "," << jbin << ")"
@@ -666,10 +700,13 @@ int setError(TH2D *h2dest, const TH2D* h2src)
 
 // ---------------------------------------------------------
 
-int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative)
+int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative,
+		    int listRangesOnError)
 {
-  if (!compareRanges(h2target,h2nominal,0)) {
+  if (!compareRanges(h2target,h2nominal,listRangesOnError)) {
     std::cout << "assignDiffAsUnc: ranges are different\n";
+    std::cout << "nominal:  "; printHisto(h2nominal);
+    std::cout << "target :  "; printHisto(h2target);
     return 0;
   }
   for (int ibin=1; ibin<=h2target->GetNbinsX(); ibin++) {
@@ -687,10 +724,57 @@ int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative)
 	}
       }
       h2target->SetBinContent(ibin,jbin, vCentral);
-      h2target->SetBinError  (ibin,jbin, fabs(diff));
+      h2target->SetBinError  (ibin,jbin, diff);
     }
   }
   return 1;
+}
+
+// ---------------------------------------------------------
+
+int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
+		  int listRangesOnError)
+{
+  if (!compareRanges(h2target,h2src,listRangesOnError)) {
+    std::cout << "addShiftByUnc: ranges are different\n";
+    std::cout << "src:  "; printHisto(h2src);
+    std::cout << "target :  "; printHisto(h2target);
+    return 0;
+  }
+  for (int ibin=1; ibin<=h2target->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2target->GetNbinsY(); jbin++) {
+      double v= h2target->GetBinContent(ibin,jbin);
+      h2target->SetBinContent(ibin,jbin,
+			      v + nSigmas * h2src->GetBinError(ibin,jbin) );
+    }
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
+int hasValueAbove(const TH2D* h2, double limit)
+{
+  int ok=1;
+  for (int ibin=1; ok && (ibin<=h2->GetNbinsX()); ibin++) {
+    for (int jbin=1; ok && (jbin<=h2->GetNbinsY()); jbin++) {
+      if (h2->GetBinContent(ibin,jbin)>limit) ok=0;
+    }
+  }
+  return (1-ok);
+}
+
+// ---------------------------------------------------------
+
+int hasValueBelow(const TH2D* h2, double limit)
+{
+  int ok=1;
+  for (int ibin=1; ok && (ibin<=h2->GetNbinsX()); ibin++) {
+    for (int jbin=1; ok && (jbin<=h2->GetNbinsY()); jbin++) {
+      if (h2->GetBinContent(ibin,jbin)<limit) ok=0;
+    }
+  }
+  return (1-ok);
 }
 
 // ---------------------------------------------------------
@@ -708,13 +792,20 @@ int compareRanges(const TH1D *h1a, const TH1D *h1b, int verbose)
 {
   int d=0;
   if (h1a->GetNbinsX()!=h1b->GetNbinsX()) {
-    if (verbose) std::cout << "different number of x bins\n";
+    if (verbose) std::cout << "different number of x bins: "
+			   << h1a->GetNbinsX() << " vs "
+			   << h1b->GetNbinsX() << "\n";
     return 0;
   }
   for (int ibin=1-d; ibin<=h1a->GetNbinsX()+d; ibin++) {
     if (h1a->GetXaxis()->GetBinLowEdge(ibin) !=
 	h1b->GetXaxis()->GetBinLowEdge(ibin)) {
-      if (verbose) std::cout << "x-bining mismatch at ibin=" << ibin << "\n";
+      if (verbose) std::cout << "x-bining mismatch at ibin=" << ibin
+			     << ": "
+			     << h1a->GetXaxis()->GetBinLowEdge(ibin)
+			     << " vs "
+			     << h1b->GetXaxis()->GetBinLowEdge(ibin)
+			     << "\n";
       return 0;
     }
   }
@@ -731,7 +822,13 @@ int compareRanges(const TH2D *h2a, const TH2D *h2b, int verbose)
 	  h2b->GetXaxis()->GetBinLowEdge(ibin)) ||
 	 (h2a->GetXaxis()->GetBinWidth(ibin) !=
 	  h2b->GetXaxis()->GetBinWidth(ibin)) ) {
-      if (verbose) std::cout << "x-bining mismatch at ibin=" << ibin << "\n";
+      if (verbose) {
+	std::cout << "x-bining mismatch at ibin=" << ibin << ": "
+		  << h2a->GetXaxis()->GetBinLowEdge(ibin) << " w:"
+		  << h2a->GetXaxis()->GetBinWidth(ibin) << " vs "
+		  << h2b->GetXaxis()->GetBinLowEdge(ibin) << " w:"
+		  << h2b->GetXaxis()->GetBinWidth(ibin) << "\n";
+      }
       return 0;
     }
     for (int jbin=1-d; jbin<=h2a->GetNbinsY()+d; jbin++) {
@@ -739,7 +836,13 @@ int compareRanges(const TH2D *h2a, const TH2D *h2b, int verbose)
 	    h2b->GetYaxis()->GetBinLowEdge(jbin)) ||
 	   (h2a->GetYaxis()->GetBinWidth(jbin) !=
 	    h2b->GetYaxis()->GetBinWidth(jbin)) ) {
-	if (verbose) std::cout << "y-bining mismatch at jbin=" << jbin << "\n";
+	if (verbose) {
+	  std::cout << "y-bining mismatch at jbin=" << jbin << ": "
+		    << h2a->GetYaxis()->GetBinLowEdge(jbin) << " w:"
+		    << h2a->GetYaxis()->GetBinWidth(jbin) << " vs "
+		    << h2b->GetYaxis()->GetBinLowEdge(jbin) << " w:"
+		    << h2b->GetYaxis()->GetBinWidth(jbin) << "\n";
+	}
 	return 0;
       }
     }
@@ -830,6 +933,18 @@ int hasDoubleZero(const TH2D *h2)
     }
   }
   return (!ok);
+}
+
+// ---------------------------------------------------------
+
+void setToOne(TH2D *h2)
+{
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) {
+      h2->SetBinContent(ibin,jbin, 1.);
+      h2->SetBinError  (ibin,jbin, 0.);
+    }
+  }
 }
 
 // ---------------------------------------------------------
@@ -1435,6 +1550,18 @@ TH1D *uncFromCov(const TH2D* h2cov, const TH1D *h1centralVal,
 
 // ---------------------------------------------------------
 
+double totUnc(const std::vector<double> &errV, int returnSqrValue)
+{
+  double s=0;
+  for (unsigned int i=0; i<errV.size(); i++) {
+    s+= pow(errV[i],2);
+  }
+  if (!returnSqrValue) s=sqrt(s);
+  return s;
+}
+
+// ---------------------------------------------------------
+
 TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName,
 		     const PlotCovCorrOpt_t o,
 		     TH2D** h2corr_out)
@@ -1532,14 +1659,16 @@ int findCanvases(TString canvNames, std::vector<TCanvas*> &cV)
 
 // ---------------------------------------------------------
 
-void closeCanvases()
+void closeCanvases(int itimes)
 {
-  TSeqCollection *seq=gROOT->GetListOfCanvases();
-  for (int i=0; i<=seq->LastIndex(); i++) {
-    TCanvas *c= (TCanvas*) seq->At(i);
-    delete c;
+  for (int i=0; i<itimes; i++) {
+    TSeqCollection *seq=gROOT->GetListOfCanvases();
+    for (int i=0; i<=seq->LastIndex(); i++) {
+      TCanvas *c= (TCanvas*) seq->At(i);
+      delete c;
+    }
+    gSystem->ProcessEvents();
   }
-  gSystem->ProcessEvents();
 }
 
 // ---------------------------------------------------------
