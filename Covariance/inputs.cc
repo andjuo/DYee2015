@@ -875,7 +875,7 @@ int checkRange(const TH1D *h1, double yrangeMin, double yrangeMax, int silent)
 int checkRange(const std::vector<TH1D*> &h1V,
 	       double &rangeMin, double &rangeMax,
 	       const std::vector<std::pair<double,double> > &ranges,
-	       int ignoreZeroValues)
+	       int ignoreZeroValues, int silent)
 {
   // determine the widest y range
   double vMin=1e9, vMax=-1e9;
@@ -900,6 +900,12 @@ int checkRange(const std::vector<TH1D*> &h1V,
       rangeMax=p.second;
     }
   }
+
+  if (!ok && !silent) {
+    std::cout << "checkRange(h1V): failed to find suitable range for "
+	      << vMin << " " << vMax << "\n";
+  }
+
   return ok;
 }
 

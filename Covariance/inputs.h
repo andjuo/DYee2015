@@ -60,6 +60,11 @@ public:
 
   template<class graph_t>
   void operator()(graph_t *gr) const { this->SetStyle(gr); }
+
+  void Print() const
+  { std::cout << "hs: color=" << color << ", marker=" << markerStyle
+	      << " (sz=" << markerSize << "), lineStyle=" << lineStyle
+	      << " (width=" << lineWidth << ")\n"; }
 };
 
 // -----------------------------------------------------------
@@ -176,7 +181,7 @@ int checkRange(const TH1D* h1, double rangeMin, double rangeMax, int silent=0);
 int checkRange(const std::vector<TH1D*> &h1V,
 	       double &rangeMin, double &rangeMax,
 	       const std::vector<std::pair<double,double> > &ranges,
-	       int ignoreZeroValues=0);
+	       int ignoreZeroValues=0, int silent=1);
 
 
 void scaleBin(TH1D *h1, int ibin, double x);
