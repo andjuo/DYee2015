@@ -828,7 +828,7 @@ void DYTnPEff_t::printEffRatios(const DYTnPEff_t &e, int compareErrs,
 
 // -------------------------------------------------------------
 
-int DYTnPEff_t::save(TFile &fout, TString subdirTag)
+int DYTnPEff_t::save(TFile &fout, TString subdirTag) const
 {
   if (!fout.IsOpen()) {
     std::cout << "DYTnPEff_t::save(fout): file is not open\n";
@@ -871,6 +871,7 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
   if (fElChannel==1) hnames=eeNames;
   else if (fElChannel==2) hnames=eeNamesV2;
 
+  std::cout << "load histo <" << (subdir+hnames[0]+"_Data"+tag) << ">\n";
   h2Eff_RecoID_Data= loadHisto(fin,subdir+hnames[0]+"_Data"+tag,hnames[0]+"_Data"+tag,1,h2dummy);
   h2Eff_Iso_Data= loadHisto(fin,subdir+hnames[1]+"_Data"+tag,hnames[1]+"_Data"+tag,1,h2dummy);
   h2Eff_HLT4p2_Data= loadHisto(fin,subdir+hnames[2]+"_Data"+tag,hnames[2]+"_Data"+tag,1,h2dummy);
@@ -1042,12 +1043,12 @@ DYTnPEffColl_t::DYTnPEffColl_t(int setElChannel) :
 
 // -------------------------------------------------------------
 
-DYTnPEffColl_t::DYTnPEffColl_t(const DYTnPEffColl_t &e, TString tag) :
+DYTnPEffColl_t::DYTnPEffColl_t(const DYTnPEffColl_t &e, TString tag, int iSrc) :
   fTnPEff(e.isElChannel()),
   fTnPEffSrcV(), fTnPEffSystV(),
   fElChannel(e.isElChannel())
 {
-  if (!this->assign(e,tag)) {
+  if (!this->assign(e,tag,iSrc)) {
     std::cout << "DYTnPEffColl_t:: failure in constructor\n";
   }
 }
@@ -1110,12 +1111,14 @@ DYTnPEff_t* DYTnPEffColl_t::getTnPSource(int srcIdx) const
 
 // -------------------------------------------------------------
 
-DYTnPEff_t* DYTnPEffColl_t::getTnPShiftByUnc(TString tag,
+DYTnPEff_t* DYTnPEffColl_t::getTnPShiftByUnc(TString tag, int srcIdx,
 			     double nSigmas_data, double nSigmas_mc) const
 {
   DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,tag);
   for (unsigned int i=0; i<fTnPEffSystV.size(); i++) {
-    e->addShiftByUnc(*fTnPEffSystV[i],nSigmas_data,nSigmas_mc);
+    if ((srcIdx==-1) || (srcIdx==int(i))) {
+      e->addShiftByUnc(*fTnPEffSystV[i],nSigmas_data,nSigmas_mc);
+    }
   }
   return e;
 }
@@ -1136,18 +1139,22 @@ int DYTnPEffColl_t::ptrsOk() const
 
 // -------------------------------------------------------------
 
-int DYTnPEffColl_t::assign(const DYTnPEffColl_t &coll, TString tag)
+int DYTnPEffColl_t::assign(const DYTnPEffColl_t &coll, TString tag, int iSrc)
 {
   int ok= fTnPEff.assign(coll.fTnPEff,tag);
   for (unsigned int i=0; ok && (i<coll.fTnPEffSrcV.size()); i++) {
-    DYTnPEff_t *e=new DYTnPEff_t(*coll.fTnPEffSrcV[i],tag);
-    if (!e) ok=0;
-    else { ok= e->ptrsOk(); fTnPEffSrcV.push_back(e); }
+    if ((iSrc==-1) || (iSrc==int(i))) {
+      DYTnPEff_t *e=new DYTnPEff_t(*coll.fTnPEffSrcV[i],tag);
+      if (!e) ok=0;
+      else { ok= e->ptrsOk(); fTnPEffSrcV.push_back(e); }
+    }
   }
   for (unsigned int i=0; ok && (i<coll.fTnPEffSystV.size()); i++) {
-    DYTnPEff_t *e=new DYTnPEff_t(*coll.fTnPEffSystV[i],tag);
-    if (!e) ok=0;
-    else { ok=e->ptrsOk(); fTnPEffSystV.push_back(e); }
+    if ((iSrc==-1) || (iSrc==int(i))) {
+      DYTnPEff_t *e=new DYTnPEff_t(*coll.fTnPEffSystV[i],tag);
+      if (!e) ok=0;
+      else { ok=e->ptrsOk(); fTnPEffSystV.push_back(e); }
+    }
   }
   fElChannel= coll.fElChannel;
   return ok;
@@ -1325,11 +1332,11 @@ void DYTnPEffColl_t::displayAll() const
 
 // -------------------------------------------------------------
 
-void DYTnPEffColl_t::listNumbers() const
+void DYTnPEffColl_t::listNumbers(int includeSrc) const
 {
   std::cout << "\n" << std::string(20,'=') << "\n";
   fTnPEff.listNumbers();
-  if (0) {
+  if (includeSrc) {
     std::cout << "\n" << std::string(10,'=') << " SOURCES "
 	      << std::string(10,'=') << "\n";
     for (unsigned int i=0; i<fTnPEffSrcV.size(); i++) {
@@ -1344,6 +1351,90 @@ void DYTnPEffColl_t::listNumbers() const
   std::cout << "\n" << std::string(20,'=') << "\n";
 }
 
+
+// -------------------------------------------------------------
+
+int DYTnPEffColl_t::save(TFile &fout, TString subdirTag) const
+{
+  subdirTag.Prepend("Coll");
+  int res=fTnPEff.save(fout,subdirTag);
+  for (unsigned int i=0; (res==1) && (i<fTnPEffSrcV.size()); i++) {
+    res=fTnPEffSrcV[i]->save(fout,subdirTag + "_systSrc");
+  }
+  for (unsigned int i=0; (res==1) && (i<fTnPEffSystV.size()); i++) {
+    res=fTnPEffSystV[i]->save(fout,subdirTag + "_syst");
+  }
+  return res;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEffColl_t::save(TString fname, TString subdirTag) const
+{
+  TFile fout(fname,"recreate");
+  if (!fout.IsOpen()) {
+    std::cout << "failed to open the file <" << fout.GetName() << ">\n";
+    return 0;
+  }
+  if (!this->save(fout,subdirTag)) {
+    std::cout << "failed to save the collection to a file <"
+	      << fout.GetName() << ">\n";
+    fout.Close();
+    return 0;
+  }
+  fout.Close();
+  std::cout << "collection saved to file <" << fout.GetName() << ">\n";
+  return 1;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEffColl_t::load(TFile &fin, TString subdirTag, TString tagList)
+{
+  subdirTag.Prepend("DYTnPEffColl");
+  std::stringstream ss(tagList.Data());
+  TString tag;
+  ss >> tag;
+  if (tag==".") tag="";
+  int res=fTnPEff.load(fin,subdirTag,tag);
+  std::vector<TString> tagV;
+  while (!ss.eof()) {
+    ss >> tag;
+    tagV.push_back(tag);
+    std::cout << "tag=" << tag << "\n";
+  }
+  for (unsigned int i=0; (res==1) && (i<tagV.size()); i++) {
+    DYTnPEff_t *eff= new DYTnPEff_t(fTnPEff,tagV[i]);
+    res= eff->load(fin,subdirTag + "_systSrc",tagV[i]);
+    fTnPEffSrcV.push_back(eff);
+  }
+  for (unsigned int i=0; (res==1) && (i<tagV.size()); i++) {
+    DYTnPEff_t *eff= new DYTnPEff_t(fTnPEff,tagV[i]);
+    res= eff->load(fin,subdirTag + "_syst",tagV[i]+"_syst");
+    fTnPEffSystV.push_back(eff);
+  }
+  return res;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEffColl_t::load(TString fname, TString subdirTag, TString tagList)
+{
+  TFile fin(fname,"read");
+  if (!fin.IsOpen()) {
+    std::cout << "failed to open the file <" << fin.GetName() << ">\n";
+    return 0;
+  }
+  if (!this->load(fin,subdirTag,tagList)) {
+    std::cout << "failed to load the collection from a file <"
+	      << fin.GetName() << ">\n";
+    fin.Close();
+    return 0;
+  }
+  fin.Close();
+  std::cout << "collection loaded from a file <" << fin.GetName() << ">\n";
+  return 1;
+}
 
 // -------------------------------------------------------------
 // -------------------------------------------------------------
@@ -1836,6 +1927,59 @@ int EventSpace_t::prepareVector() {
     fh2ESV.push_back(h2);
   }
   return res;
+}
+
+// -------------------------------------------------------------
+// -------------------------------------------------------------
+
+TString etaRangeStr(const TH2D *h2, int iEta, int useAbsEta, int *isGap)
+{
+  if (isGap) *isGap=0;
+  TString formatNoGap="%3.1lf #leq |#eta| #leq %3.1lf";
+  TString formatPreGap="%3.1lf #leq |#eta| #leq %5.3lf";
+  TString formatGap="%5.3lf #leq |#eta| #leq %5.3lf";
+  TString formatPostGap="%5.3lf #leq |#eta| #leq %3.1lf";
+  TString etaFormat=formatNoGap;
+  double absEta1=h2->GetXaxis()->GetBinLowEdge(iEta+1);
+  double absEta2=fabs(absEta1 + h2->GetXaxis()->GetBinWidth(iEta+1));
+  if (absEta1<0) absEta1=-absEta1;
+  std::cout << "absEta1=" << absEta1 << ", absEta2=" << absEta2 << "  ";
+  if (((fabs(absEta1-1.444)<1e-3) && (fabs(absEta2-1.566)<1e-3)) ||
+      ((fabs(absEta1-1.566)<1e-3) && (fabs(absEta2-1.444)<1e-3)))
+    {
+      std::cout << "gap\n";
+      etaFormat= formatGap;
+      if (isGap) *isGap=1;
+    }
+  else if ((fabs(absEta2-1.444)<1e-3) ||
+	   (fabs(absEta2-1.566)<1e-3)){
+    std::cout << "preGap\n";
+    etaFormat= formatPreGap;
+  }
+  else if ((fabs(absEta1-1.444)<1e-3) ||
+	   (fabs(absEta1-1.566)<1e-3)) {
+    std::cout << "postGap\n";
+    etaFormat= formatPostGap;
+  }
+  else std::cout << " not close to gap\n";
+  if (!useAbsEta) etaFormat.ReplaceAll("|#eta|","#eta");
+
+  TString etaRange=Form(etaFormat,
+			h2->GetXaxis()->GetBinLowEdge(iEta+1),
+			h2->GetXaxis()->GetBinLowEdge(iEta+1)
+			+ h2->GetXaxis()->GetBinWidth(iEta+1));
+  return etaRange;
+}
+
+// -------------------------------------------------------------
+
+TString ptRangeStr(const TH2D *h2, int iPt)
+{
+  TString format= "%1.0lf GeV < #it{p}_{T} < %1.0lf GeV";
+  double pt1=h2->GetYaxis()->GetBinLowEdge(iPt+1);
+  double pt2=pt1 + h2->GetYaxis()->GetBinWidth(iPt+1);
+  TString ptRange=Form(format,pt1,pt2);
+  return ptRange;
 }
 
 // -------------------------------------------------------------

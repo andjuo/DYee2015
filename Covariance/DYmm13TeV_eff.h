@@ -342,7 +342,7 @@ public:
 		      double markIfDiffRelTol=0.) const;
 
   // internal save/load
-  int save(TFile &fout, TString subdirTag="");
+  int save(TFile &fout, TString subdirTag="") const;
   int load(TFile &fin, TString subdir="DYTnPEff", TString tag="");
   int load(TString fname, TString subdir="DYTnPEff", TString tag="");
 
@@ -366,7 +366,8 @@ protected:
   int fElChannel;
 public:
   DYTnPEffColl_t(int setlElChannel=0);
-  DYTnPEffColl_t(const DYTnPEffColl_t &e, TString tag);
+  // copy all or a subset of syst.uncertainties
+  DYTnPEffColl_t(const DYTnPEffColl_t &e, TString tag, int iSrc=-1);
 
   const DYTnPEff_t& getTnPWithStatUnc() const { return fTnPEff; }
   DYTnPEff_t* getTnPWithSystUnc(int idx) const;
@@ -376,12 +377,12 @@ public:
   template<class idx_t>
   const DYTnPEff_t* getTnPSystUnc(idx_t idx) const { return fTnPEffSystV[idx]; }
   DYTnPEff_t* getTnPSource(int srcIdx) const;
-  DYTnPEff_t* getTnPShiftByUnc(TString tag,
+  DYTnPEff_t* getTnPShiftByUnc(TString tag, int srcIdx,
 			       double nSigmas_data, double nSigmas_mc) const;
 
   int isElChannel() const { return fElChannel; }
   int ptrsOk() const;
-  int assign(const DYTnPEffColl_t &coll, TString tag);
+  int assign(const DYTnPEffColl_t &coll, TString tag, int iSrc=-1);
 
   double scaleFactor(const TLorentzVector *v1, const TLorentzVector *v2,
 		     int hlt4p3) const
@@ -407,9 +408,11 @@ public:
 
   //void printNumbers() const;
   void displayAll() const;
-  void listNumbers() const;
-  //int save(TFile &fout, TString subdirTag="") {}
-  //int load(TFile &fin, TString subdir="DYTnPEffColl", TString tag="") {}
+  void listNumbers(int includeSrc=0) const;
+  int save(TFile &fout, TString subdirTag="") const;
+  int save(TString fname, TString subdirTag="") const;
+  int load(TFile &fin, TString subdir="DYTnPEffColl", TString tagList="");
+  int load(TString fname, TString subdir="DYTnPEffColl", TString tagList="");
 };
 
 // -------------------------------------------------------------
@@ -493,6 +496,9 @@ public:
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 
+TString etaRangeStr(const TH2D *h2, int iEta, int useAbsEta, int *isGap=NULL);
+TString ptRangeStr(const TH2D *h2, int iPt);
 
+// -------------------------------------------------------------
 
 #endif
