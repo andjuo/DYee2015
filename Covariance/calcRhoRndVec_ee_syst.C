@@ -125,13 +125,23 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
     return;
   }
   for (int iSrc=0; iSrc<nSrc; iSrc++) {
-    if (!coll.addSystErrSource(*tnpEffV[iSrc+1],"")) {
+    if (!coll.addSystErrSource(*tnpEffV[iSrc+1],"_"+sources[iSrc])) {
       std::cout << "failed to assign syst err for iSrc=" << iSrc << "\n";
       return;
     }
   }
 
   coll.listNumbers();
+  if (0) {
+    TString foutNameColl= "dyee_effSyst_Coll.root";
+    if (!coll.save(foutNameColl,"")) {
+      std::cout << "failed to save the collection\n";
+      return;
+    }
+    std::cout << "collection saved to file <" << foutNameColl << ">\n";
+    return;
+  }
+
 
   // test full error
   DYTnPEff_t *totUnc= coll.getTnPWithTotUnc();
