@@ -77,8 +77,29 @@ void testDYTnPEffColl(int nExps_input=100, int testCase=0)
     return;
   }
 
-  coll.listNumbers();
+  coll.listNumbers(1);
   //coll.displayAll();
+
+  if (0) {
+    if (!coll.save("data_test_TnPEffColl.root","")) {
+      std::cout << "saving failed\n";
+    }
+    else {
+      std::cout << "saving ok\n";
+    }
+    return;
+  }
+  if (0) {
+    DYTnPEffColl_t collChk(0);
+    if (!collChk.load("data_test_TnPEffColl.root","","_coll _collA _collB")) {
+      std::cout << "loading failed\n";
+    }
+    else {
+      std::cout << "loading ok\n";
+      collChk.listNumbers(1);
+    }
+    return;
+  }
 
   //DYTnPEff_t *eTot= coll.randomize(9999,"_total");
   //eTot->listNumbers();
@@ -90,6 +111,14 @@ void testDYTnPEffColl(int nExps_input=100, int testCase=0)
     DYTnPEff_t *effSystB_static= coll.getTnPWithSystUnc(1);
     effSystA_static->listNumbers();
     effSystB_static->listNumbers();
+    return;
+  }
+
+  if (1) {
+    DYTnPEff_t *effSigmaUp= coll.getTnPShiftByUnc("_sigmaUp",1,1);
+    DYTnPEff_t *effSigmaDown= coll.getTnPShiftByUnc("_sigmaDown",-1,-1);
+    effSigmaUp->listNumbers();
+    effSigmaDown->listNumbers();
     return;
   }
 
