@@ -17,12 +17,16 @@ void plotEffs(std::vector<TH2D*> &hV,
 	      const std::vector<HistoStyle_t> &hsV,
 	      const std::vector<TString> &labels,
 	      TString plotNameBase, TString effName,
-	      int allInOne=0);
+	      int allInOne=0, int skipGap=0, int plotVsPt=0);
 
 void plotEffs_separate(std::vector<TH2D*> &hV,
 		       const std::vector<HistoStyle_t> &hsV,
 		       const std::vector<TString> &labels,
-		       TString plotNameBase, TString effName);
+		       TString plotNameBase, TString effName, int skipGap=0);
+
+void setAutoRanges(const std::vector<TH1D*> &h1V,
+		   double &range_min, double &range_max, int isEffRange,
+		   int silent);
 
 // ----------------------------------------------------------------
 
@@ -255,15 +259,62 @@ void plotEffs(std::vector<TH2D*> &h2V,
 	      const std::vector<HistoStyle_t> &hsV,
 	      const std::vector<TString> &labels,
 	      TString plotNameBase, TString effName,
-	      int allInOne)
+	      int allInOne, int skipGap, int plotVsPt)
 {
   std::cout << "allInOne=" << allInOne << "\n";
   if (!allInOne) {
-    plotEffs_separate(h2V,hsV,labels,plotNameBase,effName);
+    plotEffs_separate(h2V,hsV,labels,plotNameBase,effName,skipGap);
     return;
   }
 
+  if (plotVsPt==1) {
+    for (int iPt=0; iPt<h2V[0]->GetNbinsY(); iPt++) {
+
+      TString ptRange= ptRangeStr(h2V[0],iPt);
+
+      TString tag=Form("_%s_iPt%d",effName.Data(),iPt);
+      std::vector<TH1D*> h1V;
+      for (unsigned int ih=0; ih<h2V.size(); ih++) {
+	TH2D *h2= h2V[ih];
+	if (h2V[ih]->Integral()==0) continue;
+	TH1D *h1eff_iPt=
+	  h2->ProjectionX(h2->GetName() + tag,iPt+1,iPt+1);
+	h1eff_iPt->SetStats(0);
+	hsV[ih].SetStyle(h1eff_iPt);
+	h1V.push_back(h1eff_iPt);
+      }
+
+      double effRange_min=0.;
+      double effRange_max=1.;
+      setAutoRanges(h1V,effRange_min,effRange_max,1,0);
+
+      TString cName=plotNameBase + tag;
+      TH1D *h1= h1V[0];
+      logAxis(h1,0,"","#varepsilon");
+      h1->SetTitle(plotNameBase + " " + ptRange);
+      h1->GetYaxis()->SetTitleSize(0.05);
+      h1->GetYaxis()->SetTitleOffset(1.2);
+      if (h1->GetXaxis()->GetBinCenter(h1->GetNbinsX())>200.)
+	h1->GetXaxis()->SetRangeUser(0,200.);
+      h1->GetYaxis()->SetRangeUser(effRange_min,effRange_max);
+      plotHisto(h1,cName,0,0,"LPE1",labels[0]);
+      TCanvas *cx=findCanvas(cName);
+      setLeftMargin(cx,0.15);
+      moveLegend(cx,0.45,0.);
+      for (unsigned int ih=1; ih<h1V.size(); ih++) {
+	plotHistoSame(h1V[ih],cName,"LPE1",labels[ih]);
+      }
+    }
+    return;
+  }
+
+
   for (int iEta=0; iEta<h2V[0]->GetNbinsX(); iEta++) {
+
+    int isGap=0;
+    TString etaRange= etaRangeStr(h2V[0],iEta,(effName!="ID")?0:1, &isGap);
+    if (skipGap && isGap) continue;
+
     TString tag=Form("_%s_iEta%d",effName.Data(),iEta);
     std::vector<TH1D*> h1V;
     for (unsigned int ih=0; ih<h2V.size(); ih++) {
@@ -275,13 +326,20 @@ void plotEffs(std::vector<TH2D*> &h2V,
       h1V.push_back(h1eff_iEta);
     }
 
+    double effRange_min=0.;
+    double effRange_max=1.;
+    setAutoRanges(h1V,effRange_min,effRange_max,1,0);
+
     TString cName=plotNameBase + tag;
     TH1D *h1= h1V[0];
-    logAxis(h1,0,"","#varepsilon");
-    h1->SetTitle(plotNameBase);
+    logAxis(h1,1,"","#varepsilon");
+    h1->SetTitle(plotNameBase + " " + etaRange);
     h1->GetYaxis()->SetTitleSize(0.05);
     h1->GetYaxis()->SetTitleOffset(1.2);
-    plotHisto(h1,cName,0,0,"LPE1",labels[0]);
+    if (h1->GetXaxis()->GetBinCenter(h1->GetNbinsX())>200.)
+      h1->GetXaxis()->SetRangeUser(0,200.);
+    h1->GetYaxis()->SetRangeUser(effRange_min,effRange_max);
+    plotHisto(h1,cName,1,0,"LPE1",labels[0]);
     TCanvas *cx=findCanvas(cName);
     setLeftMargin(cx,0.15);
     moveLegend(cx,0.45,0.);
@@ -296,7 +354,8 @@ void plotEffs(std::vector<TH2D*> &h2V,
 void plotEffs_separate(std::vector<TH2D*> &h2V,
 		       const std::vector<HistoStyle_t> &hsV,
 		       const std::vector<TString> &labels,
-		       TString plotNameBase, TString effName)
+		       TString plotNameBase, TString effName,
+		       int skipGap)
 {
   std::cout << "plotEffs_separate: labels = ";
   for (unsigned int i=0; i<labels.size(); i++) {
@@ -369,6 +428,8 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
       std::cout << "ih=" << ih << ", iEta=" << iEta << ", lineColor=" << h2->GetLineColor() << "\n";
       //copyStyle(h1eff_iEta, h2);
       hsV[ih].SetStyle(h1eff_iEta);
+      std::cout << "h1eff_iEta lineColor=" << h1eff_iEta->GetLineColor() << "\n";
+      hsV[ih].Print();
       h1eff_iEta->SetStats(0);
       h1V->push_back(h1eff_iEta);
       h1mecV.push_back(h1eff_iEta);
@@ -446,6 +507,41 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
     TString cmpTitle= labels[0] + " vs " + labels[ih];
 
     for (unsigned int iEta=0; iEta<h1mainV.size(); iEta++) {
+
+      /*
+      TString formatNoGap="%3.1lf #leq |#eta| #leq %3.1lf";
+      TString formatPreGap="%3.1lf #leq |#eta| #leq %5.3lf";
+      TString formatGap="%5.3lf #leq |#eta| #leq %5.3lf";
+      TString formatPostGap="%5.3lf #leq |#eta| #leq %3.1lf";
+      TString etaFormat=formatNoGap;
+      double absEta1=h2->GetXaxis()->GetBinLowEdge(iEta+1);
+      double absEta2=fabs(absEta1 + h2->GetXaxis()->GetBinWidth(iEta+1));
+      if (absEta1<0) absEta1=-absEta1;
+      std::cout << "absEta1=" << absEta1 << ", absEta2=" << absEta2 << "  ";
+      if (((fabs(absEta1-1.444)<1e-3) && (fabs(absEta2-1.566)<1e-3)) ||
+	  ((fabs(absEta1-1.566)<1e-3) && (fabs(absEta2-1.444)<1e-3)))
+	{
+	  std::cout << "gap\n";
+	  etaFormat= formatGap;
+	  if (skipGap) continue;
+	}
+      else if ((fabs(absEta2-1.444)<1e-3) ||
+	       (fabs(absEta2-1.566)<1e-3)){
+	std::cout << "preGap\n";
+	etaFormat= formatPreGap;
+      }
+      else if ((fabs(absEta1-1.444)<1e-3) ||
+	       (fabs(absEta1-1.566)<1e-3)) {
+	std::cout << "postGap\n";
+	etaFormat= formatPostGap;
+      }
+      if (effName!="ID") etaFormat.ReplaceAll("|#eta|","#eta");
+      */
+
+      int isGap=0;
+      TString etaRange= etaRangeStr(h2,iEta,(effName!="ID")?0:1, &isGap);
+      if (skipGap && isGap) continue;
+
       TString tag=Form("_%s_iEta%d",effName.Data(),iEta);
       TString cName=cmpTitle + tag;
       TCanvas *cx= new TCanvas(cName,cName,600,800);
@@ -471,36 +567,12 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
       pad2->SetBottomMargin(0.18);
       cx->SetBottomMargin(0.015);
 
-      TString formatNoGap="%3.1lf #leq |#eta| #leq %3.1lf";
-      TString formatPreGap="%3.1lf #leq |#eta| #leq %5.3lf";
-      TString formatGap="%5.3lf #leq |#eta| #leq %5.3lf";
-      TString formatPostGap="%5.3lf #leq |#eta| #leq %3.1lf";
-      TString etaFormat=formatNoGap;
-      double absEta1=h2->GetXaxis()->GetBinLowEdge(iEta+1);
-      double absEta2=fabs(absEta1 + h2->GetXaxis()->GetBinWidth(iEta+1));
-      if (absEta1<0) absEta1=-absEta1;
-      std::cout << "absEta1=" << absEta1 << ", absEta2=" << absEta2 << "  ";
-      if (((fabs(absEta1-1.444)<1e-3) && (fabs(absEta2-1.566)<1e-3)) ||
-	  ((fabs(absEta1-1.566)<1e-3) && (fabs(absEta2-1.444)<1e-3)))
-	{
-	  std::cout << "gap\n";
-	  etaFormat= formatGap;
-	}
-      else if ((fabs(absEta2-1.444)<1e-3) ||
-	       (fabs(absEta2-1.566)<1e-3)){
-	std::cout << "preGap\n";
-	etaFormat= formatPreGap;
-      }
-      else if ((fabs(absEta1-1.444)<1e-3) ||
-	       (fabs(absEta1-1.566)<1e-3)) {
-	std::cout << "postGap\n";
-	etaFormat= formatPostGap;
-      }
-      if (effName!="ID") etaFormat.ReplaceAll("|#eta|","#eta");
+      /*
       TString etaRange=Form(etaFormat,
 			    h2->GetXaxis()->GetBinLowEdge(iEta+1),
 			    h2->GetXaxis()->GetBinLowEdge(iEta+1)
 			    + h2->GetXaxis()->GetBinWidth(iEta+1));
+      */
 
       TH1D *h1main= h1mainV[iEta];
       logAxis(h1main,0,"","#varepsilon_{" + effName + "}");
@@ -576,4 +648,50 @@ void plotEffs_separate(std::vector<TH2D*> &h2V,
 }
 
 // --------------------------------------------------------------
+// --------------------------------------------------------------
+
+void setAutoRanges(const std::vector<TH1D*> &h1V,
+		   double &range_min, double &range_max, int isEffRange,
+		   int silent)
+{
+  // auto range on ratio
+  typedef std::pair<double,double> ddpair_t;
+  std::vector<std::pair<double,double> > yRange;
+  if (isEffRange) {
+    yRange.push_back(ddpair_t(0.90, 1.01));
+    yRange.push_back(ddpair_t(0.80, 1.01));
+    yRange.push_back(ddpair_t(0.70, 1.01));
+    yRange.push_back(ddpair_t(0.60, 1.01));
+    yRange.push_back(ddpair_t(0.50, 1.01));
+    yRange.push_back(ddpair_t(0.40, 1.01));
+    yRange.push_back(ddpair_t(0.30, 1.01));
+    yRange.push_back(ddpair_t(0.20, 1.01));
+    yRange.push_back(ddpair_t(0.10, 1.01));
+    yRange.push_back(ddpair_t(0.00, 1.01));
+    yRange.push_back(ddpair_t(0.90, 1.05));
+    yRange.push_back(ddpair_t(0.90, 1.10));
+    yRange.push_back(ddpair_t(0.85, 1.05));
+    yRange.push_back(ddpair_t(0.60, 1.05));
+    yRange.push_back(ddpair_t(0.50, 1.05));
+    yRange.push_back(ddpair_t(0.85, 1.10));
+    yRange.push_back(ddpair_t(0.80, 1.10));
+  }
+  else {
+    yRange.push_back(ddpair_t(0.95,1.05));
+    yRange.push_back(ddpair_t(0.90,1.10));
+    yRange.push_back(ddpair_t(0.85,1.15));
+    yRange.push_back(ddpair_t(0.80,1.20));
+    yRange.push_back(ddpair_t(0.75,1.25));
+    yRange.push_back(ddpair_t(0.70,1.30));
+    yRange.push_back(ddpair_t(0.65,1.35));
+    yRange.push_back(ddpair_t(0.60,1.40));
+    yRange.push_back(ddpair_t(0.50,1.50));
+  }
+  if (!checkRange(h1V,range_min,range_max,yRange,0,silent)) {
+    std::cout << "auto range on efficiency (isEffRange=" << isEffRange
+	      << ") failed\n";
+  }
+  return;
+}
+
 // --------------------------------------------------------------
