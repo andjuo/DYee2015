@@ -133,12 +133,22 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
 
   coll.listNumbers();
   if (0) {
+    int excludeGap=1;
     TString foutNameColl= "dyee_effSyst_Coll.root";
+    if (excludeGap) {
+      coll.listNumbers();
+      foutNameColl.ReplaceAll(".root","-noSCGap.root");
+      if (!coll.excludeGap()) {
+	std::cout << "excludeGap failed\n";
+	return;
+      }
+      std::cout << "\n\tNO GAP\n\n"; coll.listNumbers();
+    }
     if (!coll.save(foutNameColl,"")) {
       std::cout << "failed to save the collection\n";
       return;
     }
-    std::cout << "collection saved to file <" << foutNameColl << ">\n";
+    std::cout << "macro: collection saved to file <" << foutNameColl << ">\n";
     return;
   }
 

@@ -205,6 +205,7 @@ public:
   void removeError();
   void setError(const DYTnPEff_t &e);
   void resetAll();
+  int excludeGap();
 
   int ptrsOk() const {
     int ok= (
@@ -383,6 +384,7 @@ public:
   int isElChannel() const { return fElChannel; }
   int ptrsOk() const;
   int assign(const DYTnPEffColl_t &coll, TString tag, int iSrc=-1);
+  int excludeGap();
 
   double scaleFactor(const TLorentzVector *v1, const TLorentzVector *v2,
 		     int hlt4p3) const

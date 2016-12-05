@@ -136,6 +136,88 @@ void DYTnPEff_t::resetAll()
 
 // -------------------------------------------------------------
 
+int DYTnPEff_t::excludeGap()
+{
+  const TH2D *h2= h2Eff_RecoID_Data;
+  const TArrayD *yb= h2->GetYaxis()->GetXbins();
+  const Double_t *y= yb->GetArray();
+  const TArrayD *xb= h2->GetXaxis()->GetXbins();
+  const Double_t *xorig= xb->GetArray();
+
+  double gapCenter=0.5*(1.566 + 1.4442);
+  std::vector<int> idxGap;
+  for (int i=0; i<xb->GetSize()-1; i++) {
+    if (fabs( 0.5*fabs(xb->GetAt(i) + xb->GetAt(i+1)) - gapCenter) < 1e-3) {
+      idxGap.push_back(i);
+    }
+  }
+  std::cout << "here are " << idxGap.size() << " gaps\n";
+  Double_t *x= new Double_t[xb->GetSize()-idxGap.size()];
+  int shift=0, postGap=0;
+  unsigned int iShift=0;
+  for (int i=0; i<xb->GetSize(); i++) {
+    if ((iShift<idxGap.size()) && (idxGap[iShift]==i)) {
+      iShift++;
+      shift++;
+      postGap=1;
+      continue;
+    }
+    if (!postGap) x[i-shift]=xorig[i];
+    else {
+      postGap=0;
+      x[i-shift]= (xorig[i]<0) ? -gapCenter : gapCenter;
+    }
+  }
+
+  TH2D *h2noGap= new TH2D("h2noGap","h2noGap",
+		     xb->GetSize()-idxGap.size()-1,x,
+		     yb->GetSize()-1,y);
+  h2noGap->SetDirectory(0);
+  h2noGap->Sumw2();
+  delete x;
+
+  for (int i=0; i<8; i++) {
+    TH2D **h2ptr= NULL;
+    switch(i) {
+    case 0: h2ptr=&h2Eff_RecoID_Data; break;
+    case 1: h2ptr=&h2Eff_Iso_Data; break;
+    case 2: h2ptr=&h2Eff_HLT4p2_Data; break;
+    case 3: h2ptr=&h2Eff_HLT4p3_Data; break;
+    case 4: h2ptr=&h2Eff_RecoID_MC; break;
+    case 5: h2ptr=&h2Eff_Iso_MC; break;
+    case 6: h2ptr=&h2Eff_HLT4p2_MC; break;
+    case 7: h2ptr=&h2Eff_HLT4p3_MC; break;
+    default:
+      std::cout << "not ready for i=" << i << "\n";
+      return 0;
+    }
+
+    TH2D *h2tmp= *h2ptr;
+    TString hName=h2tmp->GetName();
+    h2tmp->SetName(hName + "_tmp");
+    *h2ptr = cloneHisto(h2noGap, hName,
+			h2tmp->GetTitle() + TString(";") +
+			h2tmp->GetXaxis()->GetTitle() + TString(";") +
+			h2tmp->GetYaxis()->GetTitle());
+    shift=0; iShift=0;
+    for (int ibin=1; ibin<=h2tmp->GetNbinsX(); ibin++) {
+      if ((iShift<idxGap.size()) && (idxGap[iShift]==ibin-1)) {
+	iShift++;
+	shift++;
+	continue;
+      }
+      for (int jbin=1; jbin<=h2tmp->GetNbinsY(); jbin++) {
+	(*h2ptr)->SetBinContent(ibin-shift, jbin, h2tmp->GetBinContent(ibin,jbin));
+	(*h2ptr)->SetBinError(ibin-shift, jbin, h2tmp->GetBinError(ibin,jbin));
+      }
+    }
+    delete h2tmp;
+  }
+  return updateVectors();
+}
+
+// -------------------------------------------------------------
+
 double DYTnPEff_t::totalEffIdx_misc(int ibin1, int jbin1,
 				    int ibin2, int jbin2,
 				    int mc, int miscFlag) const
@@ -845,6 +927,8 @@ int DYTnPEff_t::save(TFile &fout, TString subdirTag) const
   for (unsigned int i=0; i<h2VIso.size(); i++) h2VIso[i]->Write();
   for (unsigned int i=0; i<h2VHLT.size(); i++) h2VHLT[i]->Write();
 
+  //printHisto(h2VReco[0]);
+
   //TVectorD defVals(2);
   //defVals[0]= fDefVal;
   //defVals[1]= fDefErr;
@@ -1158,6 +1242,21 @@ int DYTnPEffColl_t::assign(const DYTnPEffColl_t &coll, TString tag, int iSrc)
   }
   fElChannel= coll.fElChannel;
   return ok;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEffColl_t::excludeGap()
+{
+  int res= fTnPEff.excludeGap();
+  for (unsigned int i=0; res && (i<fTnPEffSrcV.size()); i++) {
+    res= fTnPEffSrcV[i]->excludeGap();
+  }
+  for (unsigned int i=0; res && (i<fTnPEffSystV.size()); i++) {
+    res= fTnPEffSystV[i]->excludeGap();
+  }
+  if (!res) std::cout << "error in DYTnPEffColl_t::excludeGap\n";
+  return res;
 }
 
 // -------------------------------------------------------------
