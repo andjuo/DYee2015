@@ -172,6 +172,7 @@ public:
   }
 
   int setHisto(int kind, int isMC, TH2D *h2);
+  int fullList_setHisto(unsigned int i, TH2D *h2);
 
   unsigned int fullListSize() const
   { return (h2VReco.size()+h2VIso.size()+h2VHLT.size()); }
@@ -201,6 +202,11 @@ public:
     }
     return h2VHLT[i];
   }
+
+  TString fullListHistoName(unsigned int i) const
+  { return TString(this->h2fullList(i)->GetName()); }
+  TString fullListHistoTitle(unsigned int i) const
+  { return TString(this->h2fullList(i)->GetTitle()); }
 
   void removeError();
   void setError(const DYTnPEff_t &e);
@@ -338,6 +344,14 @@ public:
   void displayAll() const;
   void displayEffTot(int data_or_mc= 1+2, TString tag="", int hlt4p3=-1,
 		     int misc=_misc_empty) const;
+  void plotProfiles(int idxOnly=-1,
+		    int skipGap=0, int plotVsPt=0, DYTnPEff_t *tnp2=NULL,
+		    TString label1="", TString label2="",
+		    DYTnPEff_t *tnp3=NULL, TString label3="");
+  void plotSFProfiles(int idxOnly=-1,
+		      int skipGap=0, int plotVsPt=0, DYTnPEff_t *tnp2=NULL,
+		      TString label1="", TString label2="",
+		      DYTnPEff_t *tnp3=NULL, TString label3="");
   void listNumbers() const;
   void printEffRatios(const DYTnPEff_t &e, int compareErrs=0,
 		      double markIfDiffRelTol=0.) const;
@@ -405,12 +419,14 @@ public:
   DYTnPEff_t* randomize(int srcIdx, TString tag) const;
 
   DYTnPEff_t* randomizeByKind(int rndKind, int hlt4p3, TString tag,
-			      int maxSigma=0,
+			      int maxSigmaData=0, int maxSigmaMC=0,
       TH2D **h2chk=NULL, unsigned int ihChk=0, unsigned int iSrcChk=0) const;
 
   //void printNumbers() const;
-  void displayAll() const;
+  void displayAll(int includeSrc=0) const;
+  //void plotProfiles(int skipGap, int plotVsPt) const;
   void listNumbers(int includeSrc=0) const;
+
   int save(TFile &fout, TString subdirTag="") const;
   int save(TString fname, TString subdirTag="") const;
   int load(TFile &fin, TString subdir="DYTnPEffColl", TString tagList="");
@@ -500,6 +516,17 @@ public:
 
 TString etaRangeStr(const TH2D *h2, int iEta, int useAbsEta, int *isGap=NULL);
 TString ptRangeStr(const TH2D *h2, int iPt);
+
+void plotEffs(const std::vector<TH2D*> &hV,
+	      const std::vector<HistoStyle_t> &hsV,
+	      const std::vector<TString> &labels,
+	      TString plotNameBase, TString effName,
+	      int allInOne,
+	      int isEff,
+	      int skipGap, int plotVsPt);
+void setAutoRanges(const std::vector<TH1D*> &h1V,
+		   double &range_min, double &range_max, int isEffRange,
+		   int silent);
 
 // -------------------------------------------------------------
 

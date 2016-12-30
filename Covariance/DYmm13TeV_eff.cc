@@ -37,6 +37,7 @@ DYTnPEff_t::DYTnPEff_t(const DYTnPEff_t &e, TString tag) :
 
 DYTnPEff_t::~DYTnPEff_t()
 {
+  /*
   if (h2Eff_RecoID_Data) delete h2Eff_RecoID_Data;
   if (h2Eff_Iso_Data) delete h2Eff_Iso_Data;
   if (h2Eff_HLT4p2_Data) delete h2Eff_HLT4p2_Data;
@@ -48,6 +49,7 @@ DYTnPEff_t::~DYTnPEff_t()
   h2VReco.clear();
   h2VIso.clear();
   h2VHLT.clear();
+  */
 }
 
 // -------------------------------------------------------------
@@ -74,7 +76,24 @@ int DYTnPEff_t::setHisto(int kind, int isMC, TH2D *h2)
     std::cout << "DYTnPEff::setHisto is not ready for kind=" << kind << "\n";
     return 0;
   }
+  updateVectors();
   return 1;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::fullList_setHisto(unsigned int i, TH2D *h2)
+{
+  // the list is Data/MC, thus the number 2
+  if (i<2) return this->setHisto(_kind_RecoID,(i==1)?1:0,h2);
+  i-=2;
+  if (i<2) return this->setHisto(_kind_Iso,(i==1)?1:0,h2);
+  i-=2;
+  if (i<2) return this->setHisto(_kind_HLT4p2,(i==1)?1:0,h2);
+  i-=2;
+  if (i<2) return this->setHisto(_kind_HLT4p3,(i==1)?1:0,h2);
+  std::cout << "DYTnPEff_t::fullList_setHisto(i=" << i << ") error: i value is too large\n";
+  return 0;
 }
 
 // -------------------------------------------------------------
@@ -772,11 +791,13 @@ void DYTnPEff_t::printNumbers(TString fileTag) const
 
 void DYTnPEff_t::displayAll() const
 {
-  int logScale=1;
-#ifdef def_fewMassBins
-  logScale=0;
-#endif
-  PlotCovCorrOpt_t opt(0,1,logScale);
+  int logScaleX=0, logScaleY=1;
+  //#ifdef def_fewMassBins
+  //logScaleX=0;
+  //logScaleY=0;
+  //#endif
+  PlotCovCorrOpt_t opt(0,1,logScaleX);
+  opt.setLogScale(logScaleX,logScaleY);
 
   if (0) {
     for (int iv=0; iv<3; iv++) {
@@ -792,6 +813,7 @@ void DYTnPEff_t::displayAll() const
   }
   else {
     TString cName1= TString("canv_") + h2Eff_RecoID_Data->GetName();
+    h2Eff_RecoID_Data->SetDirectory(0);
     plotHisto(h2Eff_RecoID_Data,cName1,opt);
     TH2D *h2err1= errorAsCentral(h2Eff_RecoID_Data,0);
     plotHisto(h2err1,cName1 + "_err",opt);
@@ -853,6 +875,137 @@ void DYTnPEff_t::displayEffTot(int data_or_mc, TString tag, int hlt4p3,
     h2SF->Divide(h2MC);
     plotHisto(h2SF,cStart+h2SF->GetName());
   }
+}
+
+// -------------------------------------------------------------
+
+void DYTnPEff_t::plotProfiles(int idxOnly,
+			      int skipGap, int plotVsPt, DYTnPEff_t *tnp2,
+			      TString label1, TString label2,
+			      DYTnPEff_t *tnp3, TString label3)
+{
+  HistoStyle_t hsData(kRed,  5,1,1.0,2.);
+  HistoStyle_t hsMC(kBlack,3,1,1.0,2.);
+  HistoStyle_t hsData2(kViolet, 24,1,1.0,2.);
+  HistoStyle_t hsMC2(kBlue, 24,1,1.0,2.);
+  HistoStyle_t hsData3(kOrange, 20,1,1.0,2.);
+  HistoStyle_t hsMC3(kGreen+1, 20,1,1.0,2.);
+
+  std::vector<TH2D*> h2V;
+  std::vector<HistoStyle_t> hsV;
+  std::vector<TString> labelV;
+  TString effName;
+
+  for (unsigned int i=0; i<fullListSize(); i++) {
+    if ((idxOnly>=0) && (idxOnly!=int(i))) continue;
+    if (i<2) effName="RECO ";
+    else if (i<4) effName="ID ";
+    else if (i<6) effName="HLT ";
+    else if (i<8) effName="HLTv4p3 ";
+    if (i%2==0) effName.Append("data"); else effName.Append("MC");
+
+    TH2D *h2=this->h2fullList(i);
+    h2V.push_back(h2);
+    hsV.push_back( ((i%2)==0) ? hsData : hsMC );
+    labelV.push_back(h2->GetName());
+
+    if (tnp2) {
+      TH2D *h2cmp= tnp2->h2fullList(i);
+      h2V.push_back(h2cmp);
+      hsV.push_back((i%2==0) ? hsData2 : hsMC2 );
+      labelV.clear();
+      labelV.push_back(label1);
+      labelV.push_back(label2);
+    }
+    if (tnp3) {
+      TH2D *h2cmp2= tnp3->h2fullList(i);
+      h2V.push_back(h2cmp2);
+      hsV.push_back((i%2==0) ? hsData3 : hsMC3 );
+      if (!tnp2) {
+	labelV.clear();
+	labelV.push_back(label1);
+      }
+      labelV.push_back(label3);
+    }
+
+    plotEffs(h2V,hsV,labelV,h2->GetName(),effName,1,1,skipGap,plotVsPt);
+    h2V.clear(); hsV.clear(); labelV.clear();
+  }
+  return;
+}
+
+// -------------------------------------------------------------
+
+void DYTnPEff_t::plotSFProfiles(int idxOnly,
+				int skipGap, int plotVsPt, DYTnPEff_t *tnp2,
+				TString label1, TString label2,
+				DYTnPEff_t *tnp3, TString label3)
+{
+  int removeError_flag=0;
+  HistoStyle_t hsData(kRed,  5,1,1.0,2.);
+  HistoStyle_t hsData2(kViolet, 24,1,1.0,2.);
+  HistoStyle_t hsData3(kOrange, 20,1,1.0,2.);
+
+  std::vector<TH2D*> h2V;
+  std::vector<HistoStyle_t> hsV;
+  std::vector<TString> labelV;
+  TString effName;
+
+  for (unsigned int i=0; i<fullListSize(); i++) {
+    if ((idxOnly>=0) && (idxOnly!=int(i))) continue;
+    if (i<2) effName="RECO ";
+    else if (i<4) effName="ID ";
+    else if (i<6) effName="HLT ";
+    else if (i<8) effName="HLTv4p3 ";
+    if (i%2==0) effName.Append("data"); else effName.Append("MC");
+
+    const TH2D *h2=this->h2fullList(i);
+    TString histoName=h2->GetName();
+    if (histoName.Index("MC")!=-1) continue;
+    histoName.ReplaceAll("_Data","_SF");
+
+    TString histoTitle= h2->GetTitle() + TString(";") +
+      h2->GetXaxis()->GetTitle() + TString(";SF");
+    std::cout << "histoTitle=" << histoTitle << "\n";
+    TH2D *h2sf= cloneHisto(h2,histoName,histoTitle);
+    h2sf->Divide( this->h2fullList(i+1) );
+    if (removeError_flag) removeErrorH2(h2sf);
+    h2V.push_back(h2sf);
+    hsV.push_back(hsData);
+    labelV.push_back(histoName);
+
+    if (tnp2) {
+      const TH2D *h2cmp= tnp2->h2fullList(i);
+      TH2D *h2cmpSF= cloneHisto(h2cmp, h2cmp->GetName()+TString("_sf"),
+				h2cmp->GetTitle() + TString(" sf"));
+      h2cmpSF->Divide(tnp2->h2fullList(i+1));
+      if (removeError_flag) removeErrorH2(h2cmpSF);
+      h2V.push_back(h2cmpSF);
+      hsV.push_back(hsData2);
+      labelV.clear();
+      labelV.push_back(label1);
+      labelV.push_back(label2);
+    }
+    if (tnp3) {
+      const TH2D *h2cmp2= tnp3->h2fullList(i);
+      TH2D *h2cmp2sf= cloneHisto(h2cmp2, h2cmp2->GetName()+TString("_sf"),
+				 h2cmp2->GetTitle() + TString(" sf"));
+      h2cmp2sf->Divide(tnp3->h2fullList(i+1));
+      if (removeError_flag) removeErrorH2(h2cmp2sf);
+      h2V.push_back(h2cmp2sf);
+      hsV.push_back(hsData3);
+      if (!tnp2) {
+	labelV.clear();
+	labelV.push_back(label1);
+      }
+      labelV.push_back(label3);
+    }
+
+    plotEffs(h2V,hsV,labelV,h2->GetName()+TString("_SF"),
+	     effName,1,0,skipGap,plotVsPt);
+    h2V.clear(); hsV.clear(); labelV.clear();
+  }
+  return;
 }
 
 // -------------------------------------------------------------
@@ -1340,7 +1493,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomize(int srcIdx, TString tag) const
 // -------------------------------------------------------------
 
 DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
-					    int maxSigma,
+					    int maxSigmaData, int maxSigmaMC,
 	    TH2D **h2chk, unsigned int ihChk, unsigned int iSrcChk) const
 {
   DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,tag);
@@ -1365,7 +1518,8 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
       switch (kind) {
       case _rnd_ampl: {
 	double r= gRandom->Gaus(0,1);
-	if (maxSigma!=0) r=double(maxSigma);
+	if ((ih%2==0) && (maxSigmaData!=0)) r=double(maxSigmaData);
+	else if ((ih%2==1) && (maxSigmaMC!=0)) r=double(maxSigmaMC);
 	//std::cout << "r=" << r << "\n";
 	h2dest->Add(h2diff,r);
 	if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
@@ -1374,7 +1528,8 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
       } break;
       case _rnd_barrel_vs_endcap: {
 	double r= gRandom->Gaus(0,1);
-	if (maxSigma!=0) r=double(maxSigma);
+	if ((ih%2==0) && (maxSigmaData!=0)) r=double(maxSigmaData);
+	else if ((ih%2==1) && (maxSigmaMC!=0)) r=double(maxSigmaMC);
 	for (int ibin=1; ibin<=h2diff->GetNbinsX(); ibin++) {
 	  int useSign=
 	    (fabs(h2diff->GetXaxis()->GetBinCenter(ibin))<0.5*(1.444+1.566)) ?
@@ -1382,7 +1537,8 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 	  //std::cout << " center " << h2diff->GetXaxis()->GetBinCenter(ibin) << " use sign " << useSign << "\n";
 	  for (int jbin=1; jbin<=h2diff->GetNbinsY(); jbin++) {
 	    double v= h2dest->GetBinContent(ibin,jbin);
-	    double dv=r*useSign*fabs(h2diff->GetBinContent(ibin,jbin));
+	    //double dv=r*useSign*fabs(h2diff->GetBinContent(ibin,jbin));
+	    double dv=r*useSign*h2diff->GetBinContent(ibin,jbin);
 	    //if ((ibin==2) && (jbin==1)) std::cout << "chk dv=" << dv << "\n";
 	    h2dest->SetBinContent(ibin,jbin, v + dv);
 	    if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
@@ -1393,13 +1549,15 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
       } break;
       case _rnd_low_vs_high_pt: {
 	double r= gRandom->Gaus(0,1);
-	if (maxSigma!=0) r=double(maxSigma);
+	if ((ih%2==0) && (maxSigmaData!=0)) r=double(maxSigmaData);
+	else if ((ih%2==1) && (maxSigmaMC!=0)) r=double(maxSigmaMC);
 	for (int ibin=1; ibin<=h2diff->GetNbinsX(); ibin++) {
 	  for (int jbin=1; jbin<=h2diff->GetNbinsY(); jbin++) {
 	    const double nb= h2diff->GetNbinsY();
 	    double a= (2*jbin/nb-1)*r;
 	    double v= h2dest->GetBinContent(ibin,jbin);
-	    double dv= a*fabs(h2diff->GetBinContent(ibin,jbin));
+	    //double dv= a*fabs(h2diff->GetBinContent(ibin,jbin));
+	    double dv= a*h2diff->GetBinContent(ibin,jbin);
 	    h2dest->SetBinContent(ibin,jbin, v+dv);
 	    if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
 	      (*h2chk)->SetBinContent(ibin,jbin,dv);
@@ -1420,11 +1578,13 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 
 // -------------------------------------------------------------
 
-void DYTnPEffColl_t::displayAll() const
+void DYTnPEffColl_t::displayAll(int includeSrc) const
 {
-  for (unsigned int i=0; i<fTnPEffSrcV.size(); i++)
-    fTnPEffSrcV[i]->displayAll();
   fTnPEff.displayAll();
+  if (includeSrc) {
+    for (unsigned int i=0; i<fTnPEffSrcV.size(); i++)
+      fTnPEffSrcV[i]->displayAll();
+  }
   for (unsigned int i=0; i<fTnPEffSystV.size(); i++)
     fTnPEffSystV[i]->displayAll();
 }
@@ -1594,6 +1754,7 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
     return NULL;
   }
   h1rho->SetDirectory(0);
+  h1rho->SetStats(0);
   h1rho->Sumw2();
   h1rho->GetXaxis()->SetMoreLogLabels();
   h1rho->GetXaxis()->SetNoExponent();
@@ -2079,6 +2240,158 @@ TString ptRangeStr(const TH2D *h2, int iPt)
   double pt2=pt1 + h2->GetYaxis()->GetBinWidth(iPt+1);
   TString ptRange=Form(format,pt1,pt2);
   return ptRange;
+}
+
+// -------------------------------------------------------------
+// -------------------------------------------------------------
+
+// --------------------------------------------------------------
+
+void plotEffs(const std::vector<TH2D*> &h2V,
+	      const std::vector<HistoStyle_t> &hsV,
+	      const std::vector<TString> &labels,
+	      TString plotNameBase, TString effName,
+	      int allInOne, int isEff,
+	      int skipGap, int plotVsPt)
+{
+  std::cout << "allInOne=" << allInOne << "\n";
+  if (!allInOne) {
+    //plotEffs_separate(h2V,hsV,labels,plotNameBase,effName,skipGap);
+    std::cout << "plotEffs_separate: not ready\n";
+    return;
+  }
+
+  if (plotVsPt==1) {
+    for (int iPt=0; iPt<h2V[0]->GetNbinsY(); iPt++) {
+
+      TString ptRange= ptRangeStr(h2V[0],iPt);
+
+      TString tag=Form("_%s_iPt%d",effName.Data(),iPt);
+      std::vector<TH1D*> h1V;
+      for (unsigned int ih=0; ih<h2V.size(); ih++) {
+	TH2D *h2= h2V[ih];
+	if (h2V[ih]->Integral()==0) continue;
+	TH1D *h1eff_iPt=
+	  h2->ProjectionX(h2->GetName() + tag,iPt+1,iPt+1);
+	h1eff_iPt->SetStats(0);
+	hsV[ih].SetStyle(h1eff_iPt);
+	h1V.push_back(h1eff_iPt);
+      }
+
+      double effRange_min=0.;
+      double effRange_max=1.;
+      setAutoRanges(h1V,effRange_min,effRange_max,isEff,0);
+
+      TString cName=plotNameBase + tag;
+      cName.ReplaceAll(" ","_");
+      TH1D *h1= h1V[0];
+      TString yaxisTitle=(isEff) ? "#varepsilon" : h2V[0]->GetYaxis()->GetTitle();
+      logAxis(h1,1,"#it{#eta}",yaxisTitle);
+      h1->SetTitle(plotNameBase + " " + ptRange);
+      h1->GetYaxis()->SetTitleSize(0.05);
+      h1->GetYaxis()->SetTitleOffset(1.2);
+      if (h1->GetXaxis()->GetBinCenter(h1->GetNbinsX())>200.)
+	h1->GetXaxis()->SetRangeUser(0,200.);
+      h1->GetYaxis()->SetRangeUser(effRange_min,effRange_max);
+      plotHisto(h1,cName,0,0,"LPE1",labels[0]);
+      TCanvas *cx=findCanvas(cName);
+      setLeftMargin(cx,0.15);
+      moveLegend(cx,0.45,0.);
+      for (unsigned int ih=1; ih<h1V.size(); ih++) {
+	plotHistoSame(h1V[ih],cName,"LPE1",labels[ih]);
+      }
+    }
+    return;
+  }
+
+
+  for (int iEta=0; iEta<h2V[0]->GetNbinsX(); iEta++) {
+
+    int isGap=0;
+    TString etaRange= etaRangeStr(h2V[0],iEta,(effName!="ID")?0:1, &isGap);
+    if (skipGap && isGap) continue;
+
+    TString tag=Form("_%s_iEta%d",effName.Data(),iEta);
+    std::vector<TH1D*> h1V;
+    for (unsigned int ih=0; ih<h2V.size(); ih++) {
+      TH2D *h2= h2V[ih];
+      if (h2V[ih]->Integral()==0) continue;
+      TH1D *h1eff_iEta=	h2->ProjectionY(h2->GetName() + tag,iEta+1,iEta+1);
+      h1eff_iEta->SetStats(0);
+      hsV[ih].SetStyle(h1eff_iEta);
+      h1V.push_back(h1eff_iEta);
+    }
+
+    double effRange_min=0.;
+    double effRange_max=1.;
+    setAutoRanges(h1V,effRange_min,effRange_max,isEff,0);
+
+    TString cName=plotNameBase + tag;
+    cName.ReplaceAll(" ","_");
+    TH1D *h1= h1V[0];
+    TString yaxisTitle=(isEff) ? "#varepsilon" : h2V[0]->GetYaxis()->GetTitle();
+    logAxis(h1,1,"#it{p}_{T} [GeV]",yaxisTitle);
+    h1->SetTitle(plotNameBase + " " + etaRange);
+    h1->GetXaxis()->SetTitleOffset(1.25);
+    h1->GetYaxis()->SetTitleSize(0.05);
+    h1->GetYaxis()->SetTitleOffset(1.2);
+    if (h1->GetXaxis()->GetBinCenter(h1->GetNbinsX())>200.)
+      h1->GetXaxis()->SetRangeUser(0,200.);
+    h1->GetYaxis()->SetRangeUser(effRange_min,effRange_max);
+    plotHisto(h1,cName,1,0,"LPE1",labels[0]);
+    TCanvas *cx=findCanvas(cName);
+    setLeftMargin(cx,0.15);
+    moveLegend(cx,0.45,0.);
+    for (unsigned int ih=1; ih<h1V.size(); ih++) {
+      plotHistoSame(h1V[ih],cName,"LPE1",labels[ih]);
+    }
+  }
+}
+
+// -------------------------------------------------------------
+
+void setAutoRanges(const std::vector<TH1D*> &h1V,
+		   double &range_min, double &range_max, int isEffRange,
+		   int silent)
+{
+  // auto range on ratio
+  typedef std::pair<double,double> ddpair_t;
+  std::vector<std::pair<double,double> > yRange;
+  if (isEffRange) {
+    yRange.push_back(ddpair_t(0.90, 1.01));
+    yRange.push_back(ddpair_t(0.80, 1.01));
+    yRange.push_back(ddpair_t(0.70, 1.01));
+    yRange.push_back(ddpair_t(0.60, 1.01));
+    yRange.push_back(ddpair_t(0.50, 1.01));
+    yRange.push_back(ddpair_t(0.40, 1.01));
+    yRange.push_back(ddpair_t(0.30, 1.01));
+    yRange.push_back(ddpair_t(0.20, 1.01));
+    yRange.push_back(ddpair_t(0.10, 1.01));
+    yRange.push_back(ddpair_t(0.00, 1.01));
+    yRange.push_back(ddpair_t(0.90, 1.05));
+    yRange.push_back(ddpair_t(0.90, 1.10));
+    yRange.push_back(ddpair_t(0.85, 1.05));
+    yRange.push_back(ddpair_t(0.60, 1.05));
+    yRange.push_back(ddpair_t(0.50, 1.05));
+    yRange.push_back(ddpair_t(0.85, 1.10));
+    yRange.push_back(ddpair_t(0.80, 1.10));
+  }
+  else {
+    yRange.push_back(ddpair_t(0.95,1.05));
+    yRange.push_back(ddpair_t(0.90,1.10));
+    yRange.push_back(ddpair_t(0.85,1.15));
+    yRange.push_back(ddpair_t(0.80,1.20));
+    yRange.push_back(ddpair_t(0.75,1.25));
+    yRange.push_back(ddpair_t(0.70,1.30));
+    yRange.push_back(ddpair_t(0.65,1.35));
+    yRange.push_back(ddpair_t(0.60,1.40));
+    yRange.push_back(ddpair_t(0.50,1.50));
+  }
+  if (!checkRange(h1V,range_min,range_max,yRange,0,silent)) {
+    std::cout << "auto range on efficiency (isEffRange=" << isEffRange
+	      << ") failed\n";
+  }
+  return;
 }
 
 // -------------------------------------------------------------
