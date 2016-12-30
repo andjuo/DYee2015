@@ -35,60 +35,78 @@ void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
 
 // ----------------------------------------------------------
 
-void testDYTnPEffColl(int nExps_input=100, int testCase=0)
+void testDYTnPEffColl_systDemo(int nExps_input=100, int testCase=0, int demoEff=1)
 {
+#ifdef def_fewMassBins
+  std::cout << "\n\tdef_fewMassBins is ON\n";
+#endif
 
-  TH2D *h2def= new TH2D("h2def","h2def;eta;pt", nEtaBins,etaArr,nPtBins,ptArr);
-  h2def->SetStats(0);
-
-  for (int ibin=1; ibin<=nEtaBins; ibin++) {
-    for (int jbin=1; jbin<=nPtBins; jbin++) {
-      //std::cout << "ibin=" << ibin << ", jbin=" << jbin << "\n";
-      h2def->SetBinContent(ibin,jbin, 1.);
-      h2def->SetBinError  (ibin,jbin, 0.);
-    }
+  DYTnPEff_t tnpDef(0);
+  if (!tnpDef.load("dyee_effSyst_Coll.root","DYTnPEffColl")) {
+    std::cout << "failed to load DYTnPEff_t\n";
+    return;
   }
-  printHisto(h2def);
 
-  DYTnPEff_t tnpDef;
-  tnpDef.h2Eff_RecoID_Data= cloneHisto(h2def,"h2eff_recoID_data","h2eff_recoID_data");
-  tnpDef.h2Eff_Iso_Data= cloneHisto(h2def,"h2eff_iso_data","h2eff_iso_data");
-  tnpDef.h2Eff_HLT4p2_Data= cloneHisto(h2def,"h2eff_hlt4p2_data","h2eff_hlt4p2_data");
-  tnpDef.h2Eff_HLT4p3_Data= cloneHisto(h2def,"h2eff_hlt4p3_data","h2eff_hlt4p3_data");
-  tnpDef.h2Eff_RecoID_MC= cloneHisto(h2def,"h2eff_recoID_mc","h2eff_recoID_mc");
-  tnpDef.h2Eff_Iso_MC= cloneHisto(h2def,"h2eff_iso_mc","h2eff_iso_mc");
-  tnpDef.h2Eff_HLT4p2_MC= cloneHisto(h2def,"h2eff_hlt4p2_mc","h2eff_hlt4p2_mc");
-  tnpDef.h2Eff_HLT4p3_MC= cloneHisto(h2def,"h2eff_hlt4p3_mc","h2eff_hlt4p3_mc");
+  TH2D* h2def= cloneHisto(tnpDef.h2fullList(0),"h2def","h2def;eta;pT");
+  h2def->SetStats(0);
+  TH2D* h2def10perc= cloneHisto(h2def,"h2def10perc","h2def10perc;eta;pT");
+
+  if (demoEff) {
+    for (int ibin=1; ibin<=h2def->GetNbinsX(); ibin++) {
+      for (int jbin=1; jbin<=h2def->GetNbinsY(); jbin++) {
+	//std::cout << "ibin=" << ibin << ", jbin=" << jbin << "\n";
+	double eff_eta= ( 0.98 - 0.2 * fabs(h2def->GetXaxis()->GetBinCenter(ibin)) );
+	double eff_pt = 1 - 0.1 * (h2def->GetNbinsY() - jbin);
+	std::cout << "ibin=" << ibin << ", jbin=" << jbin << ", eff_eta=" << eff_eta
+		  << ", eff_pt=" << eff_pt << ", eff_tot=" << (eff_eta*eff_pt) << "\n";
+	h2def->SetBinContent(ibin,jbin, eff_eta*eff_pt);
+	h2def->SetBinError  (ibin,jbin, 0.);
+	h2def10perc->SetBinContent(ibin,jbin, 1.1*eff_eta*eff_pt);
+	h2def10perc->SetBinError  (ibin,jbin, 0.);
+      }
+    }
+    printHisto(h2def);
+    printHisto(h2def10perc);
+
+    tnpDef.h2Eff_RecoID_Data= cloneHisto(h2def,"h2eff_recoID_data","h2eff_recoID_data");
+    tnpDef.h2Eff_Iso_Data= cloneHisto(h2def,"h2eff_iso_data","h2eff_iso_data");
+    tnpDef.h2Eff_HLT4p2_Data= cloneHisto(h2def,"h2eff_hlt4p2_data","h2eff_hlt4p2_data");
+    tnpDef.h2Eff_HLT4p3_Data= cloneHisto(h2def,"h2eff_hlt4p3_data","h2eff_hlt4p3_data");
+    tnpDef.h2Eff_RecoID_MC= cloneHisto(h2def,"h2eff_recoID_mc","h2eff_recoID_mc");
+    tnpDef.h2Eff_Iso_MC= cloneHisto(h2def,"h2eff_iso_mc","h2eff_iso_mc");
+    tnpDef.h2Eff_HLT4p2_MC= cloneHisto(h2def,"h2eff_hlt4p2_mc","h2eff_hlt4p2_mc");
+    tnpDef.h2Eff_HLT4p3_MC= cloneHisto(h2def,"h2eff_hlt4p3_mc","h2eff_hlt4p3_mc");
+  }
 
   DYTnPEff_t eStat(tnpDef,"stat");
   DYTnPEff_t eSystA(tnpDef,"systA");
-  DYTnPEff_t eSystB(tnpDef,"systB");
 
-  if (0) {
-    setValue(eStat.h2Eff_RecoID_Data,1,1, 0.5,0.05);
-    setValue(eStat.h2Eff_RecoID_Data,2,1, 1.15,0.25);
-    setValue(eSystB.h2Eff_Iso_MC,2,1, 0.85, 100.);
+  if (1) {
+    for (unsigned int i=0; i<tnpDef.fullListSize(); i++) {
+      eSystA.fullList_setHisto(i,cloneHisto(h2def10perc,
+					    tnpDef.fullListHistoName(i)+"_10perc",
+					    tnpDef.fullListHistoTitle(i)+"_10perc"));
+    }
+    //eStat.listNumbers();
+    //eSystA.listNumbers();
   }
-  else {
-    setValue(eStat.h2Eff_RecoID_Data,1,1, 1.1,0.05);
-    setValue(eStat.h2Eff_RecoID_Data,2,1, 1.1,0.25);
-    setValue(eSystB.h2Eff_Iso_MC,2,1, 1.1, 100.);
-  }
-
+  std::cout << "plot profiles\n";
+  eStat.plotProfiles(0, 0,1);
+  return;
 
   DYTnPEffColl_t coll(0);
   if (!coll.assignStatErr(eStat,"_coll") ||
-      !coll.addSystErrSource(eSystA,"_collA") ||
-      !coll.addSystErrSource(eSystB,"_collB")) {
+      !coll.addSystErrSource(eSystA,"_collA")) {
     std::cout << "error adding stat and syst err\n";
     return;
   }
 
   coll.listNumbers(1);
-  //coll.displayAll();
+  coll.displayAll(0);
+  //return;
 
-  if (1) {
-    if (!coll.save("data_test_TnPEffColl.root","")) {
+  if (0) {
+    if (!coll.save("data_demo_TnPEffColl.root","")) {
       std::cout << "saving failed\n";
     }
     else {
@@ -98,7 +116,7 @@ void testDYTnPEffColl(int nExps_input=100, int testCase=0)
   }
   if (0) {
     DYTnPEffColl_t collChk(0);
-    if (!collChk.load("data_test_TnPEffColl.root","","_coll _collA _collB")) {
+    if (!collChk.load("data_demo_TnPEffColl.root","","_coll _collA")) {
       std::cout << "loading failed\n";
     }
     else {
@@ -115,12 +133,11 @@ void testDYTnPEffColl(int nExps_input=100, int testCase=0)
 
   if (0) {
     DYTnPEff_t *effSystA_static= coll.getTnPWithSystUnc(0);
-    DYTnPEff_t *effSystB_static= coll.getTnPWithSystUnc(1);
     effSystA_static->listNumbers();
-    effSystB_static->listNumbers();
     return;
   }
 
+  /*
   if (1) {
     DYTnPEff_t *effSigmaUp= coll.getTnPShiftByUnc("_sigmaUp",1,1);
     DYTnPEff_t *effSigmaDown= coll.getTnPShiftByUnc("_sigmaDown",-1,-1);
@@ -128,6 +145,8 @@ void testDYTnPEffColl(int nExps_input=100, int testCase=0)
     effSigmaDown->listNumbers();
     return;
   }
+  */
+  return;
 
   int nToys=nExps_input;
 

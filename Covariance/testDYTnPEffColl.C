@@ -64,9 +64,16 @@ void testDYTnPEffColl(int nExps_input=100, int testCase=0)
   DYTnPEff_t eSystA(tnpDef,"systA");
   DYTnPEff_t eSystB(tnpDef,"systB");
 
-  setValue(eStat.h2Eff_RecoID_Data,1,1, 0.5,0.05);
-  setValue(eStat.h2Eff_RecoID_Data,2,1, 1.15,0.25);
-  setValue(eSystB.h2Eff_Iso_MC,2,1, 0.85, 100.);
+  if (0) {
+    setValue(eStat.h2Eff_RecoID_Data,1,1, 0.5,0.05);
+    setValue(eStat.h2Eff_RecoID_Data,2,1, 1.15,0.25);
+    setValue(eSystB.h2Eff_Iso_MC,2,1, 0.85, 100.);
+  }
+  else {
+    setValue(eStat.h2Eff_RecoID_Data,1,1, 1.1,0.05);
+    setValue(eStat.h2Eff_RecoID_Data,2,1, 1.1,0.25);
+    setValue(eSystB.h2Eff_Iso_MC,2,1, 1.1, 100.);
+  }
 
 
   DYTnPEffColl_t coll(0);
@@ -80,7 +87,7 @@ void testDYTnPEffColl(int nExps_input=100, int testCase=0)
   coll.listNumbers(1);
   //coll.displayAll();
 
-  if (0) {
+  if (1) {
     if (!coll.save("data_test_TnPEffColl.root","")) {
       std::cout << "saving failed\n";
     }
