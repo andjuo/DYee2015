@@ -55,7 +55,8 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
 		    int set_logScale, double set_yTitleOffset,
 		    double set_leftMargin, double set_rightMargin) :
   autoZRangeCorr(set_autoZRangeCorr), gridLines(set_gridLines),
-  logScale(set_logScale), yTitleOffset(set_yTitleOffset),
+  logScaleX(set_logScale), logScaleY(set_logScale),
+  yTitleOffset(set_yTitleOffset),
   leftMargin(set_leftMargin), rightMargin(set_rightMargin)
 {}
 
@@ -63,7 +64,8 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
 
 PlotCovCorrOpt_t::PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o) :
   autoZRangeCorr(o.autoZRangeCorr), gridLines(o.gridLines),
-  logScale(o.logScale), yTitleOffset(o.yTitleOffset),
+  logScaleX(o.logScaleX), logScaleY(o.logScaleY),
+  yTitleOffset(o.yTitleOffset),
   leftMargin(o.leftMargin), rightMargin(o.rightMargin)
 {}
 
@@ -170,7 +172,7 @@ TCanvas* plotHisto(TH2D* h2, TString cName, int logx, int logy,
 
 TCanvas *plotHisto(TH2D* h2, TString cName, const PlotCovCorrOpt_t &o)
 {
-  return plotHisto(h2,cName,o.logScale,o.logScale,o.yTitleOffset,
+  return plotHisto(h2,cName,o.logScaleX,o.logScaleY,o.yTitleOffset,
 		   o.gridLines,(o.autoZRangeCorr) ? 1. : 0.);
 }
 
@@ -1588,19 +1590,15 @@ TCanvas *plotCovCorr(TH2D* h2Cov, TString canvName,
   cx->Divide(2,1);
   cx->cd(1);
   if (o.gridLines) gPad->SetGrid(1,1);
-  if (o.logScale) {
-    gPad->SetLogx();
-    gPad->SetLogy();
-  }
+  if (o.logScaleX) gPad->SetLogx();
+  if (o.logScaleY) gPad->SetLogy();
   gPad->SetRightMargin(o.rightMargin);
   gPad->SetLeftMargin(o.leftMargin);
   h2Cov->Draw("COLZ");
   cx->cd(2);
   if (o.gridLines) gPad->SetGrid(1,1);
-  if (o.logScale) {
-    gPad->SetLogx();
-    gPad->SetLogy();
-  }
+  if (o.logScaleX) gPad->SetLogx();
+  if (o.logScaleY) gPad->SetLogy();
   gPad->SetRightMargin(o.rightMargin);
   gPad->SetLeftMargin(o.leftMargin);
   if (o.autoZRangeCorr) h2Corr->GetZaxis()->SetRangeUser(-1,1);
@@ -1738,6 +1736,18 @@ void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout)
 int SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout)
 {
   if (listOfCanvNames.Length()==0) return 0;
+
+  if (listOfCanvNames=="ALL") {
+    TSeqCollection *seq=gROOT->GetListOfCanvases();
+    std::vector<TCanvas*> cV;
+    for (int i=0; i<=seq->LastIndex(); i++) {
+      TCanvas *c= (TCanvas*) seq->At(i);
+      cV.push_back(c);
+    }
+    SaveCanvases(cV,destDir,fout);
+    return 1;
+  }
+
   std::stringstream ss(listOfCanvNames.Data());
   TString cName;
   std::vector<TCanvas*> cV;

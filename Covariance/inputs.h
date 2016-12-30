@@ -71,13 +71,16 @@ public:
 
 struct PlotCovCorrOpt_t
 {
-  int autoZRangeCorr, gridLines, logScale;
+  int autoZRangeCorr, gridLines, logScaleX, logScaleY;
   double yTitleOffset, leftMargin, rightMargin;
 public:
   PlotCovCorrOpt_t(int set_autoZRangeCorr=1, int set_gridLines=1,
 		   int set_logScale=1, double set_yTitleOffset=1.5,
 		   double set_leftMargin=0.15, double set_rightMargin=0.15);
   PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o);
+
+  void setLogScale(int logX=1, int logY=1)
+  { logScaleX=logX; logScaleY=logY; }
 };
 
 // -----------------------------------------------------------
@@ -580,6 +583,7 @@ void closeCanvases(int itimes=3);
 void SaveCanvas(TCanvas* canv, TString canvName, TString destDir,
 		int correctName=0);
 void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
+// if listOfCanvNames="ALL", saves all canvases
 int  SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout=NULL);
 void writeTimeTag(TFile *fout=NULL);
 
@@ -633,6 +637,7 @@ int orderChanged(const std::vector<int> &idx);
 
 
 template<class T>
+inline
 int valueEquals(const T val, const std::string targets)
 {
   std::stringstream ss(targets);
@@ -645,6 +650,33 @@ int valueEquals(const T val, const std::string targets)
   return yes;
 }
 
+// -----------------------------------
+
+template<class T>
+inline
+int hasValue(const T val, const std::string targets)
+{ return valueEquals(val,targets); }
+
+// -----------------------------------
+
+// parse strings like "key1=value1 key2=value2"
+
+template<class T>
+inline
+int setValue(T &var, const std::string &option, const std::string &key,
+	     T default_value)
+{
+  var=default_value;
+  size_t p=option.find(key);
+  if (p!=std::string::npos) {
+    p+= key.size();
+    var=T(atof(option.c_str()+p));
+    return 1;
+  }
+  return 0;
+}
+
+// -----------------------------------
 
 inline
 void HERE(const char *msg)
