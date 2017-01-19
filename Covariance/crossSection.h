@@ -11,7 +11,8 @@
 typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes,
 	       _varFSRRes, _varFSRRes_Poisson,
 	       _varEff, _varRho, _varRhoFile,
-	       _varAcc, _varEffAcc, _varLast } TVaried_t;
+	       _varAcc, _varEffAcc, _varLast,
+	       _varRhoSyst } TVaried_t;
 
 typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
 	       _bkgWJets, _bkgQCD, _bkgLast } TBkg_t;
@@ -19,14 +20,22 @@ typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
 typedef enum { _csPostFsrInAcc=0, _csPostFsrFullSp,
 	       _csPreFsrInAcc, _csPreFsrFullSp } TCSType_t;
 
+typedef enum { _tnpSyst_none=0,
+	       _tnpSyst_bkgPdf, _tnpSyst_sigPdf, _tnpSyst_NLOvsLO,
+	       _tnpSyst_tagDef, _tnpSyst_last } TTnPSystType_t;
 
 TString variedVarName(TVaried_t);
 TString bkgName(TBkg_t);
 TString csTypeName(TCSType_t);
+TString tnpSystName(TTnPSystType_t, int shortName=0);
 
 inline
 TBkg_t next(TBkg_t &b)
 { if (b<_bkgLast) b=TBkg_t(int(b)+1); return b; }
+
+inline
+TTnPSystType_t next(TTnPSystType_t &s)
+{ if (s<_tnpSyst_last) s=TTnPSystType_t(int(s)+1); return s; }
 
 // -----------------------------------------------------------
 

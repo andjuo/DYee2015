@@ -23,6 +23,7 @@ TString variedVarName(TVaried_t v)
   case _varAcc: name="varAcc"; break;
   case _varEffAcc: name="varEffAcc"; break;
   case _varLast: name="varLast"; break;
+  case _varRhoSyst: name="varRhoSyst"; break;
   default:
     std::cout << "variedVarName is not ready for this var\n";
   }
@@ -65,6 +66,40 @@ TString csTypeName(TCSType_t cs)
   return name;
 }
 
+
+// --------------------------------------------------------------
+
+TString tnpSystName(TTnPSystType_t s, int shortName)
+{
+  TString name="tnpSystUNKNOWN";
+  if (shortName) {
+    switch(s) {
+    case _tnpSyst_none: name="tnpSystNone"; break;
+    case _tnpSyst_bkgPdf: name="bkgPdf"; break;
+    case _tnpSyst_sigPdf: name="sigPdf"; break;
+    case _tnpSyst_NLOvsLO: name="NLOvsLO"; break;
+    case _tnpSyst_tagDef: name="tag"; break;
+    case _tnpSyst_last: name="tnpSystLast"; break;
+    default:
+      std::cout << "tnpSystName (shortName=1) is not ready for this "
+		<< "TTnpSystType value\n";
+    }
+  }
+  else {
+    switch(s) {
+    case _tnpSyst_none: name="tnpSystNone"; break;
+    case _tnpSyst_bkgPdf: name="tnpSystBkgPdf"; break;
+    case _tnpSyst_sigPdf: name="tnpSystSigPdf"; break;
+    case _tnpSyst_NLOvsLO: name="tnpSystNLOvsLO"; break;
+    case _tnpSyst_tagDef: name="tnpSystTagDef"; break;
+    case _tnpSyst_last: name="tnpSystLast"; break;
+    default:
+      std::cout << "tnpSystName (shortName=0) is not ready for this "
+		<< "TTnpSystType value\n";
+    }
+  }
+  return name;
+}
 
 // --------------------------------------------------------------
 // --------------------------------------------------------------
@@ -323,6 +358,7 @@ TH1D* CrossSection_t::getVariedHisto(TVaried_t new_var)
   case _varRhoFile: h1=fh1Rho; break;
   case _varAcc: h1=fh1Acc; break;
   case _varEffAcc: h1=fh1EffAcc; break;
+  case _varRhoSyst: // no break
   default:
     std::cout << "getVariedHisto should not be called for "
 	      << variedVarName(new_var) << " (default warning)\n";
