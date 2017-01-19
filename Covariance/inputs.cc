@@ -32,6 +32,26 @@ TString versionName(TVersion_t ver)
 }
 
 // -----------------------------------------------------------
+
+int leptonIdx(TVersion_t v) {
+  int i=-1;
+  switch(v) {
+  case _verUndef: i=-1;
+    break;
+  case _verMu1: case _verMu76X: case _verMuApproved:
+    i=1;
+    break;
+  case _verEl1: case _verEl2: case _verEl2skim: case _verEl2skim2:
+  case _verEl2skim3: case _verEl3:
+    i=0;
+    break;
+  default:
+    std::cout << "leptonIdx is not ready for version ="<< versionName(v)<< "\n";
+  }
+  return i;
+}
+
+// -----------------------------------------------------------
 // -----------------------------------------------------------
 
 HistoStyle_t::HistoStyle_t(int set_color, int set_markerStyle,

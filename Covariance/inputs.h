@@ -36,6 +36,7 @@ typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verMuApproved=102,
 } TVersion_t;
 
 TString versionName(TVersion_t);
+int leptonIdx(TVersion_t); // 0 - electron, 1 - muon, 2 - lepton
 
 // -----------------------------------------------------------
 
