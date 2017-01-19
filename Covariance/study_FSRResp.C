@@ -17,7 +17,9 @@ typedef enum { _mu76Xfsr=0,
 	       _elRidhiFSR=6,
 	       _elRidhiDetRes=7,
 	       _elV2SkimFSR=8,
-	       _elV2SkimDetRes=9
+	       _elV2SkimDetRes=9,
+	       _elV3FSR=10,
+	       _elV3DetRes=11
 } TStudyCase_t;
 
 typedef enum { _unfoldBayes=0, _unfoldInvert } TUnfoldMethod_t;
@@ -160,7 +162,7 @@ void study_FSRResp(int nSample, int studyCase=_elV2SkimFSR, int doSave=0,
     outDirTag="_elFSRRes";
   }
   else if (studyCase==_elRidhiDetRes) {
-    iLepton=1;
+    iLepton=0;
     std::cout << " studyCase= _elRidhiDetRes\n";
     std::cout << "\n\tdata is not real!!\n";
     baselineTest=0;
@@ -180,7 +182,7 @@ void study_FSRResp(int nSample, int studyCase=_elV2SkimFSR, int doSave=0,
     outDirTag="_elDetRes";
   }
   else if (studyCase==_elV2SkimFSR) {
-    iLepton=1;
+    iLepton=0;
     std::cout << "studyCase= _elV2SkimFSR\n";
     baselineTest=0;
     mcScale=2316.97;
@@ -211,7 +213,7 @@ void study_FSRResp(int nSample, int studyCase=_elV2SkimFSR, int doSave=0,
     outDirTag="_elV2SkimFSR";
   }
   else if (studyCase==_elV2SkimDetRes) {
-    iLepton=1;
+    iLepton=0;
     std::cout << "studyCase= _elV2SkimDetRes\n";
     baselineTest=0;
     mcScale=2316.97;
@@ -238,6 +240,66 @@ void study_FSRResp(int nSample, int studyCase=_elV2SkimFSR, int doSave=0,
     covFName="";
     nameh2cov="";
     outDirTag="_elV2SkimDetRes";
+  }
+  else if (studyCase==_elV3FSR) {
+    iLepton=0;
+    std::cout << "studyCase= _elV3FSR\n";
+    baselineTest=0;
+    mcScale=2316.97;
+    // measured postFSR and preFSR distributions
+    fnameMain="cs_DYee_13TeV_El3.root";
+    nameh1preUnfData="h1UnfRhoEffAcc";
+    nameh1unfData="h1PreFSR";
+    // FSR response matrix
+    fnameResp=fnameMain;
+    nameResp="FSRRes";
+    TString simFName="dyee_test_dressed_El3.root";
+    //simFName="dyee_test_El2skim_excludeGap.root";
+    if (0) { // closure
+      mcScale=1.;
+      fnameResp=simFName;
+      nameResp="rooUnf_fsrResp";
+    }
+    nIters=15;
+    // simulated distributions
+    fnameMC=simFName;
+    nameh1measMC="h1_postFsr_Mweighted";
+    nameh1trueMC="h1_preFsr_Mweighted";
+    nameh2migrationMatrix="";
+    hasOverflows=0;
+    // response matrix randomization
+    covFName="";
+    nameh2cov="";
+    outDirTag="_elV3FSR";
+  }
+  else if (studyCase==_elV3DetRes) {
+    iLepton=0;
+    std::cout << "studyCase= _elV3SkimDetRes\n";
+    baselineTest=0;
+    mcScale=2316.97;
+    // measured postFSR and preFSR distributions
+    fnameMain="cs_DYee_13TeV_El3.root";
+    nameh1preUnfData="h1Signal";
+    nameh1unfData="h1Unf";
+    // FSR response matrix
+    fnameResp=fnameMain;
+    nameResp="detRes";
+    if (0) { // closure
+      mcScale=1.;
+      fnameResp="dyee_test_dressed_El3.root";
+      nameResp="rooUnf_detResRespPU";
+    }
+    nIters=15;
+    // simulated distributions
+    fnameMC="dyee_test_dressed_El3.root";
+    nameh1measMC="h1recoSel_MWPU";
+    nameh1trueMC="h1_postFsrInAccSel_MWPU";
+    nameh2migrationMatrix="";
+    hasOverflows=0;
+    // response matrix randomization
+    covFName="";
+    nameh2cov="";
+    outDirTag="_elV3DetRes";
   }
 
   if (nIters_user>0) {
@@ -406,10 +468,13 @@ void study_FSRResp(int nSample, int studyCase=_elV2SkimFSR, int doSave=0,
     }
   }
 
+  PlotCovCorrOpt_t ccOpt;
+  ccOpt.yTitleOffset= 1.8;
+
   // compare covariances
-  plotCovCorr(h2bayesMeasCov,"cCovBayesMeas",NULL,1);
-  plotCovCorr(h2bayesRecoCov,"cCovBayesReco",NULL,1);
-  if (h2unfCov) plotCovCorr(h2unfCov,"cCovUnf",NULL,1);
+  plotCovCorr(h2bayesMeasCov,"cCovBayesMeas",ccOpt,NULL);
+  plotCovCorr(h2bayesRecoCov,"cCovBayesReco",ccOpt,NULL);
+  if (h2unfCov) plotCovCorr(h2unfCov,"cCovUnf",ccOpt,NULL);
 
   // covariance of the cross sections due to the limited MC statistics
   // for unfolding
@@ -428,14 +493,14 @@ void study_FSRResp(int nSample, int studyCase=_elV2SkimFSR, int doSave=0,
     if (0) {
       TMatrixD mCovRespMStat( convert2mat(h2covRespMStat ) );
       TH2D *h2Chk= new TH2D(mCovRespMStat);
-      plotCovCorr(h2covRespMStat,"cCovRespMStat",NULL,1);
-      plotCovCorr(h2Chk, "cCovChk",NULL,1);
+      plotCovCorr(h2covRespMStat,"cCovRespMStat",ccOpt,NULL);
+      plotCovCorr(h2Chk, "cCovChk",ccOpt,NULL);
       printHisto(h2Chk);
       mCovRespMStat.Print();
       return;
     }
 
-    plotCovCorr(h2covRespMStat,"cCovRespMStat",NULL,1);
+    plotCovCorr(h2covRespMStat,"cCovRespMStat",ccOpt,NULL);
   }
 
   // compare uncertainties from the covariance
