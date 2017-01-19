@@ -82,6 +82,61 @@ int DYTnPEff_t::setHisto(int kind, int isMC, TH2D *h2)
 
 // -------------------------------------------------------------
 
+const TH2D* DYTnPEff_t::getHisto(int kind, int isMC) const
+{
+  const TH2D *h2;
+  if (kind== _kind_RecoID) {
+    if (isMC) h2=h2Eff_RecoID_MC;
+    else h2=h2Eff_RecoID_Data;
+  }
+  else if (kind== _kind_Iso) {
+    if (isMC) h2=h2Eff_Iso_MC;
+    else h2=h2Eff_Iso_Data;
+  }
+  else if (kind== _kind_HLT4p2) {
+    if (isMC) h2=h2Eff_HLT4p2_MC;
+    else h2=h2Eff_HLT4p2_Data;
+  }
+  else if (kind== _kind_HLT4p3) {
+    if (isMC) h2=h2Eff_HLT4p3_MC;
+    else h2=h2Eff_HLT4p3_Data;
+  }
+  else {
+    std::cout << "DYTnPEff::getHisto is not ready for kind=" << kind << "\n";
+    return NULL;
+  }
+  return h2;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::copyHisto(int kind, int isMC, const TH2D *h2)
+{
+  if (kind== _kind_RecoID) {
+    if (isMC) copyContents(h2Eff_RecoID_MC,h2);
+    else copyContents(h2Eff_RecoID_Data,h2);
+  }
+  else if (kind== _kind_Iso) {
+    if (isMC) copyContents(h2Eff_Iso_MC,h2);
+    else copyContents(h2Eff_Iso_Data,h2);
+  }
+  else if (kind== _kind_HLT4p2) {
+    if (isMC) copyContents(h2Eff_HLT4p2_MC,h2);
+    else copyContents(h2Eff_HLT4p2_Data,h2);
+  }
+  else if (kind== _kind_HLT4p3) {
+    if (isMC) copyContents(h2Eff_HLT4p3_MC,h2);
+    else copyContents(h2Eff_HLT4p3_Data,h2);
+  }
+  else {
+    std::cout << "DYTnPEff::copyHisto is not ready for kind=" << kind << "\n";
+    return 0;
+  }
+  return 1;
+}
+
+// -------------------------------------------------------------
+
 int DYTnPEff_t::fullList_setHisto(unsigned int i, TH2D *h2)
 {
   // the list is Data/MC, thus the number 2
@@ -544,6 +599,10 @@ int DYTnPEff_t::add(const DYTnPEff_t &e)
 int DYTnPEff_t::addShiftByUnc(const DYTnPEff_t &e,
 			      double nSigmas_data, double nSigmas_mc)
 {
+  std::cout << "addShiftByUnc : RecoID_Data, nSigmas_data=" << nSigmas_data << "\n";
+  std::cout << "orig histo "; printHisto(h2Eff_RecoID_Data);
+  std::cout << "adding histo "; printHisto(e.h2Eff_RecoID_Data);
+
   int res=
     ::addShiftByUnc(h2Eff_RecoID_Data, e.h2Eff_RecoID_Data,nSigmas_data) &&
     ::addShiftByUnc(h2Eff_Iso_Data, e.h2Eff_Iso_Data,nSigmas_data) &&
@@ -553,6 +612,7 @@ int DYTnPEff_t::addShiftByUnc(const DYTnPEff_t &e,
     ::addShiftByUnc(h2Eff_Iso_MC, e.h2Eff_Iso_MC,nSigmas_mc) &&
     ::addShiftByUnc(h2Eff_HLT4p2_MC, e.h2Eff_HLT4p2_MC,nSigmas_mc) &&
     ::addShiftByUnc(h2Eff_HLT4p3_MC, e.h2Eff_HLT4p3_MC,nSigmas_mc);
+  std::cout << "final histo "; printHisto(h2Eff_RecoID_Data);
   for (unsigned int i=0; i<fullListSize(); i++) {
     const TH2D *h2= h2fullList(i);
     if (hasValueBelow(h2,0.)) {
@@ -1030,6 +1090,26 @@ void DYTnPEff_t::listNumbers() const
 
 // -------------------------------------------------------------
 
+void DYTnPEff_t::listNumbersBrief(int nLinesX, int nLinesY) const
+{
+  std::cout << "\n" << std::string(20,'-') << "\n";
+  printHistoWLimit(h2Eff_RecoID_Data,nLinesX,nLinesY);
+  /*
+  printHisto(h2Eff_RecoID_MC);
+  printHisto(h2Eff_Iso_Data);
+  */
+  printHistoWLimit(h2Eff_Iso_MC,nLinesX,nLinesY);
+  //printHisto(h2Eff_HLT4p2_Data);
+  //printHisto(h2Eff_HLT4p2_MC);
+  /*
+  printHisto(h2Eff_HLT4p3_Data);
+  printHisto(h2Eff_HLT4p3_MC);
+  */
+  std::cout << std::string(20,'-') << "\n";
+}
+
+// -------------------------------------------------------------
+
 void DYTnPEff_t::printEffRatios(const DYTnPEff_t &e, int compareErrs,
 				double markIfDiffRelTol) const
 {
@@ -1493,6 +1573,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomize(int srcIdx, TString tag) const
 // -------------------------------------------------------------
 
 DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
+					    int iSrcOnly,
 					    int maxSigmaData, int maxSigmaMC,
 	    TH2D **h2chk, unsigned int ihChk, unsigned int iSrcChk) const
 {
@@ -1501,7 +1582,10 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 
   for (unsigned int ih=0; ih<e->fullListSize(); ih++) {
     TH2D *h2dest= e->h2fullList(ih);
+    std::cout << "initial h2dest: "; printHistoWLimit(h2dest,1,5);
     for (unsigned int iSrc=0; iSrc<fTnPEffSrcV.size(); iSrc++) {
+      if ((iSrcOnly!=-1) && (iSrcOnly!=int(iSrc))) continue;
+      HERE("\n\tiSrc=%d",iSrc);
       const DYTnPEff_t *eff= fTnPEffSrcV[iSrc];
       const TH2D *h2src= eff->h2fullList(ih);
       const TH2D *h2nominal= fTnPEff.h2fullList(ih);
@@ -1515,6 +1599,11 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
       }
       TH2D *h2diff= cloneHisto(h2src,"h2diff","h2diff");
       h2diff->Add(h2nominal,-1);
+      if (ih==0) {
+	std::cout << "h2src: "; printHistoWLimit(h2src,1,5);
+	std::cout << "h2nominal: "; printHistoWLimit(h2nominal,1,5);
+	std::cout << "h2diff: "; printHistoWLimit(h2diff,1,5);
+      }
       switch (kind) {
       case _rnd_ampl: {
 	double r= gRandom->Gaus(0,1);
@@ -1522,6 +1611,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 	else if ((ih%2==1) && (maxSigmaMC!=0)) r=double(maxSigmaMC);
 	//std::cout << "r=" << r << "\n";
 	h2dest->Add(h2diff,r);
+	std::cout << "h2dest: "; printHistoWLimit(h2dest,1,5);
 	if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
 	  (*h2chk)->Add(h2diff,r);
 	}

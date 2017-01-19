@@ -172,6 +172,8 @@ public:
   }
 
   int setHisto(int kind, int isMC, TH2D *h2);
+  int copyHisto(int kind, int isMC, const TH2D *h2);
+  const TH2D* getHisto(int ikind, int isMC) const;
   int fullList_setHisto(unsigned int i, TH2D *h2);
 
   unsigned int fullListSize() const
@@ -353,6 +355,7 @@ public:
 		      TString label1="", TString label2="",
 		      DYTnPEff_t *tnp3=NULL, TString label3="");
   void listNumbers() const;
+  void listNumbersBrief(int nLinesX, int nLinesY) const;
   void printEffRatios(const DYTnPEff_t &e, int compareErrs=0,
 		      double markIfDiffRelTol=0.) const;
 
@@ -418,7 +421,9 @@ public:
   // srcIdx= 9999 -- no randomization, just put it together
   DYTnPEff_t* randomize(int srcIdx, TString tag) const;
 
+  // rndKind from TRandomizationKind_t
   DYTnPEff_t* randomizeByKind(int rndKind, int hlt4p3, TString tag,
+			      int iSrcOnly=-1,
 			      int maxSigmaData=0, int maxSigmaMC=0,
       TH2D **h2chk=NULL, unsigned int ihChk=0, unsigned int iSrcChk=0) const;
 
