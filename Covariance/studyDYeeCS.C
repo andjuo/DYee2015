@@ -9,6 +9,7 @@ void createSystFile(TVersion_t inpVer,
 		    CrossSection_t &elCS, TVaried_t var, int doSave);
 
 // --------------------------------------------------------------
+// save=1 save all, 2 - save les
 
 void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 {
@@ -19,6 +20,12 @@ void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
   if (!eeCS.load("cs_DYee_13TeV_" + inpVerTag + ".root", inpVerTag)) {
     std::cout << "loading failed\n";
     return;
+  }
+
+  if (inpVer==_verEl3) {
+    eeCS.nItersDetRes(21);
+    eeCS.nItersFSR(21);
+    eeCS.calcCrossSection();
   }
 
   if (var==_varNone) {
@@ -59,6 +66,15 @@ void work(TVersion_t inpVer,
   TH1D* h1Avg=NULL;
   TH2D* h2Cov=NULL;
   if (!eeCS.deriveCov(rndCSVec,&h1Avg,&h2Cov)) return;
+
+  TString massLabel= niceMassAxisLabel(leptonIdx(inpVer),"",0);
+  h2Cov->GetXaxis()->SetTitle(massLabel);
+  h2Cov->GetYaxis()->SetTitle(massLabel);
+  h2Cov->SetTitle("h2cov " + variedVarName(var));
+
+  PlotCovCorrOpt_t ccOpt;
+  ccOpt.yTitleOffset=1.8;
+
   
   TCanvas *c= eeCS.plotCrossSection("cs");
   if (!c) return;
@@ -68,7 +84,7 @@ void work(TVersion_t inpVer,
   printRatio(eeCS.h1PreFsrCS(), h1Avg);
 
   TH2D* h2Corr=NULL;
-  TCanvas *cx= plotCovCorr(h2Cov,"ccov",PlotCovCorrOpt_t(),&h2Corr);
+  TCanvas *cx= plotCovCorr(h2Cov,"ccov",ccOpt,&h2Corr);
   if (!cx) std::cout << "cx is null\n";
 
   TH1D *h1uncFromCov= uncFromCov(h2Cov);
@@ -129,7 +145,7 @@ void work(TVersion_t inpVer,
     TString canvList;
     if (doSave==2) canvList="";
     std::cout << "canvList=" << canvList << "\n";
-    if (findCanvases(canvList,canvV)) {
+    if (canvList.Length() && findCanvases(canvList,canvV)) {
       for (unsigned int ic=0; ic<canvV.size(); ic++) {
 	canvV[ic]->Write();
       }
@@ -146,6 +162,8 @@ void work(TVersion_t inpVer,
 void createSystFile(TVersion_t inpVer,
 		    CrossSection_t &eeCS, TVaried_t var, int doSave)
 {
+  std::cout << "createSystFile for inpVer=" << versionName(inpVer) << "\n";
+
   if (var!=_varRhoSyst) {
     std::cout << "createSystFile is not ready for var="
 	      << variedVarName(var) << "\n";
@@ -153,6 +171,7 @@ void createSystFile(TVersion_t inpVer,
   }
 
   TCanvas *c= eeCS.plotCrossSection("cs");
+  c->Update();
   TH1D *h1cs_file= cloneHisto(eeCS.h1PreFsrCS(),"h1cs_file","h1cs_file");
 
   std::vector<TH1D*> h1RhoV;
@@ -238,6 +257,7 @@ void createSystFile(TVersion_t inpVer,
     for (unsigned int i=0; i<h1csV.size(); i++) {
       plotHistoSame(h1csV[i],"cRhoCS","LP",h1csV[i]->GetName());
     }
+    cRhoCS->Update();
   }
 
   std::vector<TH1D*> h1csRelDiffV;
