@@ -122,6 +122,7 @@ TCanvas* plotRatio(TH1D* h1, TString cName, int logX=0, int logY=0,
 int moveLegend(TCanvas *c, double dxNDC, double dyNDC);
 void setLeftMargin(TCanvas *c, double xMargin);
 void setRightMargin(TCanvas *c, double xMargin);
+void setLeftRightMargins(TCanvas *c, double lMargin, double rMargin);
 
 typedef enum { _massFrameCS=1, _massFrameYield } TMassFrameKind_t;
 TCanvas* createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
@@ -131,6 +132,8 @@ TCanvas* createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
 void printHisto(const TH1D* h1, int extraRange=0);
 void printHisto(const TH2D* h2, int extraRange=0, int nonZero=0,
 		const TH2D* h2DenomHisto=NULL, double treshold=1e-3);
+void printHistoWLimit(const TH2D* h2, int nLinesX, int nLinesY,
+		      int nonZero=0, double treshold=1e-3);
 void printHistoRange(const TH2D* h2);
 void printRatio(const TH1D* h1a, const TH1D* h1b, int extraRange=0,
 		int includeErr=0, double markIfDiff_RelTol=0.);
@@ -166,6 +169,10 @@ void removeErrorH2(th2_t *h2)
     for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++)
       h2->SetBinError(ibin,jbin,0);
 }
+
+// if h1ref, differences are taken wrt to 1st histo in the array
+int deriveRelSyst(const TH1D *h1ref, const std::vector<TH1D*> &h1V,
+		  std::vector<TH1D*> &h1diffV, int relative, int absValues);
 
 TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 TH2D* errorAsCentral(const TH2D* h2, int relative=0);
@@ -371,7 +378,8 @@ void copyStyle(graph1_t *grDest, const graph2_t *gr)
 
 template<class graph_t>
 inline
-void logAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="")
+void logAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="",
+	     TString setTitle="")
 {
   gr->GetXaxis()->SetDecimals(true);
   gr->GetYaxis()->SetDecimals(true);
@@ -386,6 +394,7 @@ void logAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="")
   }
   if (xlabel.Length()) gr->GetXaxis()->SetTitle(xlabel);
   if (ylabel.Length()) gr->GetYaxis()->SetTitle(ylabel);
+  if (setTitle.Length()) gr->SetTitle(setTitle);
 }
 
 // -----------------------------------------------------------
@@ -444,11 +453,34 @@ int copyContents(TH1D *h1Dest, const histo1D_t *h1Src)
 	      << " h1Dest[" << h1Dest->GetNbinsX() << "],"
 	      << "h1Src[" << h1Src->GetNbinsX() << "]\n";
     return 0;
-
   }
   for (int ibin=1; ibin<=h1Src->GetNbinsX(); ibin++) {
     h1Dest->SetBinContent(ibin, h1Src->GetBinContent(ibin));
     h1Dest->SetBinError  (ibin, h1Src->GetBinError  (ibin));
+  }
+  return 1;
+}
+
+// -----------------------------------------------------------
+
+template<class histo2D_t>
+inline
+int copyContents(TH2D *h2Dest, const histo2D_t *h2Src)
+{
+  if ((h2Dest->GetNbinsX() != h2Src->GetNbinsX()) ||
+      (h2Dest->GetNbinsY() != h2Src->GetNbinsY())) {
+    std::cout << "copyContents(TH2D): number of bins is different :"
+	      << " h2Dest[" << h2Dest->GetNbinsX() << "]["
+	      << h2Dest->GetNbinsY() << "], "
+	      << "h2Src[" << h2Src->GetNbinsX() << "]["
+	      << h2Src->GetNbinsY() << "]\n";
+    return 0;
+  }
+  for (int ibin=1; ibin<=h2Src->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2Src->GetNbinsX(); jbin++) {
+      h2Dest->SetBinContent(ibin,jbin, h2Src->GetBinContent(ibin,jbin));
+      h2Dest->SetBinError  (ibin,jbin, h2Src->GetBinError  (ibin,jbin));
+    }
   }
   return 1;
 }

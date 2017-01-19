@@ -344,6 +344,18 @@ void setRightMargin(TCanvas *c, double xMargin)
 
 // ---------------------------------------------------------
 
+void setLeftRightMargins(TCanvas *c, double lMargin, double rMargin)
+{
+  c->cd();
+  c->SetLeftMargin(lMargin);
+  c->SetRightMargin(rMargin);
+  gPad->Modified();
+  c->Modified();
+  c->Update();
+}
+
+// ---------------------------------------------------------
+
 TCanvas *createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
 			 int yRangeSet,
 			 TString *canvName_out, TH2D **h2frame_out)
@@ -436,6 +448,40 @@ void printHisto(const TH2D *h2, int extraRange, int nonZero,
 	  else { if (fabs(currVal/denom)<threshold) continue; }
 	}
 	if (check && (fabs(h2->GetBinContent(ibin,jbin))<1e-8)) continue;
+      }
+      std::cout << "ibin=" << ibin << ",jbin=" << jbin
+		<< "  " << h2->GetXaxis()->GetBinLowEdge(ibin)
+		<< "-" << (h2->GetXaxis()->GetBinLowEdge(ibin)+
+			   h2->GetXaxis()->GetBinWidth(ibin))
+		<< "  " << h2->GetYaxis()->GetBinLowEdge(jbin)
+		<< "-" << (h2->GetYaxis()->GetBinLowEdge(jbin)+
+			   h2->GetYaxis()->GetBinWidth(jbin))
+		<< "  " << h2->GetBinContent(ibin,jbin) << " +- "
+		<< h2->GetBinError(ibin,jbin) << "\n";
+    }
+  }
+}
+
+// ---------------------------------------------------------
+
+void printHistoWLimit(const TH2D *h2, int nLinesX, int nLinesY,
+		      int nonZero, double threshold)
+{
+  std::cout << "\nhisto " << h2->GetName() << " " << h2->GetTitle()
+	    << " print maxLines " << Form("(%d,%d)",nLinesX,nLinesY) << "\n";
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    if ((nLinesX>0) && (ibin>nLinesX)) {
+      std::cout << " (discontinued)\n";
+      break;
+    }
+    for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) {
+      if ((nLinesY>0) && (jbin>nLinesY)) {
+	std::cout << " ...\n";
+	break;
+      }
+      if (nonZero) {
+	double currVal=h2->GetBinContent(ibin,jbin);
+	if (fabs(currVal)<threshold) continue;
       }
       std::cout << "ibin=" << ibin << ",jbin=" << jbin
 		<< "  " << h2->GetXaxis()->GetBinLowEdge(ibin)
@@ -621,6 +667,37 @@ void printField(TString keyName)
     if (str) std::cout << "value: " << str->String() << "\n";
   }
 }
+
+// ---------------------------------------------------------
+
+// if h1ref, differences are taken wrt to 1st histo in the array
+int deriveRelSyst(const TH1D *h1ref_inp, const std::vector<TH1D*> &h1V,
+		  std::vector<TH1D*> &h1diffV, int relative, int absValues)
+{
+  if ((h1ref_inp==NULL) && (h1V.size()<2)) {
+    std::cout << "deriveRelSyst: too few input histos\n";
+    return 0;
+  }
+  unsigned int startIdx= (h1ref_inp==NULL) ? 1 : 0;
+  const TH1D *h1ref= (h1ref_inp==NULL) ? h1V[0] : h1ref_inp;
+  h1diffV.reserve(h1V.size());
+  for (unsigned int i=startIdx; i<h1V.size(); i++) {
+    TString op= (relative) ? "_relDiffDiv_" : "_diff_";
+    TString hname=h1V[i]->GetName() + op + h1ref->GetName();
+    TH1D *h1diff= cloneHisto(h1V[i],hname,hname);
+    h1diff->Add(h1ref,-1);
+    if (relative) h1diff->Divide(h1ref);
+    removeError(h1diff);
+    if (absValues) {
+      for (int ibin=1; ibin<=h1diff->GetNbinsX(); ibin++) {
+	h1diff->SetBinContent(ibin, fabs(h1diff->GetBinContent(ibin)));
+      }
+    }
+    h1diffV.push_back(h1diff);
+  }
+  return 1;
+}
+
 
 // ---------------------------------------------------------
 
