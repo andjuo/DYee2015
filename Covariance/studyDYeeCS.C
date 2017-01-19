@@ -5,6 +5,9 @@
 void work(TVersion_t inpVer,
 	  CrossSection_t &muCS, TVaried_t var, int nSample, int doSave);
 
+void createSystFile(TVersion_t inpVer,
+		    CrossSection_t &elCS, TVaried_t var, int doSave);
+
 // --------------------------------------------------------------
 
 void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
@@ -21,6 +24,9 @@ void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
   if (var==_varNone) {
     TCanvas *c= eeCS.plotCrossSection("cs");
     if (!c) return;
+  }
+  else if (var==_varRhoSyst) {
+    createSystFile(inpVer,eeCS,var,doSave);
   }
   else {
     std::cout << "perform study\n";
@@ -62,7 +68,7 @@ void work(TVersion_t inpVer,
   printRatio(eeCS.h1PreFsrCS(), h1Avg);
 
   TH2D* h2Corr=NULL;
-  TCanvas *cx= plotCovCorr(h2Cov,"ccov",&h2Corr);
+  TCanvas *cx= plotCovCorr(h2Cov,"ccov",PlotCovCorrOpt_t(),&h2Corr);
   if (!cx) std::cout << "cx is null\n";
 
   TH1D *h1uncFromCov= uncFromCov(h2Cov);
@@ -137,4 +143,156 @@ void work(TVersion_t inpVer,
 
 // --------------------------------------------------------------
 
+void createSystFile(TVersion_t inpVer,
+		    CrossSection_t &eeCS, TVaried_t var, int doSave)
+{
+  if (var!=_varRhoSyst) {
+    std::cout << "createSystFile is not ready for var="
+	      << variedVarName(var) << "\n";
+    return;
+  }
 
+  TCanvas *c= eeCS.plotCrossSection("cs");
+  TH1D *h1cs_file= cloneHisto(eeCS.h1PreFsrCS(),"h1cs_file","h1cs_file");
+
+  std::vector<TH1D*> h1RhoV;
+  TString fname="dyee-rho-syst.root";
+  TFile fin(fname);
+  if (!fin.IsOpen()) {
+    std::cout << "failed to open the file <" << fin.GetName() << ">\n";
+    return;
+  }
+  for (TTnPSystType_t syst= _tnpSyst_none; syst!=_tnpSyst_last; next(syst)) {
+    TString hname="h1rho_";
+    if (syst==_tnpSyst_none) hname.Append("stat");
+    else hname.Append(tnpSystName(syst,1));
+    TString newHName=hname;
+    if (syst==_tnpSyst_none) newHName.ReplaceAll("stat","orig");
+    TH1D *h1= loadHisto(fin,hname,newHName,1,h1dummy);
+    h1RhoV.push_back(h1);
+  }
+  fin.Close();
+
+  TCanvas *cRho=NULL;
+  if (1) {
+    //plotHisto(eeCS.h1Rho(),"cRho",1,0,"LPE","cs version");
+    h1RhoV[0]->GetYaxis()->SetTitleOffset(1.6);
+    logAxis(h1RhoV[0],1,"M_{ee} [GeV]","","\\langle\\rho\\rangle\\text{ with alt.effs}");
+    cRho=plotHisto(h1RhoV[0],"cRho",1,0,"LP","orig");
+    setLeftRightMargins(cRho,0.14,0.05);
+    for (unsigned int i=1; i<h1RhoV.size(); i++) {
+      TString legStr=h1RhoV[i]->GetName();
+      legStr.ReplaceAll("h1rho_","");
+      plotHistoSame(h1RhoV[i],"cRho","LP",legStr);
+    }
+    moveLegend(cRho,0.45,0);
+  }
+
+  std::vector<TH1D*> h1rhoRelDiffV;
+  int absValues=1;
+  int relativeDiff=1;
+  deriveRelSyst(NULL,h1RhoV,h1rhoRelDiffV,relativeDiff,absValues);
+  if (0) {
+    std::cout << " : " << h1RhoV.size() << ", " << h1rhoRelDiffV.size() << "\n";
+    for (unsigned int i=0; i<h1rhoRelDiffV.size(); i++) {
+      printRatio(h1RhoV[0], h1RhoV[i+1]);
+      printHisto(h1rhoRelDiffV[i]);
+    }
+    return;
+  }
+
+  TCanvas *cRhoSyst=NULL;
+  if (1) {
+    TString title="uncertainty";
+    if (relativeDiff) title.Prepend("relative ");
+    //h1rhoRelDiffV[0]->SetTitle(title);
+    h1rhoRelDiffV[0]->GetYaxis()->SetRangeUser(0,0.12);
+    h1rhoRelDiffV[0]->GetYaxis()->SetTitleOffset(1.6);
+    TString ytitle="\\delta\\langle\\rho\\rangle";
+    if (relativeDiff) ytitle= "(" + ytitle + ")_{rel}";
+    //h1rhoRelDiffV[0]->GetYaxis()->SetTitle(ytitle);
+    logAxis(h1rhoRelDiffV[0],3,"M_{ee} [GeV]",ytitle,title);
+    cRhoSyst=plotHisto(h1rhoRelDiffV[0],"cRhoRelDiff",1,0,"LP",
+				tnpSystName(TTnPSystType_t(1),1));
+    setLeftRightMargins(cRhoSyst,0.14,0.05);
+    for (TTnPSystType_t syst=TTnPSystType_t(2); syst!=_tnpSyst_last; next(syst))
+      {
+	plotHistoSame(h1rhoRelDiffV[syst-1],"cRhoRelDiff","LP",tnpSystName(syst,1));
+      }
+    moveLegend(cRhoSyst,0.45,0.47);
+  }
+
+  std::vector<TH1D*> h1csV;
+  eeCS.var(_varRho);
+  for (unsigned int i=0; i<h1RhoV.size(); i++) {
+    eeCS.h1Rho(h1RhoV[i]);
+    TString hname="h1cs_" + tnpSystName(TTnPSystType_t(i));
+    TH1D *h1cs= cloneHisto(eeCS.calcCrossSection(0),hname,hname);
+    copyStyle(h1cs,h1RhoV[i]);
+    h1csV.push_back(h1cs);
+  }
+  std::cout << "h1csV.size=" << h1csV.size() << "\n";
+
+  if (1) {
+    TCanvas *cRhoCS= plotHisto(h1cs_file,"cRhoCS",1,1,"LP","cs_file");
+    for (unsigned int i=0; i<h1csV.size(); i++) {
+      plotHistoSame(h1csV[i],"cRhoCS","LP",h1csV[i]->GetName());
+    }
+  }
+
+  std::vector<TH1D*> h1csRelDiffV;
+  deriveRelSyst(NULL,h1csV,h1csRelDiffV,relativeDiff,absValues);
+  TCanvas *cCSRhoUnc=NULL;
+  if (1) {
+    logAxis(h1csRelDiffV[0],3,"M_{ee} [GeV]",
+	    "(\\delta\\sigma)_{\\langle\\rho\\rangle\\,syst;rel}",
+	    "relative uncertainty of the cross section");
+    h1csRelDiffV[0]->GetYaxis()->SetRangeUser(0,0.15);
+    h1csRelDiffV[0]->GetYaxis()->SetTitleOffset(1.6);
+    cCSRhoUnc= plotHisto(h1csRelDiffV[0],"cCSRhoUnc",1,0,"LP",
+			 tnpSystName(TTnPSystType_t(1),1));
+    setLeftRightMargins(cCSRhoUnc,0.14,0.05);
+    for (TTnPSystType_t syst=TTnPSystType_t(2); syst!=_tnpSyst_last; next(syst))
+      {
+	plotHistoSame(h1csRelDiffV[syst-1],"cCSRhoUnc","LP",tnpSystName(syst,1));
+      }
+    moveLegend(cCSRhoUnc,0.45,0.47);
+  }
+
+  if (1) {
+    for (unsigned int i=0; i<h1csRelDiffV.size(); i++) {
+      std::cout << "\n\ni=" << i << "\n";
+      printRatio(h1csRelDiffV[i],h1rhoRelDiffV[i]);
+    }
+  }
+
+  if (doSave) {
+    TString fname="dyeeCS-rhoSyst.root";
+    TFile fout(fname,"RECREATE");
+    if (!fout.IsOpen()) {
+      std::cout << "failed to create a file <" << fout.GetName() << ">\n";
+      return;
+    }
+    for (unsigned int ih=0; ih<h1RhoV.size(); ih++) {
+      h1RhoV[ih]->Write();
+    }
+    for (unsigned int ih=0; ih<h1rhoRelDiffV.size(); ih++) {
+      h1rhoRelDiffV[ih]->Write();
+    }
+    for (unsigned int ih=0; ih<h1csRelDiffV.size(); ih++) {
+      h1csRelDiffV[ih]->Write();
+    }
+    if (cRho) cRho->Write();
+    if (cRhoSyst) cRhoSyst->Write();
+    if (cCSRhoUnc) cCSRhoUnc->Write();
+    TObjString timeTag(DayAndTimeTag(0));
+    timeTag.Write("timeTag");
+    fout.Close();
+    std::cout << "file <" << fout.GetName() << "> created\n";
+  }
+
+
+  return;
+}
+
+// --------------------------------------------------------------

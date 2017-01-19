@@ -7,6 +7,15 @@ const double Ele_pt[nPt+1] = { 10.,20.,30.,40.,50.,2000. };
 const int nEta=10;
 const double SC_eta[nEta+1] = { -2.5,-2.0,-1.566,-1.4442,-0.8,0,0.8,1.4442,1.566,2.0,2.5 };
 
+HistoStyle_t hsData(kRed,  5,1,1.0,2.);
+HistoStyle_t hsDataBkgPdf(kBlue,24,1,0.8,2.);
+HistoStyle_t hsDataSigPdf(kGreen+1,20,1,0.8,2.);
+HistoStyle_t hsMC(kBlack,3,1,1.0,2.);
+HistoStyle_t hsMCNLO(kBlue,24,1,0.8,2.);
+HistoStyle_t hsDataTag(6 ,   26,1,0.8,2.);
+HistoStyle_t hsDataZRange(46,   23,1,0.8,2.);
+std::vector<HistoStyle_t*> hsV;
+
 // ---------------------------------------------------------------------
 
 std::vector<TH1D*>* randomizeSF(const DYTnPEff_t &tnpEff,
@@ -24,7 +33,8 @@ void deriveSFUnc_Uncorr(const DYTnPEffColl_t &coll, const EventSpace_t &es,
 
 // ---------------------------------------------------------------------
 
-void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
+void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0,
+			   int limitToSrc=-1)
 {
 
   TString fnameBase="dyee_effSyst_";
@@ -32,6 +42,13 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
   const TString kinds[nKinds] = { "RECO", "ID", "HLT" };
   const int nSrc=4;
   const TString sources[nSrc] = { "bkgPdf", "sigPdf", "NLOvsLO", "tag" };
+
+  hsV.push_back(&hsMC);
+  hsV.push_back(&hsDataBkgPdf);
+  hsV.push_back(&hsDataSigPdf);
+  hsV.push_back(&hsData);  // NLOvsLO
+  hsV.push_back(&hsDataTag); // tag
+  hsV.push_back(&hsDataZRange);
 
   TH2D *h2bin=new TH2D("h2bin","h2bin;#eta;p_{T} [GeV]",
 		       nEta,SC_eta,nPt,Ele_pt);
@@ -62,6 +79,20 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
     }
   }
 
+  std::vector<DYTnPEff_t*> tnpEffReadyV;
+  tnpEffReadyV.reserve(nSrc+1);
+  for (int iSrc=-1; iSrc<nSrc; iSrc++) {
+    tnpEffReadyV.push_back(new DYTnPEff_t(elChannelFlag));
+    for (int iKind=0; iKind<nKinds+1; iKind++) {
+      for (int isMC=0; isMC<2; isMC++) {
+	TString hName= Form("h2EffReady_kind%d_isMC%d_iSrc%d",
+			    iKind,isMC,iSrc);
+	tnpEffReadyV.back()->setHisto(iKind,isMC,
+				      cloneHisto(h2bin,hName,hName));
+      }
+    }
+  }
+
   // load efficiencies
   for (int iKind=0; iKind<nKinds; iKind++) {
     TString fname= fnameBase + kinds[iKind] + ".root";
@@ -78,15 +109,20 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
       TH2D *h2stat= loadHisto(fin, histoNameFile, histoNameMem + "_stat",
 			      1,h2dummy);
       if (h2stat) {
-	std::cout << "+ loaded histo " << h2stat->GetName() << "\n";
+	std::cout << "++ loaded histo " << h2stat->GetName() << "\n";
       }
       else return;
       tnpEffV[0]->setHisto(iKind,isMC,h2stat);
+      tnpEffReadyV[0]->copyHisto(iKind,isMC,h2stat);
 
       for (int iSrc=0; iSrc<nSrc; iSrc++) {
-	tnpEffV[iSrc+1]->setHisto(iKind,isMC,h2stat);
+	tnpEffV[iSrc+1]->copyHisto(iKind,isMC,h2stat);
+	tnpEffReadyV[0]->copyHisto(iKind,isMC,h2stat);
 	// also include HLTv4p3
-	if (iKind==nKinds-1) tnpEffV[iSrc+1]->setHisto(iKind+1,isMC,h2stat);
+	if (iKind==nKinds-1) {
+	  tnpEffV[iSrc+1]->copyHisto(iKind+1,isMC,h2stat);
+	  tnpEffReadyV[iSrc+1]->copyHisto(iKind+1,isMC,h2stat);
+	}
       }
 
       // load systematic errors
@@ -98,10 +134,13 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
 	if (h2syst) {
 	  std::cout << "+ loaded " << histoNameSyst << "\n";
 	  tnpEffV[iSrc+1]->setHisto(iKind,isMC,h2syst);
+	  tnpEffReadyV[iSrc+1]->copyHisto(iKind,isMC,h2syst);
 	}
 	else {
 	  std::cout << "- " << histoNameFile << " not found on file\n";
 	  tnpEffV[iSrc+1]->setHisto(iKind,isMC,h2binZero);
+	  tnpEffReadyV[iSrc+1]->copyHisto(iKind,isMC,
+				  tnpEffReadyV[0]->getHisto(iKind,isMC));
 	}
       }
     }
@@ -125,15 +164,22 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
     return;
   }
   for (int iSrc=0; iSrc<nSrc; iSrc++) {
+    if ((limitToSrc!=-1) && (limitToSrc!=1111) && (iSrc!=limitToSrc)) {
+      std::cout << " not including source " << sources[iSrc] << "\n";
+      continue;
+    }
     if (!coll.addSystErrSource(*tnpEffV[iSrc+1],"_"+sources[iSrc])) {
       std::cout << "failed to assign syst err for iSrc=" << iSrc << "\n";
       return;
     }
   }
 
-  coll.listNumbers();
+  std::cout << "\ncollection lists numbers\n";
+  coll.listNumbers(1);
   if (0) {
     TString foutNameColl= "dyee_effSyst_Coll.root";
+    if ((limitToSrc!=-1) && (limitToSrc!=1111))
+      foutNameColl.ReplaceAll(".root","-" + sources[limitToSrc] + ".root");
     if (!coll.save(foutNameColl,"")) {
       std::cout << "failed to save the collection\n";
       return;
@@ -145,7 +191,7 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
 
   // test full error
   DYTnPEff_t *totUnc= coll.getTnPWithTotUnc();
-  totUnc->listNumbers();
+  //totUnc->listNumbers();
   //totUnc= coll.
 
   //
@@ -159,6 +205,64 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0)
 
   if (!esPostFsr.load(fname,esMainDirName)) return;
   std::cout << "loaded " << esMainDirName << " from file <" << fname << ">\n";
+
+  // calculate the scale factors using the alternative efficiency values
+  if (limitToSrc==1111) {
+    std::vector<TH1D*> h1rhoSystV;
+    for (int iSrc=-1; iSrc<nSrc; iSrc++) {
+      TString tag=(iSrc==-1) ? "stat" : sources[iSrc];
+      DYTnPEff_t *effSrc= (iSrc==-1) ?
+	tnpEffV[0] : coll.randomizeByKind(int(DYTnPEffColl_t::_rnd_ampl),0,
+					  tag,iSrc,1,1);
+	//coll.getTnPShiftByUnc(tag,iSrc+1,1,1);
+      if (!effSrc) {
+	std::cout << "null effSrc for iSrc=" << iSrc << "\n";
+	return;
+      }
+      std::cout << "iSrc=" << iSrc << ", listing efficiencies\n";
+      effSrc->listNumbers();
+      tnpEffReadyV[iSrc+1]->listNumbersBrief(1,5);
+      std::cout << "numbers listed\n";
+      TString hname="h1rho_" + tag;
+      TH1D *h1rho_test=
+	esPostFsr.calculateScaleFactor(*tnpEffReadyV[iSrc+1],0,hname+"_test",
+				       hname);
+      h1rho_test->SetStats(0);
+      TH1D *h1rho_src=
+	esPostFsr.calculateScaleFactor(*effSrc,0,hname,
+			       hname + ";M_{ee} [GeV];\\langle\\rho\\rangle");
+      if (!h1rho_src) {
+	std::cout << "null histo h1rho_src\n";
+	return;
+      }
+      else {
+	std::cout << "h1rho_src ok\n";
+	//printHisto(h1rho_src);
+	printRatio(h1rho_src,h1rho_test,0,0,1);
+      }
+      h1rho_src->GetYaxis()->SetRangeUser(0.84,0.98);
+      h1rho_src->SetStats(0);
+      hsV[iSrc+1]->SetStyle(h1rho_src);
+      h1rhoSystV.push_back(h1rho_src);
+      if (iSrc==-1) plotHisto(h1rho_src,"cRho_syst",1,0,"LP","central");
+      else plotHistoSame(h1rho_src,"cRho_syst","LP",sources[iSrc]);
+      h1rho_test->SetMarkerStyle(20);
+      //plotHistoSame(h1rho_test,"cRho_syst","LP","test");
+    }
+
+    if (1) {
+      TFile fout("dyee-rho-syst.root","recreate");
+      for (unsigned int i=0; i<h1rhoSystV.size(); i++) {
+	h1rhoSystV[i]->Write();
+      }
+      TObjString timeTag(DayAndTimeTag(0));
+      timeTag.Write("timeTag");
+      fout.Close();
+      std::cout << "file <" << fout.GetName() << "> created\n";
+    }
+
+    return;
+  }
 
   // calculate the rho
   TH1D *h1rho_totUnc_incorrect=
@@ -337,7 +441,7 @@ void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
     if (doCheck) h2chk= cloneHisto(coll.getTnPWithStatUnc().h2fullList(0),
 				   "h2chk"+tag,"h2chk"+tag);
 
-    DYTnPEff_t *effRnd= coll.randomizeByKind(testCase,0,tag,0,0,
+    DYTnPEff_t *effRnd= coll.randomizeByKind(testCase,0,tag,-1,0,0,
 					     &h2chk,ihChk,iSrcChk);
 
     if (h2chk) {
