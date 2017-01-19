@@ -278,5 +278,14 @@ The code sequence for the dielectrons:
 (2)~\myund{processDYee_dressed.C}, (3)~\myund{calcRhoRndVec_ee.C},
 (4)~\myund{studyDYeeCS.C}.
 
+(Added Jan 19, 2017)\\\noindent The code
+\myund{calcRhoRndVec_ee_syst.C}\ is used to produce several kinds of
+event efficiency systematic uncertainties by use of ``alternative
+tables'' of the efficiencies derived changing the selection or the fit
+(e.g.\ sigPdf, bkgPdf, tagDef - for data, NLOvsLO - for MC). The use
+is \myund{calcRhoRndVec_ee_syst.C+(1,0,1,1111)}.  This produces the
+files needed for systematic evaluations by code
+\myund{studyDYeeCS.C+(_varRhoSyst,0,0)}.
+
 \end{document}
 
