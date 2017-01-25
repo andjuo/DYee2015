@@ -81,7 +81,8 @@ void work(TVersion_t inpVer,
   printRatio(muCS.h1CS(), h1Avg);
 
   TH2D* h2Corr=NULL;
-  TCanvas *cx= plotCovCorr(h2Cov,"ccov",&h2Corr);
+  PlotCovCorrOpt_t ccOpt;
+  TCanvas *cx= plotCovCorr(h2Cov,"ccov",ccOpt,&h2Corr);
   if (!cx) std::cout << "cx is null\n";
 
   TH1D *h1uncFromCov= uncFromCov(h2Cov);
@@ -144,9 +145,9 @@ void work(TVersion_t inpVer,
     if (cx) cx->Write();
     std::vector<TCanvas*> canvV;
     TString canvList="muCS_a muCS_b";
-    canvList.Append(" cVaried" + muCS.csA().tag());
-    canvList.Append(" cVaried" + muCS.csB().tag());
     if (doSave==2) canvList="";
+    canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csA().tag());
+    canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csB().tag());
     std::cout << "canvList=" << canvList << "\n";
     if (findCanvases(canvList,canvV)) {
       for (unsigned int ic=0; ic<canvV.size(); ic++) {

@@ -144,6 +144,7 @@ void work(TVersion_t inpVer,
     std::vector<TCanvas*> canvV;
     TString canvList;
     if (doSave==2) canvList="";
+    canvList+=" cVaried_" + variedVarName(var) + "_" + versionName(inpVer);
     std::cout << "canvList=" << canvList << "\n";
     if (canvList.Length() && findCanvases(canvList,canvV)) {
       for (unsigned int ic=0; ic<canvV.size(); ic++) {
