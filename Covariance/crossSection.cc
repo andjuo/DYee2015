@@ -457,14 +457,14 @@ TH1D* CrossSection_t::calcCrossSection(int removeNegativeSignal)
 
   fh1Signal= copy(fh1Yield,"h1Signal",fTag);
   fh1Signal->Add(fh1Bkg,-1);
-  if (1 || removeNegativeSignal) removeNegatives(fh1Signal);
+  if (removeNegativeSignal) removeNegatives(fh1Signal);
   if (fDetResBayes) delete fDetResBayes;
   fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Signal, fNItersDetRes, false );
   fh1Unf= copy(fDetResBayes->Hreco(), "h1Unf_" + fTag,
 	       "h1Unf_" + fTag
 	       + TString(";") + fh1Yield->GetXaxis()->GetTitle()
 	       + TString(";unfolded yield")
-	       ,
+       ,
 	       fh1Yield); // set x binning
   //HERE("divide by fh1Rho");
   fh1UnfRhoCorr= copy(fh1Unf,"h1UnfRho",fTag);
@@ -523,7 +523,8 @@ TH1D* CrossSection_t::calcCrossSection(int removeNegativeSignal)
 
 // --------------------------------------------------------------
 
-TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
+TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx,
+				       int removeNegativeSignal)
 {
 
   int fsrResponse=((new_var==_varFSRRes) || (new_var==_varFSRRes_Poisson))? 1:0;
@@ -569,6 +570,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx)
       fh1Signal= copy(fh1Yield,"h1Signal_var",useTag);
       fh1Signal->Add(fh1Varied,-1);
     }
+    if (removeNegativeSignal) removeNegatives(fh1Signal);
     if (fDetResBayes) delete fDetResBayes;
     fDetResBayes= new RooUnfoldBayes( fDetRes, fh1Signal, fNItersDetRes, false );
     fh1Unf= copy(fDetResBayes->Hreco(), "h1Unf_" + useTag,
@@ -806,6 +808,30 @@ TCanvas* CrossSection_t::plotCrossSection(TString canvName,
   std::cout << "plotCrossSection: theory is blue, calculation is circles\n";
   return c;
 }
+// --------------------------------------------------------------
+
+TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx,
+				       const TH1D *set_h1varied,
+				       int removeNegativeSignal)
+{
+  int fsrResponse=((new_var==_varFSRRes) || (new_var==_varFSRRes_Poisson))? 1:0;
+  int detResponse=((new_var==_varDetRes)) ? 1:0;
+  if (fsrResponse || detResponse) {
+    std::cout << "calcCrossSection(new_var,idx,TH1D*) should not be called for "
+	      << "unfolding task\n";
+    return NULL;
+  }
+  if (!fh1Varied || 1) {
+    TH1D *h1=getVariedHisto(new_var);
+    fh1Varied=cloneHisto(h1,h1->GetName() + TString("_var%d",idx),
+			 h1->GetTitle());
+  }
+  if (!copyContents(fh1Varied,set_h1varied)) {
+    std::cout << "copying the histo failed\n";
+    return NULL;
+  }
+  return calcCrossSection(new_var,idx,removeNegativeSignal);
+}
 
 // --------------------------------------------------------------
 
@@ -870,11 +896,12 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   //printHisto(h1Src);
   int trackRnd=1;
   TH1D *h1Track=NULL;
+  TString canvVaried="cVaried_" + variedVarName(new_var) + "_" + fTag;
   if (trackRnd) {
     h1Track= copy(h1Src,"h1Track",fTag);
     h1Track->SetMarkerStyle(24);
-    plotHisto(h1Track, "cVaried"+fTag,1);
-    plotHistoSame(h1Track,"cVaried"+fTag,"LPE");
+    plotHisto(h1Track, canvVaried,1);
+    plotHistoSame(h1Track,canvVaried,"LPE");
   }
   if (fh1Varied) { delete fh1Varied; fh1Varied=NULL; }
   fh1Varied= copy(h1Src,"hVar" + variedVarName(new_var), fTag);
@@ -896,7 +923,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       h1var->SetLineColor(color);
       h1var->SetMarkerColor(color);
       h1var->SetMarkerStyle(5);
-      plotHistoSame(h1var, "cVaried"+fTag, "LPE");
+      plotHistoSame(h1var, canvVaried, "LPE");
     }
     TH1D* h1=copy(calcCrossSection(new_var,i));
     rndCS.push_back(h1);
@@ -1527,6 +1554,44 @@ TH1D* MuonCrossSection_t::calcCrossSection(int removeNegativeSignal)
   h1CS_raw->Scale(1/lumiTot);
   */
   fh1CS= this->calcPreFsrCS_sumAB(h1a,h1b,fTag);
+  return fh1CS;
+}
+
+// --------------------------------------------------------------
+
+TH1D* MuonCrossSection_t::calcCrossSection(TVaried_t new_var, int idx,
+					   const TH1D *h1_setVarA,
+					   const TH1D *h1_setVarB,
+					   int removeNegativeSignal)
+{
+  if (!fh1Bkg) {
+    std::cout << "MuonCrossSection_t::calcCrossSection: object is not ready\n";
+    return NULL;
+  }
+  if (!h1_setVarA || !h1_setVarB) {
+    std::cout << "MuonCrossSection_t::calcCrossSection(TVaried): the provide "
+	      << "histograms are null\n";
+    return NULL;
+  }
+  TString idxStr= Form("_%d",idx);
+  if (!fCSa.fh1Varied) {
+    TH1D *h1a= fCSa.getVariedHisto(new_var);
+    fCSa.fh1Varied= cloneHisto(h1a,h1a->GetName()+idxStr,h1a->GetTitle()+idxStr);
+  }
+  if (!fCSb.fh1Varied) {
+    TH1D *h1b= fCSb.getVariedHisto(new_var);
+    fCSb.fh1Varied= cloneHisto(h1b,h1b->GetName()+idxStr,h1b->GetTitle()+idxStr);
+  }
+  if (!fCSa.fh1Varied || !fCSb.fh1Varied) {
+    std::cout << "MuonCrossSection_t::calcCrossSection(TVaried): fh1Varied is null\n";
+
+    return NULL;
+  }
+  copyContents(fCSa.fh1Varied, h1_setVarA);
+  copyContents(fCSb.fh1Varied, h1_setVarB);
+  TH1D *h1a= fCSa.calcCrossSection(new_var,idx,removeNegativeSignal);
+  TH1D *h1b= fCSb.calcCrossSection(new_var,idx,removeNegativeSignal);
+  fh1CS= this->calcPreFsrCS_sumAB(h1a,h1b,fTag+idxStr);
   return fh1CS;
 }
 

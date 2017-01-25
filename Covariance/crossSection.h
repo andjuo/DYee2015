@@ -120,6 +120,7 @@ class CrossSection_t {
   const TH1D *h1Yield() const { return fh1Yield; }
   void h1Yield(const TH1D* h1) { fh1Yield=copy(h1,"h1Yield",fTag); }
   const TH1D *h1Bkg() const { return fh1Bkg; }
+  TH1D *editH1Bkg() { return fh1Bkg; }
   void h1Bkg(const TH1D* h1, double scale=1.) {
     fh1Bkg=copy(h1,"h1Bkg",fTag);
     if (scale!=1.) fh1Bkg->Scale(scale);
@@ -177,7 +178,9 @@ class CrossSection_t {
   void removeRho(); // set rho factor to 1
 
   TH1D* calcCrossSection(int removeNegativeSignal=0);
-  TH1D* calcCrossSection(TVaried_t new_var, int idx);
+  TH1D* calcCrossSection(TVaried_t new_var, int idx, int removeNegativeSignal=0);
+  TH1D* calcCrossSection(TVaried_t new_var, int idx, const TH1D* set_h1Var,
+			 int removeNegativeSignal=0);
   TCanvas* plotCrossSection(TString canvName="cs", int removeNegativeSignal=0);
   TCanvas* plotCrossSection_StepByStep(TString canvName="csStep");
 
@@ -260,6 +263,9 @@ class MuonCrossSection_t {
   void h1Theory(const TH1D* h1) { fh1Theory=fCSa.copy(h1,"h1Theory",fTag); }
 
   TH1D* calcCrossSection(int removeNegativeSignal=0);
+  TH1D* calcCrossSection(TVaried_t new_var, int idx,
+			 const TH1D *h1_setVarA, const TH1D *h1_setVarB,
+			 int removeNegativeSignal=0);
   TCanvas* plotCrossSection(TString canvName="cs", int recalculate=0,
 			    int removeNegativeSignal=0);
 
