@@ -269,7 +269,6 @@ covariance from the randomized response. The variable is covFName and
 nameh2cov with the values \myund{cov_mumu_varFSRRes_10000.root}\ and
 h2Cov.
 
-
 % ----------------------------------
 \section{Dielectron covariance calculation}
 
@@ -286,6 +285,41 @@ tables'' of the efficiencies derived changing the selection or the fit
 is \myund{calcRhoRndVec_ee_syst.C+(1,0,1,1111)}.  This produces the
 files needed for systematic evaluations by code
 \myund{studyDYeeCS.C+(_varRhoSyst,0,0)}.
+
+% ----------------------------------
+\section{Calculation of the statistical uncertainty covariance matrix}
+
+Because of the fluctuations in the correlation matrix from the
+measured yield statistical uncertainty, a sequence of codes was
+developed to study the stability.
+
+For the muon channel:\\
+Step 1: \muynd{studyDYmmCS.C+(_varYield,Nsample,2)}\\
+Step 2: \myund{studyDYmmCScovYield.C+(Nsample,iMethod,1,plotPeriodA)}\\
+Step 3: \myund{studyDYmmCScovYieldMethods.C+(Nsample)}
+
+For the electron channel:\\
+Step 1: \myund{studyDYeeCS.C+(_varYield,Nsample,2)}\\
+Step 2:
+\myund{studyDYeeCScovYield.C+(Nsample,iMethod,1,plotMassDistr)}\\
+Step 3: \myund{studyDYeeCScovYieldMethods.C+(Nsample)}
+
+The value of Nsample determines how large the Gauss-randomized
+ensemble should be created. The number 2 in the code studyDYxxCS.C
+argument list indicates that saving of a slimmed version is requested
+(the ROOT file will contain a tag 'slim'). If changed to 0, saving is
+not done. The value of 1 saves ``full version''.
+The number 1 in the code studyDYxxCScovYield.C argument list indicates
+that the result file should be saved. The value of iMethod should be
+1, 2, or 3. The code studyDYeeCScovYield.C also has a method 4. An
+extra tag for the output file can be provided for this macro.
+
+The macro studyDYxxCS creates the randomized ensemble and the
+covariance matrix of the final uncertainties that could be used, if it
+is good. The macro studyDYxxCScovYield creates the covariance matrix
+from the ensemble by applying the specified method.
+The macro studyDYxxCScovYieldMethods.C plots the
+uncertainty values from the covariance matrices.
 
 \end{document}
 
