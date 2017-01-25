@@ -2,12 +2,14 @@
 #include <sstream>
 #include <algorithm>
 #include <cstring>
-#include <TLine.h>
 
 // --------------------------------------------------------------
 
 const TH1D *h1dummy=NULL;
 const TH2D *h2dummy=NULL;
+
+const HistoStyle_t hsVec[6] = { hsBlack, hsBlue, hsRed, hsGreen, hsColor6,
+				hsColor46 };
 
 // --------------------------------------------------------------
 
@@ -334,6 +336,25 @@ int moveLegend(TCanvas *c, double dx, double dy)
   }
   if (dy!=0.) {
     leg->SetY1NDC(leg->GetY1NDC() + dy);
+    leg->SetY2NDC(leg->GetY2NDC() + dy);
+  }
+  c->Modified(); c->Update();
+  return 1;
+}
+
+// ---------------------------------------------------------
+
+int increaseLegend(TCanvas *c, double dx, double dy)
+{
+  c->cd();
+  TLegend *leg= (TLegend*)gPad->FindObject("myLegend");
+  if (!leg) return 0;
+  if (dx!=0.) {
+    //leg->SetX1NDC(leg->GetX1NDC() + dx);
+    leg->SetX2NDC(leg->GetX2NDC() + dx);
+  }
+  if (dy!=0.) {
+    //leg->SetY1NDC(leg->GetY1NDC() + dy);
     leg->SetY2NDC(leg->GetY2NDC() + dy);
   }
   c->Modified(); c->Update();
@@ -795,6 +816,22 @@ int setError(TH2D *h2dest, const TH2D* h2src)
     }
   }
   return 1;
+}
+
+// ---------------------------------------------------------
+
+int allGE(const TH1D *h1a, const TH1D *h1b)
+{
+  if (h1a->GetNbinsX() != h1b->GetNbinsX()) {
+    std::cout << "allGE: different number of bins: "
+	      << h1a->GetNbinsX() << " vs " << h1b->GetNbinsX() << "\n";
+    return 0;
+  }
+  int ok=1;
+  for (int ibin=1; ok && (ibin<=h1a->GetNbinsX()); ibin++) {
+    if (h1a->GetBinContent(ibin) < h1b->GetBinContent(ibin)) ok=0;
+  }
+  return ok;
 }
 
 // ---------------------------------------------------------
@@ -1867,6 +1904,28 @@ void writeTimeTag(TFile *fout)
   if (fout) fout->cd();
   TObjString timeTag(DayAndTimeTag(0));
   timeTag.Write(timeTag.String());
+}
+
+// --------------------------------------------------------------
+
+int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> &h1V)
+{
+  TObject *obj=NULL;
+  TIter next(c->GetListOfPrimitives());
+  int count=0;
+  while ((obj=next())) { // assignment!
+    //std::cout << "Reading: " << obj->GetName() << "\n";
+    if (obj->InheritsFrom("TH1")) {
+      TH1D* h1=(TH1D*)c->GetPrimitive(obj->GetName());
+      if (!h1) std::cout << "h1 is null\n";
+      else {
+	//std::cout << "converted to " << h1->GetName() << "\n";
+	h1V.push_back(h1);
+	count++;
+      }
+    }
+  }
+  return count;
 }
 
 // ---------------------------------------------------------

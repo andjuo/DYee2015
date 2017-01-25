@@ -5,6 +5,7 @@
 #include <TClass.h>
 #include <TCanvas.h>
 #include <TLegend.h>
+#include <TLine.h>
 #include <TH1D.h>
 #include <TH2D.h>
 #include <TString.h>
@@ -121,6 +122,7 @@ TCanvas* plotRatio(TH1D* h1, TString cName, int logX=0, int logY=0,
 		   int lineAtOne=1);
 
 int moveLegend(TCanvas *c, double dxNDC, double dyNDC);
+int increaseLegend(TCanvas *c, double dxNDC_right, double dyNDC_top);
 void setLeftMargin(TCanvas *c, double xMargin);
 void setRightMargin(TCanvas *c, double xMargin);
 void setLeftRightMargins(TCanvas *c, double lMargin, double rMargin);
@@ -179,6 +181,7 @@ TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 TH2D* errorAsCentral(const TH2D* h2, int relative=0);
 int setError(TH1D *h1dest, const TH1D *h1src);
 int setError(TH2D *h2dest, const TH2D *h2src);
+int allGE(const TH1D *h1a, const TH1D *h1b); // 1 if h1a[i]>=h1b[i] for all i.
 int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative,
 		    int listRangesOnError=0);
 int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
@@ -619,6 +622,7 @@ void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
 // if listOfCanvNames="ALL", saves all canvases
 int  SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout=NULL);
 void writeTimeTag(TFile *fout=NULL);
+int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> &h1V);
 
 // -----------------------------------------------------------
 
@@ -742,5 +746,16 @@ std::ostream& operator<<(std::ostream &out, const TLorentzVector *v);
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
+const HistoStyle_t hsRed(kRed,  5,1,1.0,2.);
+const HistoStyle_t hsBlue(kBlue,24,1,0.8,2.);
+const HistoStyle_t hsGreen(kGreen+1,20,1,0.8,2.);
+const HistoStyle_t hsBlack(kBlack,3,1,1.0,2.);
+const HistoStyle_t hsColor6(6 ,   26,1,0.8,2.);
+const HistoStyle_t hsColor46(46,   23,1,0.8,2.);
+const HistoStyle_t hsBlue2(kBlue,24,1,0.8,2.);
+const HistoStyle_t hsViolet(9,25,1,0.8,2.); // square
+extern const HistoStyle_t hsVec[6];
+
+// -----------------------------------------------------------
 
 #endif
