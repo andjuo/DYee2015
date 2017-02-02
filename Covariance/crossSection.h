@@ -12,7 +12,7 @@ typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes,
 	       _varFSRRes, _varFSRRes_Poisson,
 	       _varEff, _varRho, _varRhoFile,
 	       _varAcc, _varEffAcc, _varLast,
-	       _varRhoSyst } TVaried_t;
+	       _varRhoSyst, _varTheory } TVaried_t;
 
 typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
 	       _bkgWJets, _bkgQCD, _bkgLast } TBkg_t;
@@ -56,17 +56,22 @@ class MuonCrossSection_t;
 
 struct RndVecInfo_t {
   TString fFName, fHistoNameBase, fHistoNameBaseV2;
+  int fMaxSamples;
 public:
   RndVecInfo_t(TString setFName="",
 	       TString setHistoNameBase="",
-	       TString setHistoNameBaseV2="") :
+	       TString setHistoNameBaseV2="",
+	       int nMaxSamples=-1) :
       fFName(setFName),
       fHistoNameBase(setHistoNameBase),
-      fHistoNameBaseV2(setHistoNameBaseV2)
+      fHistoNameBaseV2(setHistoNameBaseV2),
+      fMaxSamples(nMaxSamples)
+
   {}
   TString fname() const { return fFName; }
   TString histoNameBase() const { return fHistoNameBase; }
   TString histoNameBaseV2() const { return fHistoNameBaseV2; }
+  int maxSamples() const { return fMaxSamples; }
 
   void assign(TString setFName,
 	      TString setHistoNameBase, TString setHistoNameBaseV2)

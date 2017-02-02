@@ -24,6 +24,7 @@ TString variedVarName(TVaried_t v)
   case _varEffAcc: name="varEffAcc"; break;
   case _varLast: name="varLast"; break;
   case _varRhoSyst: name="varRhoSyst"; break;
+  case _varTheory: name="varTheory"; break;
   default:
     std::cout << "variedVarName is not ready for this var\n";
   }
@@ -231,6 +232,10 @@ int RndVecInfo_t::loadHistos(int sampleSize,
   }
 
   for (int iRnd=0; iRnd<sampleSize; iRnd++) {
+    if ((fMaxSamples>0) && (iRnd>=fMaxSamples)) {
+      std::cout << "loaded the requested " << fMaxSamples << " samples\n";
+      break;
+    }
     TH1D *h1r= loadHisto(fin,histoName(iRnd),histoName(iRnd),
 			 1,h1dummy);
     rndVec.push_back(h1r);
