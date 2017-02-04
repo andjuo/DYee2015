@@ -189,18 +189,23 @@ class CrossSection_t {
   TCanvas* plotCrossSection(TString canvName="cs", int removeNegativeSignal=0);
   TCanvas* plotCrossSection_StepByStep(TString canvName="csStep");
 
-  int sampleRndVec(TVaried_t new_var, int sampleSize,
+  int sampleRndVec(TVaried_t new_var, int sampleSize, int removeNegativeSignal,
 		   std::vector<TH1D*> &rndCS);
-  int sampleRndVec(TVaried_t new_var, const std::vector<TH1D*> &rndHistos,
+  int sampleRndVec(TVaried_t new_var,
+		   const std::vector<TH1D*> &rndHistos,
+		   int removeNegativeSignal,
 		   std::vector<TH1D*> &rndCS);
   int sampleRndVec(TVaried_t new_var, int sampleSize,
 		   const RndVecInfo_t &info,
+		   int removeNegativeSignal,
 		   std::vector<TH1D*> &rndCS);
   int sampleRndResponse(TVaried_t new_var, int sampleSize,
+			int removeNegativeSignal,
 			std::vector<TH1D*> &rndCS,
 			std::vector<RooUnfoldResponse*> *rndRespVPtr);
   int sampleRndRespVec(TVaried_t new_var,
 		       const std::vector<RooUnfoldResponse*> &rndRespV,
+		       int removeNegativeSignal,
 		       std::vector<TH1D*> &rndCS);
   int deriveCov(const std::vector<TH1D*> &rndCS, TH1D **h1avgCS, TH2D **h2cov);
 
@@ -275,6 +280,7 @@ class MuonCrossSection_t {
 			    int removeNegativeSignal=0);
 
   int sampleRndVec(TVaried_t new_var, int sampleSize,
+		   int removeNegativeSignal,
 		   std::vector<TH1D*> &rndCS,
 		   std::vector<TH1D*> *rndCSa_out=NULL,
 		   std::vector<TH1D*> *rndCSb_out=NULL,
@@ -282,6 +288,7 @@ class MuonCrossSection_t {
 
   int sampleRndVec(TVaried_t new_var, int sampleSize,
 		   const RndVecInfo_t &info,
+		   int removeNegativeSignal,
 		   std::vector<TH1D*> &rndCS,
 		   std::vector<TH1D*> *rndCSa_out=NULL,
 		   std::vector<TH1D*> *rndCSb_out=NULL,

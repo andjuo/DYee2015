@@ -629,6 +629,7 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx,
 		 + TString(";unfolded yield")
 		 ,
 		 fh1Yield); // set x binning
+    if (removeNegativeSignal) removeNegatives(fh1Unf);
     fh1UnfRhoCorr= copy(fh1Unf,"h1UnfRho",useTag);
     fh1UnfRhoCorr->Divide(fh1Rho);
     if (!fh1EffAcc) {
@@ -881,11 +882,12 @@ TCanvas* CrossSection_t::plotCrossSection_StepByStep(TString canvNameBase)
 // --------------------------------------------------------------
 
 int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
+				 int removeNegativeSignal,
 				 std::vector<TH1D*> &rndCS)
 {
   if ((new_var==_varDetRes) || (new_var==_varFSRRes)
       || (new_var==_varFSRRes_Poisson)) {
-    if (!sampleRndResponse(new_var,sampleSize,rndCS,NULL)) {
+    if (!sampleRndResponse(new_var,sampleSize,removeNegativeSignal,rndCS,NULL)){
       std::cout << " called from sampleRndVec(var,sampleSize,rndCS)\n";
       return 0;
     }
@@ -930,7 +932,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       h1var->SetMarkerStyle(5);
       plotHistoSame(h1var, canvVaried, "LPE");
     }
-    TH1D* h1=copy(calcCrossSection(new_var,i));
+    TH1D* h1=copy(calcCrossSection(new_var,i,removeNegativeSignal));
     rndCS.push_back(h1);
   }
   return 1;
@@ -940,6 +942,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 
 int CrossSection_t::sampleRndVec(TVaried_t new_var,
 				 const std::vector<TH1D*> &rndHistos,
+				 int removeNegativeSignal,
 				 std::vector<TH1D*> &rndCS)
 {
   rndCS.clear();
@@ -972,7 +975,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var,
       h1var->SetMarkerColor(color);
       plotHistoSame(h1var, "cVaried" + fTag, "hist");
     }
-    TH1D* h1=copy(calcCrossSection(new_var,i));
+    TH1D* h1=copy(calcCrossSection(new_var,i,removeNegativeSignal));
     rndCS.push_back(h1);
     delete fh1Varied; fh1Varied=NULL;
   }
@@ -983,6 +986,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var,
 
 int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 				 const RndVecInfo_t &info,
+				 int removeNegativeSignal,
 				 std::vector<TH1D*> &rndCS)
 {
   if ((new_var==_varDetRes) || (new_var==_varFSRRes)
@@ -996,7 +1000,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 
   std::vector<TH1D*> rndVec;
   if (!info.loadHistos(sampleSize,rndVec,NULL) ||
-      !sampleRndVec(new_var,rndVec,rndCS)) {
+      !sampleRndVec(new_var,rndVec,removeNegativeSignal,rndCS)) {
     std::cout << "error from CrossSection_t::sampleRndVec(RndVecInfo)\n";
     return 0;
   }
@@ -1007,6 +1011,7 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 // --------------------------------------------------------------
 
 int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
+				      int removeNegativeSignal,
 				      std::vector<TH1D*> &rndCS,
 				      std::vector<RooUnfoldResponse*> *rndV_out)
 {
@@ -1050,7 +1055,7 @@ int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
     TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
     fResVaried= randomizeWithinErr(r, respName, poissonRnd);
     fResVaried->UseOverflow(false); // ensure correct behavior
-    TH1D* h1=copy(calcCrossSection(new_var,i));
+    TH1D* h1=copy(calcCrossSection(new_var,i,removeNegativeSignal));
     rndCS.push_back(h1);
     if (rndV_out) {
       rndV_out->push_back(fResVaried);
@@ -1071,6 +1076,7 @@ int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
 
 int CrossSection_t::sampleRndRespVec(TVaried_t new_var,
 		     const std::vector<RooUnfoldResponse*> &rndRespV,
+				     int removeNegativeSignal,
 				     std::vector<TH1D*> &rndCS)
 {
   rndCS.clear();
@@ -1087,7 +1093,7 @@ int CrossSection_t::sampleRndRespVec(TVaried_t new_var,
     fResVaried= new RooUnfoldResponse(*r);
     //TString respName= r->GetName() + variedVarName(new_var) + Form("_%d",i) + fTag;
     //fResVaried= randomizeWithinErr(r, respName, poissonRnd);
-    TH1D* h1=copy(calcCrossSection(new_var,i));
+    TH1D* h1=copy(calcCrossSection(new_var,i,removeNegativeSignal));
     rndCS.push_back(h1);
     delete fResVaried;
     fResVaried=NULL;
@@ -1633,6 +1639,7 @@ TCanvas* MuonCrossSection_t::plotCrossSection(TString canvName,int recalculate,
 // --------------------------------------------------------------
 
 int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
+				     int removeNegativeSignal,
 				     std::vector<TH1D*> &rndCS,
 				     std::vector<TH1D*> *rndCSa_out,
 				     std::vector<TH1D*> *rndCSb_out,
@@ -1686,8 +1693,8 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
     if (new_var==_varRho) std::cout << "\n\tIt is not good to use _varRho int the muon channel\n";
     // Prepare post-FSR cross sections
     if ((new_var==_varYield) || (new_var==_varRho)) {
-      res= (fCSa.sampleRndVec(new_var,sampleSize,rndCSa)
-	    && fCSb.sampleRndVec(new_var,sampleSize,rndCSb)
+      res= (fCSa.sampleRndVec(new_var,sampleSize,removeNegativeSignal,rndCSa)
+	    && fCSb.sampleRndVec(new_var,sampleSize,removeNegativeSignal,rndCSb)
 	    ) ? 1:0;
     }
     else if (new_var==_varBkg) {
@@ -1748,8 +1755,9 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 	}
       }
 
-      res= (fCSa.sampleRndVec(_varBkg, rndBkgVa, rndCSa) &&
-	    fCSb.sampleRndVec(_varBkg, rndBkgVb, rndCSb)) ? 1:0;
+      res= (fCSa.sampleRndVec(_varBkg, rndBkgVa,removeNegativeSignal, rndCSa) &&
+	    fCSb.sampleRndVec(_varBkg, rndBkgVb,removeNegativeSignal, rndCSb)
+	    ) ? 1:0;
     }
     else if (new_var==_varBkgXS) {
       TH1D *h1BkgCopy= cloneHisto(fh1Bkg, fh1Bkg->GetName() + TString("_copy"),
@@ -1783,8 +1791,9 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 	rndBkgVb.push_back(h1rndB);
       }
 
-      res= (fCSa.sampleRndVec(_varBkg, rndBkgVa, rndCSa) &&
-	    fCSb.sampleRndVec(_varBkg, rndBkgVb, rndCSb)) ? 1:0;
+      res= (fCSa.sampleRndVec(_varBkg, rndBkgVa,removeNegativeSignal, rndCSa) &&
+	    fCSb.sampleRndVec(_varBkg, rndBkgVb,removeNegativeSignal, rndCSb)
+	    ) ? 1:0;
       res=res && copyContents(fh1Bkg, h1BkgCopy);
       delete h1BkgCopy;
     }
@@ -1813,14 +1822,16 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       if (rndVarVec_out) rndVarVec_out->push_back(h1rnd);
     }
 
-    res= (fCSa.sampleRndVec(new_var, rndVarVec, rndCSa) &&
-	  fCSb.sampleRndVec(new_var, rndVarVec, rndCSb)) ? 1:0;
+    res= (fCSa.sampleRndVec(new_var, rndVarVec, removeNegativeSignal, rndCSa) &&
+	  fCSb.sampleRndVec(new_var, rndVarVec, removeNegativeSignal, rndCSb)
+	  ) ? 1:0;
   }
 
   else if (new_var==_varDetRes) {
     std::vector<RooUnfoldResponse*> rndRespV;
-    if (!fCSa.sampleRndResponse(new_var,sampleSize,rndCSa,&rndRespV) ||
-	!fCSb.sampleRndRespVec(new_var,rndRespV,rndCSb)) {
+    if (!fCSa.sampleRndResponse(new_var,sampleSize,removeNegativeSignal,rndCSa,
+				&rndRespV) ||
+	!fCSb.sampleRndRespVec(new_var,rndRespV,removeNegativeSignal,rndCSb)) {
       std::cout << " error in MuonCrossSection_t::sampleRndVec\n";
       return 0;
     }
@@ -1967,6 +1978,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 
 int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 				     const RndVecInfo_t &info,
+				     int removeNegativeSignal,
 				     std::vector<TH1D*> &rndCS,
 				     std::vector<TH1D*> *rndCSa_out,
 				     std::vector<TH1D*> *rndCSb_out,
@@ -2024,8 +2036,8 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   rndCSb.reserve(sampleSize);
 
   res= (info.loadHistos(sampleSize,rndVarA,&rndVarB) &&
-	fCSa.sampleRndVec(new_var, rndVarA, rndCSa) &&
-	fCSb.sampleRndVec(new_var, rndVarB, rndCSb)) ? 1 : 0;
+	fCSa.sampleRndVec(new_var, rndVarA,removeNegativeSignal, rndCSa) &&
+	fCSb.sampleRndVec(new_var, rndVarB,removeNegativeSignal, rndCSb)) ? 1:0;
 
   if (rndVarVec1_out) *rndVarVec1_out= rndVarA;
   else clearVec(rndVarA);
@@ -2205,7 +2217,8 @@ TH1D* MuonCrossSection_t::calcPreFsrCS_sumAB(const TH1D *h1a,
     return NULL;
   }
   if (fh1PostFSR) { delete fh1PostFSR; }
-  fh1PostFSR= fCSa.copy(h1a,"h1PostFSR",fTag);
+  fh1PostFSR= fCSa.copy(h1a,"h1PostFSR",useTag);
+  if (!fh1PostFSR) std::cout << "null ptr\n";
   fh1PostFSR->Scale( fCSa.lumi() );
   fh1PostFSR->Add(h1b, fCSb.lumi());
   //printHisto(h1postFSR);
