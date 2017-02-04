@@ -1571,6 +1571,29 @@ double chi2estimate(const TVectorD &vec1, const TVectorD &vec2,
 }
 
 
+// ---------------------------------------------------------
+
+int changeCov(TMatrixD &cov, const TH1D *h1unc)
+{
+  TMatrixD newCov(TMatrixD::kZero,cov);
+  if (cov.GetNrows()!=h1unc->GetNbinsX()) {
+    std::cout << "changeCov detected dim difference: "
+	      << cov.GetNrows() << " vs " << h1unc->GetNbinsX() << "\n";
+    cov=newCov;
+    return 0;
+  }
+
+  for (int ir=0; ir<cov.GetNrows(); ir++) {
+    for (int ic=0; ic<cov.GetNcols(); ic++) {
+      double corr= cov(ir,ic) / sqrt(cov(ir,ir)*cov(ic,ic));
+      newCov(ir,ic) = corr *
+	h1unc->GetBinContent(ir+1) * h1unc->GetBinContent(ic+1);
+    }
+  }
+
+  cov=newCov;
+  return 1;
+}
 
 // ---------------------------------------------------------
 
@@ -1908,19 +1931,33 @@ void writeTimeTag(TFile *fout)
 
 // --------------------------------------------------------------
 
-int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> &h1V)
+int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> *h1V,
+			std::vector<TH2D*> *h2V)
 {
+  if (!h1V && !h2V) {
+    std::cout << "getHistosFromCanvas: either h1V or h2V has to be non-null\n";
+    return 0;
+  }
   TObject *obj=NULL;
   TIter next(c->GetListOfPrimitives());
   int count=0;
   while ((obj=next())) { // assignment!
     //std::cout << "Reading: " << obj->GetName() << "\n";
-    if (obj->InheritsFrom("TH1")) {
+    if (h1V && obj->InheritsFrom("TH1")) {
       TH1D* h1=(TH1D*)c->GetPrimitive(obj->GetName());
       if (!h1) std::cout << "h1 is null\n";
       else {
 	//std::cout << "converted to " << h1->GetName() << "\n";
-	h1V.push_back(h1);
+	h1V->push_back(h1);
+	count++;
+      }
+    }
+    if (h2V && obj->InheritsFrom("TH2")) {
+      TH2D* h2=(TH2D*)c->GetPrimitive(obj->GetName());
+      if (!h2) std::cout << "h2 is null\n";
+      else {
+	//std::cout << "converted to " << h2->GetName() << "\n";
+	h2V->push_back(h2);
 	count++;
       }
     }
@@ -1966,6 +2003,14 @@ int orderChanged(const std::vector<int> &idx) {
     if (idx[i-1]+1!=idx[i]) yes=1;
   }
   return yes;
+}
+
+// ---------------------------------------------------------
+// ---------------------------------------------------------
+
+void ptrOk(const void *ptr)
+{
+  if (!ptr) std::cout << "null ptr\n"; else std::cout << "ptr ok\n";
 }
 
 // ---------------------------------------------------------

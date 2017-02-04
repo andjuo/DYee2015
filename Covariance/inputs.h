@@ -387,7 +387,7 @@ void logAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="",
 {
   gr->GetXaxis()->SetDecimals(true);
   gr->GetYaxis()->SetDecimals(true);
-  gr->GetZaxis()->SetDecimals(true);
+  //gr->GetZaxis()->SetDecimals(true); // does not work for TGraphErrors
   if ((axis & 1)!=0) {
     gr->GetXaxis()->SetNoExponent();
     gr->GetXaxis()->SetMoreLogLabels();
@@ -572,6 +572,9 @@ TH1D* convert2histo1D(const TMatrixD &m, const TMatrixD &cov,
 		      TString h1name, TString h1title,
 		      const TH1D *h1_for_axes, int iCol=0);
 
+// Change uncertainties, keeping correlations
+int changeCov(TMatrixD &cov, const TH1D *h1unc);
+
 // chi^2_estimate= (vec1-vec2)^T Mcov^{-1} (vec1-vec2)
 double chi2estimate(const TVectorD &vec1, const TVectorD &vec2,
 		    const TMatrixD &Mcov);
@@ -622,7 +625,8 @@ void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
 // if listOfCanvNames="ALL", saves all canvases
 int  SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout=NULL);
 void writeTimeTag(TFile *fout=NULL);
-int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> &h1V);
+int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> *h1V=NULL,
+			std::vector<TH2D*> *h2V=NULL);
 
 // -----------------------------------------------------------
 
@@ -729,6 +733,8 @@ inline
 void HERE(const char *format, const type1_t x, const type2_t y)
 { std::cout << Form(format,x,y) << std::endl; }
 
+
+void ptrOk(const void *ptr);
 
 inline
 int PosOk(std::string s, std::string substr, size_t from_pos=0)
