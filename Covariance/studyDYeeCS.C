@@ -52,15 +52,16 @@ void work(TVersion_t inpVer,
 {
   std::vector<TH1D*> rndCSVec;
   int res=1;
+  int removeNegativeSignal=1;
   if (var!=_varRhoFile)
-    res=eeCS.sampleRndVec(var,nSample,rndCSVec);
+    res=eeCS.sampleRndVec(var,nSample,removeNegativeSignal,rndCSVec);
   else {
     TString inpVerTag=versionName(inpVer);
     TString loadFName=Form("dir-Rho%s/dyee_rhoRndVec_%s_%d.root",
 			   inpVerTag.Data(),inpVerTag.Data(),
 			   nSample);
     RndVecInfo_t info(loadFName,"h1rho_var");
-    res=eeCS.sampleRndVec(var,nSample,info, rndCSVec);
+    res=eeCS.sampleRndVec(var,nSample,info,removeNegativeSignal, rndCSVec);
   }
   if (!res) return;
   TH1D* h1Avg=NULL;

@@ -3,11 +3,13 @@
 // --------------------------------------------------------------
 
 void work(TVersion_t inpVer,
-	  MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave);
+	  MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave,
+	  int nMaxSamples=-1);
 
 // --------------------------------------------------------------
 
-void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
+void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0,
+		 int nMaxSamples=-1)
 {
   TVersion_t inpVer=_verMu1;
   TString inpVerTag="_v1";
@@ -42,7 +44,7 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
   }
   else {
     std::cout << "perform study\n";
-    work(inpVer,muCS,var,nSample,doSave);
+    work(inpVer,muCS,var,nSample,doSave,nMaxSamples);
   }
 
   std::cout << "macro ran with inpVerTag=" << inpVerTag << "\n";
@@ -53,19 +55,25 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 // --------------------------------------------------------------
 
 void work(TVersion_t inpVer,
-	  MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave)
+	  MuonCrossSection_t &muCS, TVaried_t var, int nSample, int doSave,
+	  int nMaxSamples)
 {
   std::vector<TH1D*> rndCSVec, rndCSaVec, rndCSbVec;
   int res=1;
-  if (var!=_varRhoFile)
-    res=muCS.sampleRndVec(var,nSample,rndCSVec,&rndCSaVec,&rndCSbVec);
+  int removeNegativeSignal=1;
+  if (var!=_varRhoFile) {
+    std::cout << "nSample=" << nSample << ", removeNegativeSignal=" << removeNegativeSignal << "\n";
+    res=muCS.sampleRndVec(var,nSample,removeNegativeSignal,
+			  rndCSVec,&rndCSaVec,&rndCSbVec);
+  }
   else {
     TString inpVerTag=versionName(inpVer);
     TString loadFName=Form("dir-Rho%s/dymm_rhoRndVec_%s_%d.root",
 			   inpVerTag.Data(),inpVerTag.Data(),
 			   nSample);
-    RndVecInfo_t info(loadFName,"h1rho_4p2_var","h1rho_4p3_var");
-    res=muCS.sampleRndVec(var,nSample,info,
+    RndVecInfo_t info(loadFName,"h1rho_4p2_var","h1rho_4p3_var",nMaxSamples);
+    if ((nMaxSamples>0) && (nMaxSamples<nSample)) nSample=nMaxSamples;
+    res=muCS.sampleRndVec(var,nSample,info,removeNegativeSignal,
 			  rndCSVec,&rndCSaVec,&rndCSbVec);
   }
   if (!res) return;
@@ -145,6 +153,8 @@ void work(TVersion_t inpVer,
     if (cx) cx->Write();
     std::vector<TCanvas*> canvV;
     TString canvList="muCS_a muCS_b";
+    canvList.Append("cVaried"+muCS.csA().tag());
+    canvList.Append("cVaried"+muCS.csB().tag());
     if (doSave==2) canvList="";
     canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csA().tag());
     canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csB().tag());
