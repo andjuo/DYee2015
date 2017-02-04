@@ -7,7 +7,7 @@
 BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  const TMatrixD *covMM_inp,
 			  const TMatrixD *covEM_inp,
-			  TString fileTag, TString plotTag,
+			  TString outputFileTag, TString plotTag,
 			  int printCanvases)
 {
   double scale=1; //100000.; // 1000000
@@ -108,8 +108,8 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       TCanvas *cCSCheck= findCanvas("cCScheck");
       if (cCSCheck) canvasCSV.push_back(cCSCheck);
 
-      TFile fout("foutCanvas_DYCSInp" + fileTag + ".root","RECREATE");
-      SaveCanvases(canvasCSV,"dir-plot-DYCSInp" + fileTag,&fout);
+      TFile fout("foutCanvas_DYCSInp" + outputFileTag + ".root","RECREATE");
+      SaveCanvases(canvasCSV,"dir-plot-DYCSInp" + outputFileTag,&fout);
       writeTimeTag();
       fout.Close();
       std::cout << "file <" << fout.GetName() << "> created\n";
@@ -203,10 +203,10 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     }
 
     if (printCanvases) {
-      TFile fout("foutCanvas_DYCSCombi" + fileTag + ".root","RECREATE");
+      TFile fout("foutCanvas_DYCSCombi" + outputFileTag + ".root","RECREATE");
       SaveCanvases("cCombiCS cCombiCS2Theory cCombiCS2TheoryRatio cErr",
-		   "dir-plot-DYCSCombi" + fileTag, &fout);
-      SaveCanvases(canvasCombiCSV,"dir-plot-DYCSCombi" + fileTag,&fout);
+		   "dir-plot-DYCSCombi" + outputFileTag, &fout);
+      SaveCanvases(canvasCombiCSV,"dir-plot-DYCSCombi" + outputFileTag,&fout);
       writeTimeTag();
       fout.Close();
       std::cout << "file <" << fout.GetName() << "> created\n";
@@ -228,7 +228,8 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 	TH1D *h1binDef= new TH1D("h1binDef","h1binDef;binIdx;count",
 				 inpCov.GetNrows(),1,inpCov.GetNrows()+1);
 	PlotCovCorrOpt_t optCCNoLog(optCC);
-	optCCNoLog.logScale=0;
+	optCCNoLog.logScaleX=0;
+	optCCNoLog.logScaleY=0;
 	optCCNoLog.autoZRangeCorr=0;
 	plotCovCorr(inpCov,h1binDef,"h2TotInpCov","cTotInpCov",optCCNoLog);
       }
@@ -259,10 +260,10 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     cCorrPartMM->SetGrid(1,1);
 
     if (printCanvases) {
-      TFile fout("foutCanvas_DYCSCov" + fileTag + ".root","RECREATE");
+      TFile fout("foutCanvas_DYCSCov" + outputFileTag + ".root","RECREATE");
       int count=SaveCanvases("cEECov cMMCov cTotInpCov " +
 			     TString("cFinCov cCorrPartEE cCorrPartMM"),
-			     "dir-plot-DYCSCov" + fileTag,&fout);
+			     "dir-plot-DYCSCov" + outputFileTag,&fout);
       std::cout << "saved " << count << " canvases\n";
       writeTimeTag();
       fout.Close();

@@ -23,14 +23,16 @@ int combineData(const TMatrixD &measEE, const TMatrixD &covEE,
 void checkSplit(const BLUEResult_t &blue,
 		const TMatrixD &covEE, const TMatrixD &covMM);
 
+TString eeCSFName="cs_DYee_13TeV_El3.root";
+TString eeCSH1Name="h1PreFSRCS";
+TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+TString mmCSH1Name="h1CS";
+
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 
 void work13TeV()
 {
-
-  TString eeCSFName="cs_DYee_13TeV_El3.root";
-  TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
 
   std::vector<int> eeCovIdx, mmCovIdx;
   addToVector(eeCovIdx,7, _varYield, _varBkg, _varDetRes, _varEff,
