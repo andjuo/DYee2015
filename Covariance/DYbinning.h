@@ -8,7 +8,9 @@
 #include <iostream>
 #include <cmath>
 
-#define def_fewMassBins
+//#define def_fewMassBins
+//#define def_41massBin
+#define def_42massBin
 
 namespace DYtools {
 
@@ -28,19 +30,50 @@ const Double_t massBinEdges43[nMassBins43+1] =
    200, 220, 243, 273, 320, 380, 440, 510, 600, 700,
    830, 1000, 1500, 3000};
 
+const Int_t nMassBins42 = 42;
+const Double_t massBinEdges42[nMassBins42+1] =
+  {15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
+   64, 68, 72, 76, 81, 86, 91, 96, 101, 106,
+   110, 115, 120, 126, 133, 141, 150, 160, 171, 185,
+   200, 220, 243, 273, 320, 380, 440, 510, 600, 700,
+        1000, 1500, 3000};
+
+const Int_t nMassBins41 = 41;
+const Double_t massBinEdges41[nMassBins41+1] =
+  {15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
+   64, 68, 72, 76, 81, 86, 91, 96, 101, 106,
+   110, 115, 120, 126, 133, 141, 150, 160, 171, 185,
+   200, 220, 243, 273, 320, 380, 440, 510, 600,
+        1000, 1500, 3000};
+
 const Int_t nMassBinsFew = 3;
 const Double_t massBinEdgesFew[nMassBinsFew+1] = { 15, 25, 45, 75 };
 
 #ifdef __CXX__
  extern const Int_t nMassBins;
  extern const Double_t *massBinEdges;
+ extern const TString massBinningName;
 #else
 #ifndef def_fewMassBins
+#  ifdef def_41massBin
+ const Int_t nMassBins= nMassBins41;
+ const Double_t *massBinEdges= massBinEdges41;
+ const TString massBinningName= "mb41";
+#  else
+#  ifdef def_42massBin
+ const Int_t nMassBins= nMassBins42;
+ const Double_t *massBinEdges= massBinEdges42;
+ const TString massBinningName= "mb42";
+#  else
  const Int_t nMassBins= nMassBins43;
  const Double_t *massBinEdges= massBinEdges43;
+ const TString massBinningName= "mb43";
+#  endif
+#  endif
 #else
  const Int_t nMassBins = nMassBinsFew;
  const Double_t *massBinEdges = massBinEdgesFew;
+ const TString massBinningName= "mbFew";
 #endif
 #endif
 
@@ -199,6 +232,19 @@ double deltaR(double eta1, double phi1, double eta2, double phi2)
 }
 
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+
+inline
+TH1D* rebin_43toLess(TH1D *h1_inp)
+{
+  TH1D *h1= (TH1D*)h1_inp->Rebin(nMassBins,
+				 h1_inp->GetName()+("_"+massBinningName),
+				 massBinEdges);
+  return h1;
+}
+
+// ---------------------------------------------------------
+
 
 };
 
