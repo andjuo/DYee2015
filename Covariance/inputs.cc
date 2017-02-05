@@ -27,6 +27,8 @@ TString versionName(TVersion_t ver)
   case _verEl2skim2: name="El2skim2"; break;
   case _verEl2skim3: name="El2skim3"; break;
   case _verEl3: name="El3"; break;
+  case _verEl3mb41: name="El3mb41"; break;
+  case _verEl3mb42: name="El3mb42"; break;
   default:
     std::cout << "versionName is not ready for this version type\n";
   }
@@ -45,6 +47,7 @@ int leptonIdx(TVersion_t v) {
     break;
   case _verEl1: case _verEl2: case _verEl2skim: case _verEl2skim2:
   case _verEl2skim3: case _verEl3:
+  case _verEl3mb41: case _verEl3mb42:
     i=0;
     break;
   default:
@@ -572,7 +575,7 @@ void printRatio(const TH1D *h1a, const TH1D *h1b, int extraRange,
   for (int ibin=1-d; ibin<=h1a->GetNbinsX()+d; ibin++) {
     if ( (h1a->GetBinLowEdge(ibin) != h1b->GetBinLowEdge(ibin)) ||
 	 (h1a->GetBinWidth(ibin) != h1b->GetBinWidth(ibin)) ) {
-      std::cout << "bining mismatch at ibin=" << ibin << "\n";
+      std::cout << "printRatio: bining mismatch at ibin=" << ibin << "\n";
       return;
     }
     std::cout << "ibin=" << ibin << " " << h1a->GetBinLowEdge(ibin)
@@ -626,14 +629,14 @@ void printRatio(const TH2D *h2a, const TH2D *h2b, int extraRange,
 	    << h2b->GetName() << std::string(10,' ') << "ratio\n";
   for (int ibin=1-d; ibin<=h2a->GetNbinsX()+d; ibin++) {
     if (ibin-d>h2b->GetNbinsX()) {
-      std::cout << "different number of x bins\n";
+      std::cout << "printRatio: different number of x bins\n";
       continue;
     }
     if ( (h2a->GetXaxis()->GetBinLowEdge(ibin) !=
 	  h2b->GetXaxis()->GetBinLowEdge(ibin)) ||
 	 (h2a->GetXaxis()->GetBinWidth(ibin) !=
 	  h2b->GetXaxis()->GetBinWidth(ibin)) ) {
-      std::cout << "x-bining mismatch at ibin=" << ibin << "\n";
+      std::cout << "printRatio: x-bining mismatch at ibin=" << ibin << "\n";
       //return;
     }
     for (int jbin=1-d; jbin<=h2a->GetNbinsY()+d; jbin++) {
@@ -645,7 +648,7 @@ void printRatio(const TH2D *h2a, const TH2D *h2b, int extraRange,
 	    h2b->GetYaxis()->GetBinLowEdge(jbin)) ||
 	   (h2a->GetYaxis()->GetBinWidth(jbin) !=
 	    h2b->GetYaxis()->GetBinWidth(jbin)) ) {
-	std::cout << "y-bining mismatch at jbin=" << jbin << "\n";
+	std::cout << "printRatio: y-bining mismatch at jbin=" << jbin << "\n";
 	//return;
       }
 
@@ -936,8 +939,8 @@ int compareRanges(const TH1D *h1a, const TH1D *h1b, int verbose)
   for (int ibin=1-d; ibin<=h1a->GetNbinsX()+d; ibin++) {
     if (h1a->GetXaxis()->GetBinLowEdge(ibin) !=
 	h1b->GetXaxis()->GetBinLowEdge(ibin)) {
-      if (verbose) std::cout << "x-bining mismatch at ibin=" << ibin
-			     << ": "
+      if (verbose) std::cout << "compareRanges: x-bining mismatch at ibin="
+			     << ibin << ": "
 			     << h1a->GetXaxis()->GetBinLowEdge(ibin)
 			     << " vs "
 			     << h1b->GetXaxis()->GetBinLowEdge(ibin)
@@ -959,7 +962,7 @@ int compareRanges(const TH2D *h2a, const TH2D *h2b, int verbose)
 	 (h2a->GetXaxis()->GetBinWidth(ibin) !=
 	  h2b->GetXaxis()->GetBinWidth(ibin)) ) {
       if (verbose) {
-	std::cout << "x-bining mismatch at ibin=" << ibin << ": "
+	std::cout << "compareRanges: x-bining mismatch at ibin=" << ibin << ": "
 		  << h2a->GetXaxis()->GetBinLowEdge(ibin) << " w:"
 		  << h2a->GetXaxis()->GetBinWidth(ibin) << " vs "
 		  << h2b->GetXaxis()->GetBinLowEdge(ibin) << " w:"
@@ -973,7 +976,7 @@ int compareRanges(const TH2D *h2a, const TH2D *h2b, int verbose)
 	   (h2a->GetYaxis()->GetBinWidth(jbin) !=
 	    h2b->GetYaxis()->GetBinWidth(jbin)) ) {
 	if (verbose) {
-	  std::cout << "y-bining mismatch at jbin=" << jbin << ": "
+	  std::cout << "compareRanges: y-bining mismatch at jbin="<<jbin << ": "
 		    << h2a->GetYaxis()->GetBinLowEdge(jbin) << " w:"
 		    << h2a->GetYaxis()->GetBinWidth(jbin) << " vs "
 		    << h2b->GetYaxis()->GetBinLowEdge(jbin) << " w:"
@@ -1100,6 +1103,20 @@ TH1D* perMassBinWidth(const TH1D* h1_orig, int prnBinW)
     if (prnBinW) std::cout << "ibin=" << ibin << ", w=" << w << "\n";
     h1->SetBinContent( ibin, h1_orig->GetBinContent(ibin)/w );
     h1->SetBinError  ( ibin, h1_orig->GetBinError(ibin)/w   );
+  }
+  return h1;
+}
+
+// ---------------------------------------------------------
+
+TH1D* timesMassBinWidth(const TH1D* h1_orig, int prnBinW)
+{
+  TH1D* h1=(TH1D*)h1_orig->Clone(h1_orig->GetName() + TString("_timesMassBinW"));
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    double w= h1->GetBinWidth(ibin);
+    if (prnBinW) std::cout << "ibin=" << ibin << ", w=" << w << "\n";
+    h1->SetBinContent( ibin, h1_orig->GetBinContent(ibin)*w );
+    h1->SetBinError  ( ibin, h1_orig->GetBinError(ibin)*w   );
   }
   return h1;
 }
