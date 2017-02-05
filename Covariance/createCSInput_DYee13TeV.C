@@ -26,8 +26,8 @@ void createCSInput_DYee13TeV(int doSave=0)
   else if (inpVer==_verEl3) {
     srcPath="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/";
     lumiTot=2316.969; // actually used
-    setNiters_detRes=15;
-    setNiters_FSR=15;
+    setNiters_detRes=21;
+    setNiters_FSR=21;
   }
 
   TString inpVerTag= versionName(inpVer);
