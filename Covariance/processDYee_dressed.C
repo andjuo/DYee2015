@@ -27,7 +27,10 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   TVersion_t inpVersion=_verEl2skim;
   const int testSC_postFSR=1;
 
-  if (DYtools::nMassBins!=DYtools::nMassBins43) {
+  if ((DYtools::nMassBins!=DYtools::nMassBins43) &&
+      (DYtools::nMassBins!=DYtools::nMassBins42) &&
+      (DYtools::nMassBins!=DYtools::nMassBins41)
+      ) {
     std::cout << "a potential DYbinning.h problem\n";
     return;
   }
@@ -39,13 +42,18 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   srcPath="/media/sf_Share2/DYee_76X_Calibrated/mySkim/";
 
   inpVersion=_verEl3;
+  inpVersion=_verEl3mb41;
+  inpVersion=_verEl3mb42;
   fnameEff="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/ROOTFile_Input5_TagProbeEfficiency.root";
 
   TString dataFName;
   TString fileFormat="DYEE_M%dto%d_v1.root ";
   if ((inpVersion==_verEl2skim2) ||
       (inpVersion==_verEl2skim3) ||
-      (inpVersion==_verEl3)) fileFormat="DY_%dto%d_v2_orig.root ";
+      (inpVersion==_verEl3) ||
+      (inpVersion==_verEl3mb41) ||
+      (inpVersion==_verEl3mb42)
+      ) fileFormat="DY_%dto%d_v2_orig.root ";
 
   if (includeOnlyRange.Length()>0) {
     std::stringstream ss(includeOnlyRange.Data());
