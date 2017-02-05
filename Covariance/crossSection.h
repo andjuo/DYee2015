@@ -5,6 +5,7 @@
 #include "../RooUnfold/src/RooUnfoldResponse.h"
 #include "../RooUnfold/src/RooUnfoldBayes.h"
 #include "../RooUnfold/src/RooUnfoldInvert.h"
+#include "DYbinning.h"
 
 // -----------------------------------------------------------
 
@@ -12,7 +13,7 @@ typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes,
 	       _varFSRRes, _varFSRRes_Poisson,
 	       _varEff, _varRho, _varRhoFile,
 	       _varAcc, _varEffAcc, _varLast,
-	       _varRhoSyst, _varTheory } TVaried_t;
+	       _varRhoSyst, _varTheory, _varYieldPoisson } TVaried_t;
 
 typedef enum { _bkgZZ=0, _bkgWZ, _bkgWW, _bkgTTbar, _bkgDYtautau, _bkgTW,
 	       _bkgWJets, _bkgQCD, _bkgLast } TBkg_t;
@@ -303,6 +304,32 @@ class MuonCrossSection_t {
 
  protected:
   TH1D* calcPreFsrCS_sumAB(const TH1D *h1a, const TH1D *h1b,TString useTag);
+};
+
+// -----------------------------------------------------------
+
+namespace DYtools {
+
+#ifdef def_41massBin
+  const TVersion_t activeVer= _verEl3mb41;
+#else
+#  ifdef def_42massBin
+  const TVersion_t activeVer= _verEl3mb42;
+#  else
+  const TVersion_t activeVer= _verEl3;
+#  endif
+#endif
+
+
+  inline
+  TH1D *rebin_43toLess_perMBW(const TH1D *h1_inp_perMBW, int printMBW=0) {
+    TH1D* h1_noMBW= ::timesMassBinWidth(h1_inp_perMBW,printMBW);
+    TH1D* h1_4X= rebin_43toLess(h1_noMBW);
+    TH1D* h1_4XperMBW= ::perMassBinWidth(h1_4X,printMBW);
+    delete h1_noMBW;
+    delete h1_4X;
+    return h1_4XperMBW;
+  }
 };
 
 // -----------------------------------------------------------

@@ -25,6 +25,7 @@ TString variedVarName(TVaried_t v)
   case _varLast: name="varLast"; break;
   case _varRhoSyst: name="varRhoSyst"; break;
   case _varTheory: name="varTheory"; break;
+  case _varYieldPoisson: name="varYieldPoisson"; break;
   default:
     std::cout << "variedVarName is not ready for this var\n";
   }
@@ -349,6 +350,7 @@ TH1D* CrossSection_t::getVariedHisto(TVaried_t new_var)
   TH1D* h1=NULL;
   switch(fVar) {
   case _varYield: h1=fh1Yield; break;
+  case _varYieldPoisson: h1=fh1Yield; break;
   case _varBkg:
   case _varBkgXS: h1=fh1Bkg; break;
   case _varSig: h1=fh1Signal; break;
@@ -550,8 +552,8 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx,
 
   TString useTag= fTag + variedVarName(new_var) + Form("_%d",idx);
 
-  if (new_var <= _varBkg) {
-    if (new_var==_varYield) {
+  if ((new_var <= _varBkg) || (new_var == _varYieldPoisson)) {
+    if ((new_var==_varYield) || (new_var==_varYieldPoisson)) {
       if (0) {
 	TString cname="cTest" + useTag;
 	plotHisto(fh1Yield,cname,1,1,"hist");
@@ -799,19 +801,15 @@ TCanvas* CrossSection_t::plotCrossSection(TString canvName,
 	      << "is not available and could not be computed\n";
     return NULL;
   }
-  TCanvas *c= new TCanvas(canvName,canvName,600,600);
-  c->SetLogx();
-  c->SetLogy();
-  TString drawOpt="LPE";
+
   if (fh1Theory) {
     fh1Theory->SetLineColor(kBlue);
-    fh1Theory->Draw("hist");
-    drawOpt.Append("same");
+    fh1Theory->SetMarkerColor(kBlue);
+    plotHisto(fh1Theory,canvName,1,1,"hist","theory");
   }
   h1->SetMarkerStyle(24);
-  h1->Draw(drawOpt);
-  c->Update();
-  std::cout << "plotCrossSection: theory is blue, calculation is circles\n";
+  TCanvas *c=plotHistoAuto(h1,canvName,1,1,"LPE","cs calc");
+  //std::cout << "plotCrossSection: theory is blue, calculation is circles\n";
   return c;
 }
 // --------------------------------------------------------------
@@ -922,7 +920,8 @@ int CrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       fh1Varied= copy(h1Src,"hVar" + variedVarName(new_var) + Form("_%d",i), fTag);
       fh1Varied->Reset();
     }
-    randomizeWithinErr(h1Src, fh1Varied, nonNegative);
+    int poissonRnd= (new_var==_varYieldPoisson) ? 1 : 0;
+    randomizeWithinErr(h1Src, fh1Varied, nonNegative, poissonRnd);
     if (trackRnd) {
       //fh1Varied->SetMarkerStyle(24);
       int color=(i%9)+1;
@@ -1687,6 +1686,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
   rndCSa.reserve(sampleSize);
   rndCSb.reserve(sampleSize);
   if ((new_var==_varYield) ||
+      (new_var==_varYieldPoisson) ||
       (new_var==_varBkg) ||
       (new_var==_varBkgXS) ||
       (new_var==_varRho)) {
