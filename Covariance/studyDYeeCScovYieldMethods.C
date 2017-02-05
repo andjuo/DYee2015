@@ -1,18 +1,33 @@
 #include "inputs.h"
 #include "crossSection.h"
+#include "DYbinning.h"
 
-void studyDYeeCScovYieldMethods(int nSample=2000)
+void studyDYeeCScovYieldMethods(int nSample=2000, int inpVer=_verEl3)
 {
   const int nMethods=4;
   const TString methodName[nMethods] = { "_allRnd", "_keepYieldWithPosSignal",
 					 "_nulifyNegSig",
 					 "_keepYieldWithPosSignal2-bkgX1p3"};
+  int chkMethods=nMethods;
 
   std::vector<TH2D*> h2covV;
   std::vector<TH1D*> h1uncV;
   TString fnameBase=Form("cov_ee_varYield_%d",nSample);
+  if (nSample<0) {
+    fnameBase.ReplaceAll("varYield_-","varYieldPoisson_");
+    nSample=-nSample;
+    if (inpVer==_verEl3) chkMethods=3;
+  }
+  if (inpVer==_verEl3mb41) {
+    fnameBase.ReplaceAll("ee_","ee41_");
+    chkMethods=3;
+  }
+  else if (inpVer==_verEl3mb42) {
+    fnameBase.ReplaceAll("ee_","ee42_");
+    chkMethods=3;
+  }
   if (nSample==2000) fnameBase.ReplaceAll("2000","2000_slim");
-  for (int i=0; i<nMethods; i++) {
+  for (int i=0; i<chkMethods; i++) {
     TString fname= fnameBase + methodName[i] + ".root";
     TString h2NameFile= "h2cov_" + methodName[i];
     TString h2NameMem= "h2cov_" + methodName[i];
@@ -30,7 +45,13 @@ void studyDYeeCScovYieldMethods(int nSample=2000)
   TH1D *h1unc_note= loadHisto("dyee_unc_fromNote.root","h1csEE_statUnc","h1csEE_statUnc",h1dummy);
   if (!h1unc_note) return;
   h1unc_note->SetStats(0);
+  removeError(h1unc_note);
   printHisto(h1unc_note);
+
+  if ((inpVer==_verEl3mb41) || (inpVer==_verEl3mb42)) {
+    h1unc_note= DYtools::rebin_43toLess_perMBW(h1unc_note);
+  }
+
 
   hsColor46.SetStyle(h1unc_note);
   hsGreen.SetStyle(h1uncV[2]);

@@ -14,6 +14,8 @@ void createSystFile(TVersion_t inpVer,
 void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 {
   TVersion_t inpVer=_verEl3;
+  inpVer=_verEl3mb41;
+  inpVer=_verEl3mb42;
   TString inpVerTag=versionName(inpVer);
 
   CrossSection_t eeCS("elCS",inpVerTag,_csPreFsrFullSp,inpVer);
@@ -109,6 +111,9 @@ void work(TVersion_t inpVer,
 
   if (doSave) {
     TString fname="cov_ee_" + variedVarName(var) + Form("_%d.root",nSample);
+    if ((inpVer==_verEl3mb41) || (inpVer==_verEl3mb42)) {
+      fname.ReplaceAll("ee_",Form("ee%d_",DYtools::nMassBins));
+    }
     if (doSave==2) fname.ReplaceAll(".root","_slim.root");
     if (var==_varFSRRes_Poisson) fname.ReplaceAll(".root","-Poisson.root");
     TFile fout(fname,"RECREATE");

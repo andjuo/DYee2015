@@ -8,11 +8,17 @@ void studyDYeeCScovYield(int nSample=10, int method=1, int doSave=0,
 			 int plotMassCounts=0, TString extraFileTag="")
 {
   TVaried_t var=_varYield;
+  if (nSample<0) {
+    nSample=-nSample;
+    var=_varYieldPoisson;
+  }
   closeCanvases(10);
 
   std::cout << "doSave=" << doSave << "\n";
 
   TVersion_t inpVer=_verEl3;
+  inpVer=_verEl3mb41;
+  inpVer=_verEl3mb42;
   TString inpVerTag=versionName(inpVer);
 
   CrossSection_t elCS("elCS",inpVerTag,_csPreFsrFullSp,inpVer);
@@ -27,6 +33,8 @@ void studyDYeeCScovYield(int nSample=10, int method=1, int doSave=0,
   //printHisto(elCS.h1Theory()); return;
 
   TString covFName="cov_ee_"+variedVarName(var) + Form("_%d_slim.root",nSample);
+  if (inpVer==_verEl3mb41) covFName.ReplaceAll("ee_","ee41_");
+  else if (inpVer==_verEl3mb42) covFName.ReplaceAll("ee_","ee42_");
   if (nSample!=2000) covFName.ReplaceAll("_slim","");
   TString cName="cVaried_" + variedVarName(var) + "_" + versionName(inpVer);
   TFile fin(covFName);
@@ -36,7 +44,7 @@ void studyDYeeCScovYield(int nSample=10, int method=1, int doSave=0,
   canv->Draw();
 
   std::vector<TH1D*> h1aV_all, h1aV;
-  getHistosFromCanvas(canv,h1aV_all);
+  getHistosFromCanvas(canv,&h1aV_all,NULL);
   std::cout << "loaded histograms: " << h1aV_all.size() << " from CSa\n";
   if (h1aV_all.size()==0) {
     std::cout << "no histos\n";
@@ -162,7 +170,7 @@ void studyDYeeCScovYield(int nSample=10, int method=1, int doSave=0,
   TH1D *h1avgCS=NULL;
   TH2D *h2cov=NULL, *h2corr=NULL;
   PlotCovCorrOpt_t ccOpt;
-  deriveCovariance(h1csV,calcTag,"csCov_varYield",&h1avgCS,&h2cov);
+  deriveCovariance(h1csV,calcTag,"csCov_"+variedVarName(var),&h1avgCS,&h2cov);
   plotCovCorr(h2cov,"csCov",ccOpt,&h2corr);
 
   TString outFName=covFName;
@@ -177,8 +185,13 @@ void studyDYeeCScovYield(int nSample=10, int method=1, int doSave=0,
       return;
     }
     h2cov->Write();
+    //h2cov->Write("h2cov"); // needed for combination code
     h2corr->Write();
-    SaveCanvases("ALL",Form("dir-dyeeCScovYield-%d",nSample)+calcTag,&fout);
+    TString outDir="dir-dyeeCScov"+variedVarName(var)+
+      Form("-%d",nSample)+calcTag;
+    if (inpVer==_verEl3mb41) outDir.ReplaceAll("dyee","dyee41");
+    else if (inpVer==_verEl3mb42) outDir.ReplaceAll("dyee","dyee42");
+    SaveCanvases("ALL",outDir,&fout);
     writeTimeTag(&fout);
     fout.Close();
   }
