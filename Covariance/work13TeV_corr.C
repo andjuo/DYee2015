@@ -13,6 +13,7 @@ int addLumiCov(TMatrixD &eeCov, TMatrixD &mmCov, TMatrixD &emCov,
 int loadUncData(int isEE,
 		const finfomap_t &fNames,
 		const finfomap_t &h1names,
+		const fvarweightmap_t &relUncW,
 		const TH1D *h1binning,
 		const TH1D *h1centralVal, // if the uncertainty is relative
 		std::vector<TH1D*> &h1uncV,
@@ -26,6 +27,7 @@ int adjustUnc(const finfomap_t &covFNames,
 	      const finfomap_t &uncFiles,
 	      const finfomap_t &uncStat,
 	      const finfomap_t &uncSyst,
+	      const fvarweightmap_t &relUncW,
 	      const TH1D *h1binning,
 	      const TH1D *h1central,
 	      int plotCmp, // 1 - plot uncertainties, 2 - and covariances
@@ -246,6 +248,7 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 		std::vector<TMatrixD> &mmCovV)
 {
   finfomap_t mmUncFiles, mmUncStat, mmUncSyst;
+  fvarweightmap_t relUncW;
 
   TH1D* h1csEE=loadHisto(eeCSFName, eeCSH1Name, "h1csEE", 1,h1dummy);
   TH1D* h1csMM=loadHisto(mmCSFName, mmCSH1Name, "h1csMM", 1,h1dummy);
@@ -255,33 +258,40 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
   mmUncFiles[_varYield]= "dymm_unc_fromNote.root";
   mmUncStat [_varYield]= "h1csMM_statUnc";
   mmUncSyst [_varYield]= "";
+  relUncW   [_varYield]= 0;
   mmUncFiles[_varBkg]= inpPath + "ROOTFile_RelUnc_Stat_Syst_Tot_BkgEst.root";
   mmUncStat [_varBkg]= "h_RelUnc_Stat";
   mmUncSyst [_varBkg]= "h_RelUnc_Syst";
+  relUncW   [_varBkg]= 0.01;
   mmUncFiles[_varDetRes]= inpPath + "ROOTFile_RelUnc_Stat_Syst_Tot_DetRes.root";
   mmUncStat [_varDetRes]= "h_RelUnc_Stat";
   mmUncSyst [_varDetRes]= "h_RelUnc_Syst";
+  relUncW   [_varDetRes]= 0.01;
   mmUncFiles[_varEff]= inpPath + "ROOTFile_RelUnc_Stat_Syst_Tot_EffSF.root";
   mmUncStat [_varEff]= "h_RelUnc_Stat";
   mmUncSyst [_varEff]= "h_RelUnc_Syst";
+  relUncW   [_varEff]= 0.01;
   mmUncFiles[_varRhoFile]= "";
   mmUncStat [_varRhoFile]= "";
   mmUncSyst [_varRhoFile]= "";
+  relUncW   [_varRhoFile]= 0;
   //mmUncFiles[_varRhoFile]= inpPath + "ROOTFile_RelUnc_Stat_Syst_Tot_EffSF.root";
   //mmUncStat [_varRhoFile]= "h_RelUnc_Stat";
   //mmUncSyst [_varRhoFile]= "h_RelUnc_Syst";
   mmUncFiles[_varFSRRes]= inpPath + "ROOTFile_RelUnc_Stat_Syst_Tot_FSR.root";
   mmUncStat [_varFSRRes]= "h_RelUnc_Stat";
   mmUncSyst [_varFSRRes]= "h_RelUnc_Syst";
+  relUncW   [_varFSRRes]= 0.01;
   mmUncFiles[_varAcc]= "dymm_unc_fromNote.root";
   mmUncStat [_varAcc]= "";
   mmUncSyst [_varAcc]= "h1csMM_theoUnc";
+  relUncW   [_varAcc]= 0;
 
-  const TH1D *h1central= (0) ? h1csMM : NULL;
+  const TH1D *h1central= (1) ? h1csMM : NULL;
   int plotCmp=2;
   int change_covV=1;
   int res=adjustUnc( mmCovFNames, mmCovV,
-		     mmUncFiles,mmUncStat,mmUncSyst,
+		     mmUncFiles,mmUncStat,mmUncSyst,relUncW,
 		     h1csMM,h1central,
 		     plotCmp,change_covV,
 		     "_mm");
@@ -296,6 +306,7 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 int loadUncData(int isEE,
 		const finfomap_t &fNames,
 		const finfomap_t &h1names,
+		const fvarweightmap_t &relUncW,
 		const TH1D *h1binning,
 		const TH1D *h1centralVal, // if the uncertainty is relative
 		std::vector<TH1D*> &h1uncV,
@@ -323,14 +334,23 @@ int loadUncData(int isEE,
     }
     if (itHName->second.Length()==0) continue;
 
+    fvarweightmap_t::const_iterator itRelW= relUncW.find(it->first);
+    if (itRelW==relUncW.end()) {
+      std::cout << "coult not find the relUncW for "
+		<< variedVarName(it->first) << "\n";
+      return 0;
+    }
+
     TH1D *h1= loadHisto(fname,itHName->second,itHName->second + "_tmp",h1dummy);
     if (!h1) return 0;
     std::cout << "got " << h1newName << "\n";
     printHisto(h1);
     std::cout << "\n\n" << std::endl;
     if (!copyContents(h1unc, h1)) return 0;
-    if ((h1centralVal!=NULL) && (fname.Index("fromNote")==-1)) {
+    if ((h1centralVal!=NULL) && (itRelW->second!=0.)) {
+      std::cout << "scaling uncertainty for " << variedVarName(it->first) << "\n";
       h1unc->Multiply(h1centralVal);
+      h1unc->Scale(itRelW->second);
     }
   }
   return 1;
@@ -343,6 +363,7 @@ int adjustUnc(const finfomap_t &covFNames,
 	      const finfomap_t &uncFiles,
 	      const finfomap_t &uncStat,
 	      const finfomap_t &uncSyst,
+	      const fvarweightmap_t &relUncW,
 	      const TH1D *h1binning,
 	      const TH1D *h1central,
 	      int plotCmp, // 1 - plot uncertainties, 2 - and covariances
@@ -365,11 +386,13 @@ int adjustUnc(const finfomap_t &covFNames,
   }
 
   std::vector<TH1D*> h1uncStat, h1uncSyst;
-  if (!loadUncData(0,uncFiles,uncStat,h1binning,h1central,h1uncStat,tag+"_stat")) {
+  if (!loadUncData(0,uncFiles,uncStat,relUncW,
+		   h1binning,h1central,h1uncStat,tag+"_stat")) {
     std::cout << "failed to load statistical component\n";
     return 0;
   }
-  if (!loadUncData(0,uncFiles,uncStat,h1binning,h1central,h1uncSyst,tag+"_syst")) {
+  if (!loadUncData(0,uncFiles,uncStat,relUncW,
+		   h1binning,h1central,h1uncSyst,tag+"_syst")) {
     std::cout << "failed to load systematic component\n";
     return 0;
   }
