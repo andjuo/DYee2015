@@ -11,6 +11,8 @@
 
 //typedef std::pair<TVaried_t,TString> finfopair_t;
 typedef std::map<TVaried_t,TString> finfomap_t;
+//typedef std::map<TVaried_t,int> fvarflagmap_t;
+typedef std::map<TVaried_t,double> fvarweightmap_t;
 
 int loadCovData(const finfomap_t &covIdx, std::vector<TH2D*> &covAsH2D,
 		std::vector<TMatrixD> &covV,

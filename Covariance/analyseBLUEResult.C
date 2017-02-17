@@ -157,6 +157,11 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     }
 
     if (1) {
+      TH1D *h1theory_red= cloneHisto(h1csTheory,
+				     "h1theory_red",h1csTheory->GetTitle());
+      h1theory_red->SetLineColor(kRed);
+      h1theory_red->SetMarkerColor(kRed);
+
       for (int i=0; i<5; i++) {
 	TString canvName="";
 	TH2D *h2frame=NULL;
@@ -166,7 +171,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 	canvasCombiCSV.push_back(cx);
 	plotGraphSame(grCSEE,canvName,"PE1", DYeeStr);
 	plotGraphSame(grCSMM,canvName,"PE1", DYmmStr);
-	//plotHistoSame(h1csTheory,canvName,"LP", "theory");
+	plotHistoSame(h1theory_red,canvName,"LP", "theory");
 	plotHistoSame(h1comb,canvName,"LPE1", DYllStr);
 	if (i==1) moveLegend(cx,0.,0.55);
 	//if (i==4) moveLegend(cx,0.05,0.);
@@ -207,6 +212,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       SaveCanvases("cCombiCS cCombiCS2Theory cCombiCS2TheoryRatio cErr",
 		   "dir-plot-DYCSCombi" + outputFileTag, &fout);
       SaveCanvases(canvasCombiCSV,"dir-plot-DYCSCombi" + outputFileTag,&fout);
+      h1comb->Write();
       writeTimeTag();
       fout.Close();
       std::cout << "file <" << fout.GetName() << "> created\n";
@@ -264,6 +270,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       int count=SaveCanvases("cEECov cMMCov cTotInpCov " +
 			     TString("cFinCov cCorrPartEE cCorrPartMM"),
 			     "dir-plot-DYCSCov" + outputFileTag,&fout);
+      h1comb->Write();
       std::cout << "saved " << count << " canvases\n";
       writeTimeTag();
       fout.Close();
