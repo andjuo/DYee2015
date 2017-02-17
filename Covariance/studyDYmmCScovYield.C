@@ -1,4 +1,5 @@
 #include "crossSection.h"
+//#include "studyCSSteps.h"
 
 int distributionByXBin(const std::vector<TH1D*> &h1V,
 		       const TH1D *h1base, int nSigma,
@@ -187,14 +188,24 @@ void studyDYmmCScovYield(int nSample=10, int method=1,
   if (imax>h1bV.size()) imax=h1bV.size();
   //imax=100;
   std::vector<TH1D*> h1csV;
+#ifdef studyCSSteps_H
+  StudyCSSteps_t csSteps;
+#endif
+
   for (unsigned int i=0; i<imax; i++) {
     TH1D *h1cs= muCS.calcCrossSection(var,i,h1aV[i],h1bV[i],removeNegativeSignal);
-    copyStyle(h1cs,h1aV[i]);
     if (!h1cs) {
       std::cout << "got null h1cs\n";
       return;
     }
+    copyStyle(h1cs,h1aV[i]);
     h1csV.push_back(h1cs);
+#ifdef studyCSSteps_H
+    if (!csSteps.addInfo(muCS,Form("_study%d",i),h1aV[i])) {
+      std::cout << "csSteps.addInfo error\n";
+      return;
+    }
+#endif
   }
 
   TString calcTag= "_allRnd";
@@ -215,10 +226,72 @@ void studyDYmmCScovYield(int nSample=10, int method=1,
     if (1)
     for (unsigned int i=0; i<h1csV.size(); i++) {
       plotHistoSame(h1csV[i],canvName,"LP","");
-      if (i>500) { std::cout << "stopping at 500\n"; break; }
+      if (i>=200) { std::cout << "stopping at " << i << "\n"; break; }
     }
     if(!cx) std::cout << "null canvas\n";
   }
+
+#ifdef studyCSSteps_H
+  {
+    TH1D *h1YieldA_avg=NULL, *h1SigA_avg=NULL, *h1UnfA_avg=NULL;
+    TH1D *h1UnfRhoCorrA_avg=NULL, *h1UnfRhoEffCorrA_avg=NULL;
+    TH1D *h1UnfRhoEffAccCorrA_avg=NULL;
+    TH1D *h1PostFsrA_avg=NULL, *h1PreFsrA_avg=NULL, *h1CSA_avg=NULL;
+    TH1D *h1YieldB_avg=NULL, *h1SigB_avg=NULL, *h1UnfB_avg=NULL;
+    TH1D *h1UnfRhoCorrB_avg=NULL, *h1UnfRhoEffCorrB_avg=NULL;
+    TH1D *h1UnfRhoEffAccCorrB_avg=NULL;
+    TH1D *h1PostFsrB_avg=NULL, *h1PreFsrB_avg=NULL, *h1CSB_avg=NULL;
+    TH1D *h1PostFsr_avg=NULL, *h1PreFsr_avg=NULL, *h1CS_avg=NULL;
+    deriveCovariance(csSteps.csA()->h1YieldV(),"_Yield4p2","yield 4p2",&h1YieldA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1SigV(),"_Sig4p2","signal 4p2",&h1SigA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1UnfV(),"_Unf4p2","unf 4p2",&h1UnfA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1UnfRhoCorrV(),"_UnfRhoCorr4p2","unf/rho 4p2",&h1UnfRhoCorrA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1UnfRhoEffCorrV(),"_UnfRhoEffCorr4p2","unf/rho/eff 4p2",&h1UnfRhoEffCorrA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1UnfRhoEffAccCorrV(),"_UnfRhoEffCorrAcc4p2","unf/rho/eff/A 4p2",&h1UnfRhoEffAccCorrA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1PostFsrV(),"_postFSR4p2","postFSR 4p2",&h1PostFsrA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1PreFsrV(),"_preFSR4p2","preFSR 4p2",&h1PreFsrA_avg,NULL);
+    deriveCovariance(csSteps.csA()->h1CSV(),"_cs4p2","cs 4p2",&h1CSA_avg,NULL);
+
+    deriveCovariance(csSteps.csB()->h1YieldV(),"_Yield4p3","yield 4p3",&h1YieldB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1SigV(),"_Sig4p3","signal 4p3",&h1SigB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1UnfV(),"_Unf4p3","unf 4p3",&h1UnfB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1UnfRhoCorrV(),"_UnfRhoCorr4p3","unf/rho 4p3",&h1UnfRhoCorrB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1UnfRhoEffCorrV(),"_UnfRhoEffCorr4p3","unf/rho/eff 4p3",&h1UnfRhoEffCorrB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1UnfRhoEffAccCorrV(),"_UnfRhoEffCorrAcc4p3","unf/rho/eff/A 4p3",&h1UnfRhoEffAccCorrB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1PostFsrV(),"_postFSR4p3","postFSR 4p3",&h1PostFsrB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1PreFsrV(),"_preFSR4p3","preFSR 4p3",&h1PreFsrB_avg,NULL);
+    deriveCovariance(csSteps.csB()->h1CSV(),"_cs4p3","cs 4p3",&h1CSB_avg,NULL);
+
+    deriveCovariance(csSteps.h1PostFsrV(),"_postFSR","postFSR",&h1PostFsr_avg,NULL);
+    deriveCovariance(csSteps.h1PreFsrV(),"_preFSR","preFSR",&h1PreFsr_avg,NULL);
+    deriveCovariance(csSteps.h1CSV(),"_cs","cs",&h1CS_avg,NULL);
+
+    TFile fout("dymm_study_yieldErrPropagation.root","recreate");
+    h1YieldA_avg->Write();
+    h1SigA_avg->Write();
+    h1UnfA_avg->Write();
+    h1UnfRhoCorrA_avg->Write();
+    //h1UnfRhoEffCorrA_avg->Write();
+    h1UnfRhoEffAccCorrA_avg->Write();
+    h1PostFsrA_avg->Write();
+    //h1PreFsrA_avg->Write();
+    //h1CSA_avg->Write();
+    h1YieldB_avg->Write();
+    h1SigB_avg->Write();
+    h1UnfB_avg->Write();
+    h1UnfRhoCorrB_avg->Write();
+    //h1UnfRhoEffCorrB_avg->Write();
+    h1UnfRhoEffAccCorrB_avg->Write();
+    h1PostFsrB_avg->Write();
+    //h1PreFsrB_avg->Write();
+    //h1CSB_avg->Write();
+    h1PostFsr_avg->Write();
+    h1PreFsr_avg->Write();
+    h1CS_avg->Write();
+    writeTimeTag(&fout);
+    fout.Close();
+  }
+#endif
 
   TH1D *h1avgCS=NULL;
   TH2D *h2cov=NULL, *h2corr=NULL;
