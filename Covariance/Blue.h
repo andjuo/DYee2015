@@ -3,6 +3,7 @@
 
 #include <TROOT.h>
 #include <TMatrixD.h>
+#include <TFile.h>
 #include <iostream>
 #include <sstream>
 #include <TGraphErrors.h>
@@ -164,9 +165,21 @@ public:
   //double getCombinedChi2(int iMeas1, int iMeas2, double factor) const;
 
   // covariance by source, eq.(18)
+  // isMeasA=1 (measA), 0 (measB), 2 (covAB)
   static TMatrixD measCovMatrix(const TMatrixD &inpCov, int isMeasA);
   TMatrixD contributedCov(const TMatrixD &covSrc) const
   { return (*lambda) * covSrc * TMatrixD(TMatrixD::kTransposed,*lambda); }
+
+  TMatrixD contributedCorrPartial(const TMatrixD &covSrc) const
+  {
+    TMatrixD cCov= contributedCov(covSrc);
+    TMatrixD cCorrPart= covToCorrPartial(cCov,*covOut);
+    return cCorrPart;
+  }
+
+  TMatrixD contributedCorrPartial(const TMatrixD &inpCov, int isMeasA)
+  { return contributedCorrPartial(measCovMatrix(inpCov,isMeasA)); }
+
 
   // checks
   static int compareDimRC(const TMatrixD &a, const TMatrixD &b)
@@ -178,6 +191,8 @@ public:
   static int isSquare(const TMatrixD &a)
   { return (a.GetNrows()==a.GetNcols()) ? 1:0; }
 
+  int write(TFile &fout, TString tag);
+  int read(TFile &fin, TString tag);
 };
 
 // -------------------------------------------------------------------

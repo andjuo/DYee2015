@@ -737,4 +737,35 @@ double BLUEResult_t::getCombinedChi2(int iMeas1, int iMeas2, double factor) cons
 */
 
 // -------------------------------------------------------------------
+
+int BLUEResult_t::write(TFile &fout, TString tag)
+{
+  fout.cd();
+  if (meas) meas->Write("blue_meas_"+tag);
+  if (U) U->Write("blue_U_"+tag);
+  if (covInp) covInp->Write("blue_covInp_"+tag);
+  if (lambda) lambda->Write("blue_lambda_"+tag);
+  if (est) est->Write("blue_est_"+tag);
+  if (covOut) covOut->Write("blue_covOut_"+tag);
+  if (corrOut) corrOut->Write("blue_corrOut_"+tag);
+  return 1;
+}
+
+// -------------------------------------------------------------------
+
+int BLUEResult_t::read(TFile &fin, TString tag)
+{
+  meas = (TMatrixD*)fin.Get("blue_meas_"+tag);
+  U= (TMatrixD*) fin.Get("blue_U_"+tag);
+  covInp= (TMatrixD*)fin.Get("blue_covInp_"+tag);
+  lambda= (TMatrixD*)fin.Get("blue_lambda_"+tag);
+  est= (TMatrixD*)fin.Get("blue_est_"+tag);
+  covOut= (TMatrixD*)fin.Get("blue_covOut_"+tag);
+  corrOut= (TMatrixD*)fin.Get("blue_corrOut_"+tag);
+  return 1;
+}
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
 // -------------------------------------------------------------------
