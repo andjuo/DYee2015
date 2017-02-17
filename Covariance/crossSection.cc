@@ -1692,7 +1692,8 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       (new_var==_varRho)) {
     if (new_var==_varRho) std::cout << "\n\tIt is not good to use _varRho int the muon channel\n";
     // Prepare post-FSR cross sections
-    if ((new_var==_varYield) || (new_var==_varRho)) {
+    if ((new_var==_varYield) || (new_var==_varYieldPoisson) ||
+	(new_var==_varRho)) {
       res= (fCSa.sampleRndVec(new_var,sampleSize,removeNegativeSignal,rndCSa)
 	    && fCSb.sampleRndVec(new_var,sampleSize,removeNegativeSignal,rndCSb)
 	    ) ? 1:0;
