@@ -55,8 +55,8 @@ void studyDYmmCScovYield(int nSample=10, int method=1,
 
   std::vector<TH1D*> h1aV_all, h1aV;
   std::vector<TH1D*> h1bV_all, h1bV;
-  getHistosFromCanvas(canvA,h1aV_all);
-  getHistosFromCanvas(canvB,h1bV_all);
+  getHistosFromCanvas(canvA,&h1aV_all,NULL);
+  getHistosFromCanvas(canvB,&h1bV_all,NULL);
   std::cout << "loaded histograms: " << h1aV_all.size()
 	    << " from CSa and " << h1bV_all.size() << " from CSb\n";
   if ((h1aV_all.size()==0) || (h1bV_all.size()==0)) {
@@ -223,7 +223,7 @@ void studyDYmmCScovYield(int nSample=10, int method=1,
   TH1D *h1avgCS=NULL;
   TH2D *h2cov=NULL, *h2corr=NULL;
   PlotCovCorrOpt_t ccOpt;
-  deriveCovariance(h1csV,calcTag,"csCov_varYield",&h1avgCS,&h2cov);
+  deriveCovariance(h1csV,calcTag,"csCov_"+variedVarName(var),&h1avgCS,&h2cov);
   plotCovCorr(h2cov,"csCov",ccOpt,&h2corr);
 
 
@@ -238,8 +238,11 @@ void studyDYmmCScovYield(int nSample=10, int method=1,
       return;
     }
     h2cov->Write();
+    //h2cov->Write("h2Cov"); // needed for combination code
     h2corr->Write();
-    SaveCanvases("ALL",Form("dir-dymmCScovYield-%d",nSample)+calcTag,&fout);
+    SaveCanvases("ALL",
+		 "dir-dymmCScov"+variedVarName(var)+Form("-%d",nSample)+calcTag,
+		 &fout);
     writeTimeTag(&fout);
     fout.Close();
   }
@@ -322,15 +325,17 @@ void work(TVersion_t inpVer,
 {
   std::vector<TH1D*> rndCSVec, rndCSaVec, rndCSbVec;
   int res=1;
+  int removeNegativeSignal=1;
   if (var!=_varRhoFile)
-    res=muCS.sampleRndVec(var,nSample,rndCSVec,&rndCSaVec,&rndCSbVec);
+    res=muCS.sampleRndVec(var,nSample,removeNegativeSignal,
+			  rndCSVec,&rndCSaVec,&rndCSbVec);
   else {
     TString inpVerTag=versionName(inpVer);
     TString loadFName=Form("dir-Rho%s/dymm_rhoRndVec_%s_%d.root",
 			   inpVerTag.Data(),inpVerTag.Data(),
 			   nSample);
     RndVecInfo_t info(loadFName,"h1rho_4p2_var","h1rho_4p3_var");
-    res=muCS.sampleRndVec(var,nSample,info,
+    res=muCS.sampleRndVec(var,nSample,info,removeNegativeSignal,
 			  rndCSVec,&rndCSaVec,&rndCSbVec);
   }
   if (!res) return;
