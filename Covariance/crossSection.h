@@ -269,6 +269,8 @@ class MuonCrossSection_t {
   int recalcBkg(const std::vector<double> *weights,
 		TH1D **h1bkg_fromMC=NULL, TH1D **h1bkg_fromData=NULL);
 
+  const TH1D *h1PostFsr() const { return fh1PostFSR; }
+  const TH1D *h1PreFsr() const { return fh1PreFSR; }
   const TH1D* h1CS() const { return fh1CS; }
   const TH1D* h1Theory() const { return fh1Theory; }
   void h1Theory(const TH1D* h1) { fh1Theory=fCSa.copy(h1,"h1Theory",fTag); }
