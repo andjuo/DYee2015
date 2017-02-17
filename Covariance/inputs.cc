@@ -892,6 +892,24 @@ int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
 
 // ---------------------------------------------------------
 
+int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr)
+{
+  if (!compareRanges(h1target,h1addTerm,1)) {
+    std::cout << "error in addInQuadrature\n";
+    return 0;
+  }
+  for (int ibin=1; ibin<=h1target->GetNbinsX(); ibin++) {
+    double a= h1target->GetBinContent(ibin);
+    const double b= h1addTerm->GetBinContent(ibin);
+    h1target->SetBinContent(ibin, sqrt(a*a + b*b));
+    if (nullifyErr) h1target->SetBinError  (ibin, 0.);
+  }
+  return 1;
+}
+
+
+// ---------------------------------------------------------
+
 int hasValueAbove(const TH2D* h2, double limit)
 {
   int ok=1;
@@ -1206,6 +1224,36 @@ void printObjStringField(TFile &f, TString keyName) {
   return;
 }
 
+// ---------------------------------------------------------
+// ---------------------------------------------------------
+
+TCanvas *loadCanvas(TFile &fin, TString nameOnFile, TString newName,
+		    int warnIfMissing)
+{
+  TCanvas *c= (TCanvas*)fin.Get(nameOnFile);
+  if (!c) {
+    if (warnIfMissing) std::cout << "failed to find canvas " << nameOnFile
+				 << " in file <" << fin.GetName() << ">\n";
+    return NULL;
+  }
+  c->SetName(newName);
+  return c;
+}
+
+// ---------------------------------------------------------
+
+TCanvas *loadCanvas(TString fileName, TString nameOnFile, TString newName,
+		    int warnIfMissing)
+{
+  TFile fin(fileName);
+  if (!fin.IsOpen()) {
+    std::cout << "loadCanvas: failed to open the file <" << fileName << ">\n";
+    return NULL;
+  }
+  TCanvas *c= loadCanvas(fin,nameOnFile,newName,warnIfMissing);
+  fin.Close();
+  return c;
+}
 
 // ---------------------------------------------------------
 // ---------------------------------------------------------
@@ -1559,7 +1607,8 @@ TH1D* convert2histo1D(const TMatrixD &m, const TMatrixD &cov,
   h1->SetTitle(h1title);
 
   for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
-    h1->SetBinContent( ibin, m(ibin-1,iCol) );
+    int jbin=(iCol==-1) ? ibin : (iCol+1);
+    h1->SetBinContent( ibin, m(ibin-1,jbin-1) );
     h1->SetBinError( ibin, sqrt(cov(ibin-1,ibin-1)) );
   }
   return h1;
@@ -1726,6 +1775,36 @@ TH1D *uncFromCov(const TH2D* h2cov, const TH1D *h1centralVal,
     }
     h1->SetBinContent(ibin, val);
     h1->SetBinError(ibin, 0);
+  }
+  return h1;
+}
+
+// ---------------------------------------------------------
+
+TH1D *uncFromCov(const TMatrixD &covM,
+		 TString hName,
+		 const TH1D *h1_binning,
+		 const TH1D *h1centralVal,
+		 int zeroCentralMeansZeroRelError)
+{
+  TH1D* h1= cloneHisto(h1_binning,hName,hName);
+  h1->SetDirectory(0);
+  h1->SetStats(0);
+  //h1->Sumw2();
+  for (int ir=0; ir<covM.GetNrows(); ir++) {
+    double uncSqr= covM(ir,ir);
+    if (uncSqr<0) {
+      std::cout << "uncFromCov(covM): negative diagonal entry\n";
+      return NULL;
+    }
+    double val= sqrt(uncSqr);
+    if (h1centralVal) {
+      double c= h1centralVal->GetBinContent(ir+1);
+      if (c!=double(0)) val/=c;
+      else { if (zeroCentralMeansZeroRelError) val=0.; else val=9999.; }
+    }
+    h1->SetBinContent(ir+1, val);
+    h1->SetBinError(ir+1, 0);
   }
   return h1;
 }

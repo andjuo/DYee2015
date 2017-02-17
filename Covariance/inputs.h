@@ -186,6 +186,7 @@ int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative,
 		    int listRangesOnError=0);
 int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
 		  int listRangesOnError=0);
+int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr=1);
 int hasValueAbove(const TH2D *h2, double limit);
 int hasValueBelow(const TH2D *h2, double limit);
 void removeNegatives(TH1D* h1);
@@ -217,6 +218,13 @@ TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
 void printObjStringField(TFile &f, TString keyName);
 
 // -----------------------------------------------------------
+// -----------------------------------------------------------
+
+TCanvas *loadCanvas(TFile &fin, TString nameOnFile, TString newName="",
+		    int warnIfMissing=1);
+TCanvas *loadCanvas(TString fileName, TString nameOnFile, TString newName="",
+		    int warnIfMissing=1);
+
 // -----------------------------------------------------------
 
 extern const TH1D* h1dummy;
@@ -393,8 +401,9 @@ void logAxis(graph_t *gr, int axis=1+2, TString xlabel="", TString ylabel="",
     gr->GetXaxis()->SetNoExponent();
     gr->GetXaxis()->SetMoreLogLabels();
   }
-  if (((axis & 2)!=0) || ((axis & 4)!=0)) {
+  if (((axis & 2)!=0) || ((axis & 4)!=0) || ((axis & 8)!=0)) {
     gr->GetYaxis()->SetNoExponent();
+    if ((axis&8)!=0) gr->GetYaxis()->SetNoExponent(false);
     if ((axis&4)!=0) gr->GetYaxis()->SetMoreLogLabels();
   }
   if (xlabel.Length()) gr->GetXaxis()->SetTitle(xlabel);
@@ -544,11 +553,13 @@ TMatrixD convert2mat1D(const histo1D_t* h1)
 
 template<class histo1D_t>
 inline
-TMatrixD convert2cov1D(const histo1D_t* h1)
+TMatrixD convert2cov1D(const histo1D_t* h1, int takeError=1)
 {
   TMatrixD m(h1->GetNbinsX(),h1->GetNbinsX());
-  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++)
-    m(ibin-1,ibin-1)= pow(h1->GetBinError(ibin), 2);
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    double v= (takeError) ? h1->GetBinError(ibin) : h1->GetBinContent(ibin);
+    m(ibin-1,ibin-1)= v*v;
+  }
   return m;
 }
 
@@ -590,6 +601,10 @@ TH2D* cov2corr(const TH2D* h2cov);
 // uncertainty from covariance. If h1centralVal is supplied, the returned
 // uncertainty is relative
 TH1D* uncFromCov(const TH2D *h2cov, const TH1D *h1centralVal=NULL,
+		 int zeroCentralMeansZeroRelError=0);
+TH1D* uncFromCov(const TMatrixD &covM, TString hName,
+		 const TH1D *h1_binning,
+		 const TH1D *h1centralVal=NULL,
 		 int zeroCentralMeansZeroRelError=0);
 
 double totUnc(const std::vector<double> &errV, int returnSqrValue=0);
