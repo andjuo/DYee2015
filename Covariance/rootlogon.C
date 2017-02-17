@@ -5,5 +5,6 @@
   gROOT->ProcessLine(".L DYee13TeV.cc+");
   gROOT->ProcessLine(".L DYmm13TeV_eff.cc+");
   gROOT->ProcessLine(".L crossSection.cc+");
+  gROOT->ProcessLine(".L studyCSSteps.cc+");
   gROOT->ProcessLine(".L Blue.cc+");
 }
