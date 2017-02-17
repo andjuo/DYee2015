@@ -1,4 +1,4 @@
-\documentclass[a4paper]{article}
+it \documentclass[a4paper]{article}
 
 \pdfoutput=1
 %\usepackage{jheppub} 
@@ -294,7 +294,7 @@ measured yield statistical uncertainty, a sequence of codes was
 developed to study the stability.
 
 For the muon channel:\\
-Step 1: \muynd{studyDYmmCS.C+(_varYield,Nsample,2)}\\
+Step 1: \myund{studyDYmmCS.C+(_varYield,Nsample,2)}\\
 Step 2: \myund{studyDYmmCScovYield.C+(Nsample,iMethod,1,plotPeriodA)}\\
 Step 3: \myund{studyDYmmCScovYieldMethods.C+(Nsample)}
 
@@ -320,6 +320,24 @@ is good. The macro studyDYxxCScovYield creates the covariance matrix
 from the ensemble by applying the specified method.
 The macro studyDYxxCScovYieldMethods.C plots the
 uncertainty values from the covariance matrices.
+
+% ----------------------------------
+\section{Calculation of the combined result}
+
+The BLEU method is wrapped in the class \myund{BLUEResult_t}. The
+combination is defined in the macro analyseBLUEResult.C that contains
+only one function,\\
+\indent
+\myund{combineData(covEE_inp,covMM_inp,covEM_inp,outputFileTag,plotTag,flagPrintCanvases)}\\
+\noindent
+ The function reads the central values
+from embeded files, while the uncertainties are provided via input.
+Its performance can be checked assuming no correlations (and taking
+the uncertainties from the embeded in analyseBLUEResult.C input files)
+by using the code \myund{work13TeV_noCorr.C}.
+
+
+
 
 \end{document}
 
