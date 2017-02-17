@@ -412,11 +412,34 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   }
 
 
+  TMatrixD covM_ee_yield= blue->measCovMatrix(eeCovS.getStatYield(),1);
+  TMatrixD covM_mm_yield= blue->measCovMatrix(mmCovS.getStatYield(),0);
+  //covM_ee_yield.Print();
+  //covM_mm_yield.Print();
+  TMatrixD covM_yield(covM_ee_yield,TMatrixD::kPlus,covM_mm_yield);
+  plotCovCorr(covM_yield,NULL,"h2covMeasYield","cCovMeasYield");
+  TMatrixD covFin_yield= blue->contributedCov(covM_yield);
+  TH1D* h1csLL_tmp= cloneHisto(h1csEE_tmp, "h1csLL_tmp", "h1csLL_tmp");
+  h1csLL_tmp->GetXaxis()->SetTitle( niceMassAxisLabel(2,"",0) );
+  h1csLL_tmp->GetYaxis()->SetTitle( niceMassAxisLabel(2,"",1) );
+  TH2D* h2cov_fromYield=NULL;
+  plotCovCorr(covFin_yield,h1csLL_tmp,
+	      "h2covFin_fromYield","cCovFin_fromYield",
+	      PlotCovCorrOpt_t(),&h2cov_fromYield);
+  TH1D *h1_dCS_fromYield= uncFromCov(covFin_yield,
+				     "h1_dCS_fromYield",
+				     h1csLL_tmp,NULL,0);
+  printHisto(h2cov_fromYield);
+  printHisto(h1_dCS_fromYield);
+
+
   if (printCanvases || (saveTag.Length()>0)) {
     TString outFName="dyll-combi-" + fileTag + ".root";
     TFile fout(outFName,"recreate");
     blue->write(fout,fileTag);
     SaveCanvases("ALL","dyll-combi-"+fileTag,&fout);
+    h2cov_fromYield->Write();
+    h1_dCS_fromYield->Write();
     writeTimeTag(&fout);
     fout.Close();
     std::cout << "file <" << fout.GetName() << "> created\n";
