@@ -2,196 +2,10 @@
 #include "crossSection.h"
 #include "Blue.h"
 #include "analyseBLUEResult.h"
+#include "CovStruct.h"
 
 // -------------------------------------------------------
 // -------------------------------------------------------
-
-struct CovStruct_t {
-  typedef enum { _varCov_none=0, _varCov_statYield, _varCov_statNonYield,
-		 _varCov_systAcc, _varCov_systNonAcc } TCovPart_t;
-
-  TMatrixD covStat_Yield, covStat_nonYield;
-  TMatrixD covSyst_Acc, covSyst_nonAcc;
-public:
-  CovStruct_t(TMatrixD &M) :
-    covStat_Yield(TMatrixD::kZero,M), covStat_nonYield(TMatrixD::kZero,M),
-    covSyst_Acc(TMatrixD::kZero,M), covSyst_nonAcc(TMatrixD::kZero,M) {}
-
-  CovStruct_t(const TMatrixD &set_covStatYield,
-	      const TMatrixD &set_covStatNonYield,
-	      const TMatrixD &set_covSystAcc,
-	      const TMatrixD &set_covSystNonAcc) :
-    covStat_Yield(set_covStatYield),
-    covStat_nonYield(set_covStatNonYield),
-    covSyst_Acc(set_covSystAcc),
-    covSyst_nonAcc(set_covSystNonAcc)
-  {}
-
-  CovStruct_t(const CovStruct_t &s) :
-    covStat_Yield(s.covStat_Yield), covStat_nonYield(s.covStat_nonYield),
-    covSyst_Acc(s.covSyst_Acc), covSyst_nonAcc(s.covSyst_nonAcc)
-  {}
-
-  TMatrixD& editStatYield() { return covStat_Yield; }
-  TMatrixD& editStatNonYield() { return covStat_nonYield; }
-  TMatrixD& editSystAcc() { return covSyst_Acc; }
-  TMatrixD& editSystNonAcc() { return covSyst_nonAcc; }
-
-  TMatrixD getStatYield() const { return covStat_Yield; }
-  TMatrixD getNonStatYield() const { return covStat_nonYield; }
-  TMatrixD getSystAcc() const { return covSyst_Acc; }
-  TMatrixD getSystNonAcc() const { return covSyst_nonAcc; }
-
-  void Zero() {
-    covStat_Yield.Zero(); covStat_nonYield.Zero();
-    covSyst_Acc.Zero(); covSyst_nonAcc.Zero();
-  }
-
-  void ReduceCorrelations(double factor) {
-    covStat_Yield= reduceCorrelations(covStat_Yield,factor);
-    covStat_nonYield= reduceCorrelations(covStat_nonYield, factor);
-    covSyst_Acc= reduceCorrelations(covSyst_Acc,factor);
-    covSyst_nonAcc= reduceCorrelations(covSyst_nonAcc,factor);
-  }
-
-  TMatrixD Sum() const
-  { return (covStat_Yield + covStat_nonYield + covSyst_Acc + covSyst_nonAcc); }
-
-  TMatrixD GetPart(int i) const { return GetPart(TCovPart_t(i)); }
-
-  int SetPart(int i, const TMatrixD &m)
-  { return SetPart(TCovPart_t(i),m); }
-
-  TString GetPartName(int i) const {
-    TString name="UNKNOWN";
-    switch(i) {
-    case 0: name="none"; break;
-    case 1: name="statYield"; break;
-    case 2: name="statNonYield"; break;
-    case 3: name="systAcc"; break;
-    case 4: name="systNonAcc"; break;
-    default: ;
-    }
-    return name;
-  }
-
-  TMatrixD GetPart(TCovPart_t p) const
-  {
-    TMatrixD a(covStat_Yield);
-    switch (p) {
-    case _varCov_none: a.Zero(); break;
-    case _varCov_statYield: a=covStat_Yield; break;
-    case _varCov_statNonYield: a=covStat_nonYield; break;
-    case _varCov_systAcc: a=covSyst_Acc; break;
-    case _varCov_systNonAcc: a=covSyst_nonAcc; break;
-    default: a.Zero();
-    }
-    return a;
-  }
-
-  int SetPart(TCovPart_t p, const TMatrixD &m)
-  {
-    int res=0;
-    switch (p) {
-    case _varCov_none: break;
-    case _varCov_statYield: covStat_Yield=m; res=1; break;
-    case _varCov_statNonYield: covStat_nonYield=m; res=1; break;
-    case _varCov_systAcc: covSyst_Acc=m; res=1; break;
-    case _varCov_systNonAcc: covSyst_nonAcc=m; res=1; break;
-    default: res=0;
-    }
-    return res;
-  }
-
-  int ZrangeCov(int idxMin, int idxMax_p1, const TH1D *h1BinDef,
-		std::vector<double> &cov, int printNumbers=0) const
-  {
-    if (!h1BinDef) {
-      std::cout << "CovStruct_t::ZrangeCov: h1BinDef is null\n";
-      return 0;
-    }
-    cov.clear();
-    cov.push_back(sumCov(covStat_Yield,idxMin,idxMax_p1,h1BinDef,printNumbers));
-    cov.push_back(sumCov(covStat_nonYield,idxMin,idxMax_p1,h1BinDef));
-    cov.push_back(sumCov(covSyst_Acc,idxMin,idxMax_p1,h1BinDef));
-    cov.push_back(sumCov(covSyst_nonAcc,idxMin,idxMax_p1,h1BinDef));
-    return 1;
-  }
-
-  int PrintZRangeUnc(TString label, const TH1D *h1cs_perMBW,
-		     int printNumbers=0) const
-  {
-    int idxMin=-1, idxMax_p1=-1;
-    if (!DYtools::ZmassRange(60,120,idxMin,idxMax_p1)) {
-      std::cout << "in CovStruct_t::ZrangeCov\n";
-      return 0;
-    }
-    std::cout << "ZmassRange: " << idxMin << " .. " << idxMax_p1 << "\n";
-    std::vector<double> zCov;
-    TH1D *h1cs_abs= timesMassBinWidth(h1cs_perMBW);
-    if (!this->ZrangeCov(idxMin,idxMax_p1,h1cs_abs, zCov,printNumbers)) {
-      std::cout << "CovStruct_t::PrintZRangeUnc: failed to get the ZrangeCov\n";
-      return 0;
-    }
-    std::cout << "integrated uncertainties:\n";
-    //printHisto(h1cs_abs);
-    std::cout << "  - " << label << ": "
-	      << h1cs_abs->Integral(idxMin+1,idxMax_p1) << " ";
-    for (int ii=0; ii<4; ii++) {
-      std::cout << "+- " << zCov[ii] << " (" << this->GetPartName(ii+1) << ")";
-    }
-    std::cout << "\n";
-    return 1;
-  }
-
-  void Plot(TString tag, TH1D *h1binning) {
-    plotCovCorr(covStat_Yield,h1binning,"h2CovStatYield_"+tag,"c2CovStatYield_"+tag);
-    plotCovCorr(covStat_nonYield,h1binning,"h2CovStatNonYield_"+tag,"c2CovStatNonYield_"+tag);
-    plotCovCorr(covSyst_Acc,h1binning,"h2CovSystAcc_"+tag,"c2CovSystAcc_"+tag);
-    plotCovCorr(covSyst_nonAcc,h1binning,"h2CovSystNonAcc_"+tag,"c2CovSystNonAcc_"+tag);
-  }
-
-  void PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal=NULL,
-	       double yrangeMin=0, double yrangeMax=0) {
-    TH1D *h1statYield= uncFromCov(covStat_Yield,"h1statYield_"+tag,
-				  h1binning,h1centralVal,1);
-    TH1D *h1statNonYield= uncFromCov(covStat_nonYield,"h1statNonYield_"+tag,
-				     h1binning,h1centralVal,1);
-    TH1D *h1systAcc= uncFromCov(covSyst_Acc,"h1systAcc_"+tag,
-				h1binning,h1centralVal,1);
-    TH1D *h1systNonAcc= uncFromCov(covSyst_nonAcc,"h1systNonAcc_"+tag,
-				   h1binning,h1centralVal,1);
-    TH1D *h1tot= cloneHisto(h1statYield,"h1tot_"+tag,"h1tot_"+tag);
-    addInQuadrature(h1tot, h1statNonYield);
-    addInQuadrature(h1tot, h1systAcc);
-    addInQuadrature(h1tot, h1systNonAcc);
-    hsBlack.SetStyle(h1statYield);
-    hsColor46.SetStyle(h1statNonYield);
-    hsGreen.SetStyle(h1systAcc);
-    hsBlue.SetStyle(h1systNonAcc);
-    HistoStyle_t(kRed,7,2,0.8,2.0).SetStyle(h1tot);
-    if ((yrangeMin!=0) || (yrangeMax!=0)) {
-      h1statYield->GetYaxis()->SetRangeUser(yrangeMin,yrangeMax);
-    }
-    TString cName="cCovStructUnc_"+tag;
-    logAxis(h1statYield,1+8);
-    plotHisto(h1statYield,cName,1,1,"LP","stat Yield");
-    plotHistoSame(h1statNonYield,cName,"LP","stat nonYield");
-    plotHistoSame(h1systAcc,cName,"LP","syst Acc");
-    plotHistoSame(h1systNonAcc,cName,"LP","syst nonAcc");
-    plotHistoSame(h1tot,cName,"LP","total");
-  }
-
-};
-
-// -------------------------------------------------------
-// -------------------------------------------------------
-
-TMatrixD constructEMAccCov(const CovStruct_t &eeCovS, const CovStruct_t &mmCovS,
-			   double corrFactor=1.);
-TMatrixD constructMeasCov(const CovStruct_t &eeCovS, const CovStruct_t &mmCovS,
-			  CovStruct_t::TCovPart_t covFlag, double accCorrFactor,
-			  BLUEResult_t *blue);
 
 int adjustMMUnc(const finfomap_t &mmCovFNames, // needed for first value
 		std::vector<TMatrixD> &mmCovV,
@@ -203,47 +17,6 @@ int adjustEEUnc(const finfomap_t &eeCovFNames, // needed for first value
 		CovStruct_t &eeCovM, int showChangedCov,
 		int plotCmp);
 
-int aggregateUnc(const finfomap_t &fnames, // needed for first value
-		 const std::vector<TMatrixD> &covStatV,
-		 const std::vector<TH1D*> &h1SystV,
-		 CovStruct_t &covM);
-
-int adjustUnc(int isEE,
-	      const finfomap_t &covFNames,
-	      std::vector<TMatrixD> &covV,
-	      const finfomap_t &uncFiles,
-	      const finfomap_t &uncStat,
-	      const finfomap_t &uncSyst,
-	      const fvarweightmap_t &relUncW,
-	      const TH1D *h1binning,
-	      const TH1D *h1central,
-	      int plotCmp, // 1 - plot uncertainties, 2 - and covariances
-	      int change_covV, // 1 - change values, 2 - verify change by plot
-	      TString tag,
-	      CovStruct_t &covM);
-
-
-// -------------------------------------------------------
-/*
-template<class type_t>
-int findVaried(const std::map<TVaried_t,type_t> &aMap, TVaried_t var,
-	       int verbose=0)
-{
-  int ii=0, idx=-1;
-  for (finfomap_t::const_iterator it= aMap.begin();
-       it!=aMap.end(); it++, ii++) {
-    //std::cout << "chk ii=" << ii << " " << variedVarName(it->first) << "\n";
-    if (it->first == var) {
-      idx=ii;
-      break;
-    }
-  }
-  if ((idx==-1) && verbose) {
-    std::cout << "failed to find " << variedVarName(var) << " in the map\n";
-  }
-  return idx;
-}
-*/
 // -------------------------------------------------------
 
 const int useUncorrYieldUnc=0;
@@ -477,123 +250,10 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi");
   }
 
-  if (hasValue("plotInputContributedCovs",showCanvs)) {
-    PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
-    TH1D* h1csEE_tmp=loadHisto(eeCSFName, eeCSH1Name, "h1csEE_tmp", 1,h1dummy);
-    TH1D* h1csMM_tmp=loadHisto(mmCSFName, mmCSH1Name, "h1csMM_tmp", 1,h1dummy);
-    if (1)
-    for (int i=1; i<=4; i++) {
-      TString tagName="ee_" + eeCovS.GetPartName(i);
-      TMatrixD partM= eeCovS.GetPart(i);
-      //plotCovCorr(partM,h1csEE_tmp,"h2_"+tagName,"c2_"+tagName,optCC);
-      TMatrixD corr = blue->contributedCorrPartial(partM,1);
-      TString cName= "cContrCov_" + tagName;
-      TH2D *h2= convert2histo(corr,h1csEE_tmp,"h2"+tagName,"h2"+tagName);
-      logAxis(h2);
-      plotHisto(h2,cName,optCC);
-    }
-    for (int i=1; i<=4; i++) {
-      TString tagName="mm_" + mmCovS.GetPartName(i);
-      TMatrixD partM= mmCovS.GetPart(i);
-      //plotCovCorr(partM,h1csMM_tmp,"h2_"+tagName,"c2_"+tagName,optCC);
-      TMatrixD corr = blue->contributedCorrPartial(partM,0);
-      TString cName= "cContrCov_" + tagName;
-      TH2D *h2= convert2histo(corr,h1csMM_tmp,"h2"+tagName,"h2"+tagName);
-      logAxis(h2);
-      plotHisto(h2,cName,optCC);
-    }
-  }
-
-  TH1D* h1csLL_tmp= cloneHisto(h1csEE_tmp, "h1csLL_tmp", "h1csLL_tmp");
-  h1csLL_tmp->GetXaxis()->SetTitle( niceMassAxisLabel(2,"",0) );
-  h1csLL_tmp->GetYaxis()->SetTitle( niceMassAxisLabel(2,"",1) );
-
-  TH1D *h1csLL_badBinning= convert2histo1D(*blue->getEst(),*blue->getCov(),
-			   "h1csLL_badBinning","h1csLL_badBinning",NULL);
-  if (!h1csLL_badBinning) return;
-  if (!copyContents(h1csLL_tmp, h1csLL_badBinning)) return;
-
-  TH1D* h1deltacsLL_tmp= cloneHisto(h1csLL_tmp,
-				    "h1deltacsLL_tmp", "h1deltacsLL_tmp");
-  h1deltacsLL_tmp->GetXaxis()->SetTitle( niceMassAxisLabel(2,"",0) );
-  h1deltacsLL_tmp->GetYaxis()->SetTitle( "\\delta" + niceMassAxisLabel(2,"",1) );
-
-  PlotCovCorrOpt_t optCCNoLog;
-  optCCNoLog.setLogScale(0,0);
-
-  if (0) { // check function constructMeasCov
-    TMatrixD covM_ee_yield= blue->measCovMatrix(eeCovS.getStatYield(),1);
-    TMatrixD covM_mm_yield= blue->measCovMatrix(mmCovS.getStatYield(),0);
-    //covM_ee_yield.Print();
-    //covM_mm_yield.Print();
-    TMatrixD covM_yield(covM_ee_yield,TMatrixD::kPlus,covM_mm_yield);
-    plotCovCorr(covM_yield,NULL,"h2covMeasYield_chk","cCovMeasYield_chk");
-    TMatrixD covFin_yield= blue->contributedCov(covM_yield);
-    TH2D* h2cov_fromYield=NULL;
-    plotCovCorr(covFin_yield,h1csLL_tmp,
-		"h2covFin_fromYield_chk","cCovFin_fromYield_chk",
-		PlotCovCorrOpt_t(),&h2cov_fromYield);
-    TH1D *h1_dCS_fromYield= uncFromCov(covFin_yield,
-				       "h1_dCS_fromYield_chk",
-				       h1deltacsLL_tmp,NULL,0);
-    printHisto(h2cov_fromYield);
-    printHisto(h1_dCS_fromYield);
-  }
-
-  TMatrixD sumContributedCov(TMatrixD::kZero,eeCovTot);
-  CovStruct_t llCovS(eeCovStat); // creates and nullifies
-  for (int iFlag=1; iFlag<=4; iFlag++) {
-    CovStruct_t::TCovPart_t part=CovStruct_t::TCovPart_t(iFlag);
-    double accCorrFlag= (corrCase==1) ? 1. : 0.;
-    TMatrixD measCov= constructMeasCov(eeCovS,mmCovS,part,accCorrFlag,blue);
-    TString label= eeCovS.GetPartName(iFlag);
-    if (0) plotCovCorr(measCov,NULL,"h2covMeas"+label,"cCovMeas_"+label,
-		       optCCNoLog,NULL);
-    TMatrixD covFin_contrib= blue->contributedCov(measCov);
-    llCovS.SetPart(part,covFin_contrib);
-    sumContributedCov+=covFin_contrib;
-    if (hasValue("plotFinalCovByType",showCanvs)) {
-      TH2D* h2cov_contrib=NULL;
-      plotCovCorr(covFin_contrib,h1csLL_tmp,
-		  "h2covFin_from"+label,"cCovFin_from_"+label,
-		  PlotCovCorrOpt_t(),&h2cov_contrib);
-      TH1D *h1_dCS_contrib= uncFromCov(covFin_contrib,
-				       "h1_dCS_from_"+label,
-				       h1deltacsLL_tmp,NULL,0);
-      if (!h2cov_contrib || !h1_dCS_contrib) return;
-      hsVec[iFlag-1].SetStyle(h1_dCS_contrib);
-      plotHistoAuto(h1_dCS_contrib,"canvContrUnc",1,1,"LPE",label);
-    }
-  }
-
-  if (1) {
-    if (!eeCovS.PrintZRangeUnc("ee",h1csEE_tmp,0) ||
-	!mmCovS.PrintZRangeUnc("mm",h1csMM_tmp,0) ||
-	!llCovS.PrintZRangeUnc("ll",h1csLL_tmp,0)) {
-      std::cout << "error\n";
-    }
-
-    if (0) {
-      std::cout << "\n EE    MM    Combi-XSect\n";
-      const TH1D *h1def=h1csEE_tmp;
-      for (int ibin=1; ibin<=h1def->GetNbinsX(); ibin++) {
-	std::cout << "ibin=" << ibin << " " << h1def->GetBinLowEdge(ibin)
-		  << " -- "
-		  << (h1def->GetBinLowEdge(ibin)+h1def->GetBinWidth(ibin))
-		  << "  "
-		  << h1csEE_tmp->GetBinContent(ibin) << "   "
-		  << h1csMM_tmp->GetBinContent(ibin) << "   "
-		  << h1csLL_tmp->GetBinContent(ibin) << "\n";
-      }
-    }
-  }
-
-
-
-
-  //TMatrixD sumContrChk( sumContributedCov, TMatrixD::kMinus, *blue->getCov() );
-  //sumContrChk.Print();
-
+  // make analysing plots
+  if (!detailedCovPlots(blue,corrCase,
+			h1csEE_tmp,h1csMM_tmp,
+			eeCovS,mmCovS,showCanvs)) return;
 
   if (printCanvases || (saveTag.Length()>0)) {
     TString outFName="dyll-combi-" + fileTag + ".root";
@@ -665,13 +325,14 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 
   const TH1D *h1central= (1) ? h1csMM : NULL;
   int change_covV=1+(plotChangedCov!=0) ? 1:0;
-  int res=adjustUnc( 0,
+  int res=adjustUnc( "mm",
 		     mmCovFNames, mmCovV,
 		     mmUncFiles,mmUncStat,mmUncSyst,relUncW,
 		     h1csMM,h1central,
 		     plotCmp,change_covV,
 		     "_mm",
-		     mmCovS);
+		     mmCovS,
+		     "");
   if (!res) {
     std::cout << "error in adjustMMUnc\n";
     return 0;
@@ -736,13 +397,14 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
 
   const TH1D *h1central= (1) ? h1csEE : NULL;
   int change_covV=1 + (plotChangedCov!=0) ? 1:0;
-  int res=adjustUnc( 1,
+  int res=adjustUnc( "ee",
 		     eeCovFNames, eeCovV,
 		     eeUncFiles,eeUncStat,eeUncSyst,relUncW,
 		     h1csEE,h1central,
 		     plotCmp,change_covV,
 		     "_ee",
-		     eeCovS);
+		     eeCovS,
+		     "dyee13TeV_detRes_correction");
 
   if (!res) {
     std::cout << "error in adjustEEUnc\n";
@@ -751,194 +413,3 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
   return 1;
 }
 // -----------------------------------------------------------------------
-
-int aggregateUnc(const finfomap_t &fnames,
-		 const std::vector<TMatrixD> &covStatV,
-		 const std::vector<TH1D*> &h1SystV,
-		 CovStruct_t &covS)
-{
-
-  covS.Zero();
-
-  int idx= findVaried(fnames,_varYield);
-  if (idx==-1) {
-    std::cout << "failed to find varYield\n";
-    return 0;
-  }
-  covS.covStat_Yield= covStatV[idx];
-
-  idx=0;
-  for (finfomap_t::const_iterator it=fnames.begin(); it!=fnames.end();
-       it++, idx++) {
-    if (it->first == _varYield) continue;
-    covS.covStat_nonYield += covStatV[idx];
-  }
-
-  if (fnames.size() != h1SystV.size()) {
-    std::cout << "aggregateUnc: fnames.size=" << fnames.size() << ", "
-	      << h1SystV.size() << "\n";
-    return 0;
-  }
-
-  idx=0;
-  for (finfomap_t::const_iterator it=fnames.begin(); it!=fnames.end();
-       it++, idx++) {
-    if (h1SystV[idx]->Integral()==0) {
-      std::cout << "aggregate systematic error: skipping "
-		<< variedVarName(it->first) << " (no input)\n";
-      continue;
-    }
-    if (it->first == _varAcc) {
-      covS.covSyst_Acc = convert2cov1D(h1SystV[idx],0);
-    }
-    else {
-      TMatrixD tmpM= convert2cov1D(h1SystV[idx],0);
-      std::cout << "h1SystV[idx].size=" << h1SystV[idx]->GetNbinsX()
-		<< ", tmpM.size=" << tmpM.GetNrows() << " x " << tmpM.GetNcols()
-		<< ", covS.covSyst_nonAcc.size="
-		<< covS.covSyst_nonAcc.GetNrows() << " x "
-		<< covS.covSyst_nonAcc.GetNcols() << "\n";
-      covS.covSyst_nonAcc += convert2cov1D(h1SystV[idx],0);
-    }
-  }
-
-  return 1;
-}
-
-// -------------------------------------------------------
-
-int adjustUnc(int isEE,
-	      const finfomap_t &covFNames,
-	      std::vector<TMatrixD> &covV,
-	      const finfomap_t &uncFiles,
-	      const finfomap_t &uncStat,
-	      const finfomap_t &uncSyst,
-	      const fvarweightmap_t &relUncW,
-	      const TH1D *h1binning,
-	      const TH1D *h1central,
-	      int plotCmp, // 1 - plot uncertainties, 2 - and covariances
-	      int change_covV, // 1 - change values, 2 - verify change by plot
-	      TString tag,
-	      CovStruct_t &covS)
-{
-  if (uncFiles.size()!=covV.size()) {
-    std::cout << "sizes are different!\n";
-  }
-
-  std::vector<TString> labelV;
-  for (finfomap_t::const_iterator it= covFNames.begin();
-       it!=covFNames.end(); it++) {
-    TVaried_t var= it->first;
-    if (uncFiles.find(var)==uncFiles.end()) {
-      std::cout << "mmUncFiles does not contain " << variedVarName(var) << "\n";
-      return 0;
-    }
-    labelV.push_back(variedVarName(var) + tag);
-  }
-
-  std::vector<TH1D*> h1uncStatV, h1uncSystV;
-  TString lepTag=(isEE) ? "ee" : "mm";
-  if (!loadUncData(lepTag,uncFiles,uncStat,relUncW,
-		   h1binning,h1central,h1uncStatV,tag+"_stat")) {
-    std::cout << "failed to load statistical component\n";
-    return 0;
-  }
-  if (!loadUncData(lepTag,uncFiles,uncSyst,relUncW,
-		   h1binning,h1central,h1uncSystV,tag+"_syst")) {
-    std::cout << "failed to load systematic component\n";
-    return 0;
-  }
-
-  // correct for the input: Stat_DetRes in the electron channel is a part of
-  // Syst_DetRes
-  if (isEE) {
-    int idx= findVaried(covFNames,_varDetRes);
-    if (idx==-1) {
-      std::cout << "failed to find detRes (needed for the electron channel)\n";
-      return 0;
-    }
-    std::cout << "idx(_varDetRes)=" << idx << "\n";
-    //printHisto(h1uncStatV[idx]);
-    //printHisto(h1uncSystV[idx]);
-    if (!addInQuadrature(h1uncSystV[idx],h1uncStatV[idx],1)) {
-      return 0;
-    }
-    h1uncStatV[idx]->Reset();
-    std::cout << "cleared h1detRes_ee statistical error from RC\n";
-    //return 0;
-  }
-
-  // eliminate eff syst. uncertainty
-  if (1 && change_covV) {
-    int idx1= findVaried(covFNames,_varEff);
-    int idx2= findVaried(covFNames,_varAcc);
-    if ((idx1==-1) || (idx2==-1)) {
-      std::cout << "failed to find eff or acc\n";
-      return 0;
-    }
-    std::cout << "idx(_varEff)=" << idx1 << "\n";
-    std::cout << "idx(_varAcc)=" << idx2 << "\n";
-    if (change_covV) {
-      covV[idx1].Zero();
-      covV[idx2].Zero();
-    }
-    /*
-    if (idx==0) { std::cout << "  --- idx=0, fix the code\n"; return 0; }
-    if (!h1uncStatV[idx]) {
-      h1uncStatV[idx]= cloneHisto(h1uncStatV[0],Form("h1eff_%d",isEE),"h1Eff");
-      h1uncStatV[idx]->Reset();
-    }
-    */
-  }
-
-  int res=compareUncAndScale(labelV,h1uncStatV,covV,plotCmp,change_covV,tag);
-  if (res && plotCmp && (change_covV==2))
-    res=compareUncAndScale(labelV,h1uncStatV,covV,2,0,tag+"_adj");
-
-  if (res) {
-    res= aggregateUnc(covFNames,covV,h1uncSystV,covS);
-  }
-
-  if (!res) {
-    std::cout << "error in adjustUnc\n";
-    return 0;
-  }
-
-  return 1;
-}
-
-// -------------------------------------------------------
-// -------------------------------------------------------
-
-TMatrixD constructEMAccCov(const CovStruct_t &eeCovS, const CovStruct_t &mmCovS,
-			   double corrFactor)
-{
-  TMatrixD emCovTot(TMatrixD::kZero, eeCovS.covSyst_Acc);
-  for (int ir=0; ir<eeCovS.covSyst_Acc.GetNrows(); ir++) {
-    for (int ic=0; ic<mmCovS.covSyst_Acc.GetNcols(); ic++) {
-      emCovTot(ir,ic) = corrFactor *
-	sqrt(eeCovS.covSyst_Acc(ir,ic)) *
-	sqrt(mmCovS.covSyst_Acc(ir,ic));
-    }
-  }
-  return emCovTot;
-}
-
-// -------------------------------------------------------
-
-TMatrixD constructMeasCov(const CovStruct_t &eeCovS, const CovStruct_t &mmCovS,
-			  CovStruct_t::TCovPart_t covFlag, double accCorrFactor,
-			  BLUEResult_t *blue)
-{
-  TMatrixD measCov_ee(blue->measCovMatrix(eeCovS.GetPart(covFlag),1));
-  TMatrixD measCov_mm(blue->measCovMatrix(mmCovS.GetPart(covFlag),0));
-  TMatrixD measCov( measCov_ee, TMatrixD::kPlus, measCov_mm );
-  if (covFlag==CovStruct_t::_varCov_systAcc) {
-    TMatrixD emCov( constructEMAccCov(eeCovS,mmCovS,accCorrFactor) );
-    TMatrixD measEMCov( blue->measCovMatrix(emCov,2) );
-    measCov += measEMCov;
-  }
-  return measCov;
-}
-
-// -------------------------------------------------------
