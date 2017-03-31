@@ -8,9 +8,28 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  const TMatrixD *covMM_inp,
 			  const TMatrixD *covEM_inp,
 			  TString outputFileTag, TString plotTag,
-			  int printCanvases)
+			  int printCanvases, std::string showCanvases="ALL")
 {
   double scale=1; //100000.; // 1000000
+
+  if (showCanvases=="ALL") {
+    showCanvases="";
+    //showCanvases+= " showCSCheck"; // plot 1D xs in channels vs theory
+    //showCanvases+= " showCSCheckInRanges"; // plot 1D xs in channels vs theory
+    //showCanvases+= " showCombiCS"; // plot 1D xs in the combined channel vs inp
+    // plot 1D xs in the combined channel vs theory
+    //showCanvases+= " showCombiCSCheckInputInRanges";
+    // plot 1D xs combi vs theory (abs values and the ratio plot)
+    //showCanvases+= " showCombiCSCheck";
+    // plot 1D xs uncertainties combi vs channels
+    //showCanvases+= " showCombiCSUnc";
+    // plot input covariances
+    showCanvases+= " showInputCov";
+    // plot final covariance
+    //showCanvases+= " showFinalCov";
+    // plot contributed covariances from the channels
+    //showCanvases+= " showContributedCov";
+  }
 
   TString plotTagSafe=plotTag;
   plotTagSafe.ReplaceAll(" ","_");
@@ -61,12 +80,21 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   if (covEE_inp) { setError(h1csEE,*covEE_inp); }
   if (covMM_inp) { setError(h1csMM,*covMM_inp); }
 
-  printHisto(h1csEE);
-  printHisto(h1csMM);
+  if (0) {
+    std::cout << "\nMatrix sizes:  ";
+    printMDim("measEE",measEE); printMDim(", covEE",covEE);
+    printMDim(", measMM",measMM); printMDim(", covMM",covMM);
+    printMDim(", covEM",covEM);
+    std::cout << "\n";
+  }
+
+
+  //printHisto(h1csEE);
+  //printHisto(h1csMM);
 
   PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
 
-  if (1) {
+  if (hasValue("showCSCheck",showCanvases)) {
     TH1D *h1frame= cloneHisto(h1csEE,"h1frame_inpCS","frame");
     h1frame->Reset();
     logAxis(h1frame,1+0*2,massStr,sigmaStr);
@@ -86,7 +114,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   hsEE.SetStyle(grCSEE);
   hsMM.SetStyle(grCSMM);
 
-  if (1) {
+  if (hasValue("showCSCheckInRanges",showCanvases)) {
     std::vector<TCanvas*> canvasCSV;
     for (int i=0; i<5; i++) {
       TString canvName="";
@@ -141,7 +169,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   // plot combined cross section
   std::vector<TCanvas*> canvasCombiCSV;
   if (1) {
-    if (1) {
+    if (hasValue("showCombiCS",showCanvases)) {
       TH1D *h1frame= cloneHisto(h1csEE,"h1frame_combCS","frame");
       h1frame->Reset();
       logAxis(h1frame,1+0*2,massStr,sigmaStr);
@@ -156,7 +184,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       //return NULL;
     }
 
-    if (1) {
+    if (hasValue("showCombiCSCheckInputInRanges",showCanvases)) {
       TH1D *h1theory_red= cloneHisto(h1csTheory,
 				     "h1theory_red",h1csTheory->GetTitle());
       h1theory_red->SetLineColor(kRed);
@@ -179,7 +207,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     }
 
     // compare combination to theory
-    if (1) {
+    if (hasValue("showCombiCSCheck",showCanvases)) {
       h1csTheoryRed->GetYaxis()->SetRangeUser(1e-7,1e3);
       h1csTheoryRed->GetYaxis()->SetTitleOffset(1.4);
       plotHisto(h1csTheoryRed,"cCombiCS2Theory",1,1,"LPE","theory");
@@ -194,7 +222,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     }
 
     // compare the uncertainties
-    if (1) {
+    if (hasValue("showCombiCSUnc",showCanvases)) {
       TH1D *h1EEErr= errorAsCentral(h1csEE,0);
       logAxis(h1EEErr,1,massStr,"\\delta"+sigmaStr);
       h1EEErr->GetYaxis()->SetRangeUser(1e-7,20);
@@ -220,7 +248,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   }
 
   // plot the covariances
-  if (1) {
+  if (hasValue("showInputCov",showCanvases)) {
     if (1 && (covEE_inp || covMM_inp || covEM_inp)) {
       std::cout << "plot input covariances\n";
       plotCovCorr(covEE,h1csEE,"h2eeCov","cEECov",optCC);
@@ -229,7 +257,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 		<< "null";
       if (covEM_inp) std::cout << "; " << covEM_inp->NonZeros() << " non zeros";
       std::cout << "\n";
-      if (covEM_inp && (covEM_inp->NonZeros()>0)) {
+      if (covEM_inp) { // && (covEM_inp->NonZeros()>0)) {
 	TMatrixD inpCov(*blue->getInpCov());
 	TH1D *h1binDef= new TH1D("h1binDef","h1binDef;binIdx;count",
 				 inpCov.GetNrows(),1,inpCov.GetNrows()+1);
@@ -251,19 +279,23 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     //std::cout << "h1csEE title " << h1csEE->GetXaxis()->GetTitle() << "\n";
     //std::cout << "h1csMM title " << h1csMM->GetXaxis()->GetTitle() << "\n";
 
-    plotCovCorr(finalCov,h1comb,"h2finCov","cFinCov",optCC);
+    if (hasValue("showFinalCov",showCanvases)) {
+      plotCovCorr(finalCov,h1comb,"h2finCov","cFinCov",optCC);
+    }
 
-    TH2D* h2eeCorrPart= convert2histo(covToCorrPartial(covEEFinal,finalCov),
-				      h1csEE,"h2eeCorrPart","h2eeCorrPart");
-    logAxis(h2eeCorrPart);
-    TCanvas *cCorrPartEE= plotHisto(h2eeCorrPart,"cCorrPartEE",optCC);
-    cCorrPartEE->SetGrid(1,1);
+    if (hasValue("showContributedCov",showCanvases)) {
+      TH2D* h2eeCorrPart= convert2histo(covToCorrPartial(covEEFinal,finalCov),
+					h1csEE,"h2eeCorrPart","h2eeCorrPart");
+      logAxis(h2eeCorrPart);
+      TCanvas *cCorrPartEE= plotHisto(h2eeCorrPart,"cCorrPartEE",optCC);
+      cCorrPartEE->SetGrid(1,1);
 
-    TH2D* h2mmCorrPart= convert2histo(covToCorrPartial(covMMFinal,finalCov),
-				      h1csMM,"h2mmCorrPart","h2mmCorrPart");
-    logAxis(h2mmCorrPart);
-    TCanvas *cCorrPartMM= plotHisto(h2mmCorrPart,"cCorrPartMM",optCC);
-    cCorrPartMM->SetGrid(1,1);
+      TH2D* h2mmCorrPart= convert2histo(covToCorrPartial(covMMFinal,finalCov),
+					h1csMM,"h2mmCorrPart","h2mmCorrPart");
+      logAxis(h2mmCorrPart);
+      TCanvas *cCorrPartMM= plotHisto(h2mmCorrPart,"cCorrPartMM",optCC);
+      cCorrPartMM->SetGrid(1,1);
+    }
 
     if (printCanvases) {
       TFile fout("foutCanvas_DYCSCov" + outputFileTag + ".root","RECREATE");
