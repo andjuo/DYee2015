@@ -3,7 +3,7 @@
 #include "Blue.h"
 #include "analyseBLUEResult.C"
 #include "work13TeV.C"
-
+#include "DYbinning.h"
 
 // -------------------------------------------------------
 // -------------------------------------------------------
@@ -18,6 +18,16 @@ public:
   CovStruct_t(TMatrixD &M) :
     covStat_Yield(TMatrixD::kZero,M), covStat_nonYield(TMatrixD::kZero,M),
     covSyst_Acc(TMatrixD::kZero,M), covSyst_nonAcc(TMatrixD::kZero,M) {}
+
+  CovStruct_t(const TMatrixD &set_covStatYield,
+	      const TMatrixD &set_covStatNonYield,
+	      const TMatrixD &set_covSystAcc,
+	      const TMatrixD &set_covSystNonAcc) :
+    covStat_Yield(set_covStatYield),
+    covStat_nonYield(set_covStatNonYield),
+    covSyst_Acc(set_covSystAcc),
+    covSyst_nonAcc(set_covSystNonAcc)
+  {}
 
   CovStruct_t(const CovStruct_t &s) :
     covStat_Yield(s.covStat_Yield), covStat_nonYield(s.covStat_nonYield),
@@ -51,6 +61,9 @@ public:
 
   TMatrixD GetPart(int i) const { return GetPart(TCovPart_t(i)); }
 
+  int SetPart(int i, const TMatrixD &m)
+  { return SetPart(TCovPart_t(i),m); }
+
   TString GetPartName(int i) const {
     TString name="UNKNOWN";
     switch(i) {
@@ -76,6 +89,61 @@ public:
     default: a.Zero();
     }
     return a;
+  }
+
+  int SetPart(TCovPart_t p, const TMatrixD &m)
+  {
+    int res=0;
+    switch (p) {
+    case _varCov_none: break;
+    case _varCov_statYield: covStat_Yield=m; res=1; break;
+    case _varCov_statNonYield: covStat_nonYield=m; res=1; break;
+    case _varCov_systAcc: covSyst_Acc=m; res=1; break;
+    case _varCov_systNonAcc: covSyst_nonAcc=m; res=1; break;
+    default: res=0;
+    }
+    return res;
+  }
+
+  int ZrangeCov(int idxMin, int idxMax_p1, const TH1D *h1BinDef,
+		std::vector<double> &cov, int printNumbers=0) const
+  {
+    if (!h1BinDef) {
+      std::cout << "CovStruct_t::ZrangeCov: h1BinDef is null\n";
+      return 0;
+    }
+    cov.clear();
+    cov.push_back(sumCov(covStat_Yield,idxMin,idxMax_p1,h1BinDef,printNumbers));
+    cov.push_back(sumCov(covStat_nonYield,idxMin,idxMax_p1,h1BinDef));
+    cov.push_back(sumCov(covSyst_Acc,idxMin,idxMax_p1,h1BinDef));
+    cov.push_back(sumCov(covSyst_nonAcc,idxMin,idxMax_p1,h1BinDef));
+    return 1;
+  }
+
+  int PrintZRangeUnc(TString label, const TH1D *h1cs_perMBW,
+		     int printNumbers=0) const
+  {
+    int idxMin=-1, idxMax_p1=-1;
+    if (!DYtools::ZmassRange(60,120,idxMin,idxMax_p1)) {
+      std::cout << "in CovStruct_t::ZrangeCov\n";
+      return 0;
+    }
+    std::cout << "ZmassRange: " << idxMin << " .. " << idxMax_p1 << "\n";
+    std::vector<double> zCov;
+    TH1D *h1cs_abs= timesMassBinWidth(h1cs_perMBW);
+    if (!this->ZrangeCov(idxMin,idxMax_p1,h1cs_abs, zCov,printNumbers)) {
+      std::cout << "CovStruct_t::PrintZRangeUnc: failed to get the ZrangeCov\n";
+      return 0;
+    }
+    std::cout << "integrated uncertainties:\n";
+    //printHisto(h1cs_abs);
+    std::cout << "  - " << label << ": "
+	      << h1cs_abs->Integral(idxMin+1,idxMax_p1) << " ";
+    for (int ii=0; ii<4; ii++) {
+      std::cout << "+- " << zCov[ii] << " (" << this->GetPartName(ii+1) << ")";
+    }
+    std::cout << "\n";
+    return 1;
   }
 
   void Plot(TString tag, TH1D *h1binning) {
@@ -141,11 +209,13 @@ int loadUncData(int isEE,
 
 int adjustMMUnc(const finfomap_t &mmCovFNames, // needed for first value
 		std::vector<TMatrixD> &mmCovV,
-		CovStruct_t &covM, int showChangedCov);
+		CovStruct_t &covM, int showChangedCov,
+		int plotCmp);
 
 int adjustEEUnc(const finfomap_t &eeCovFNames, // needed for first value
 		std::vector<TMatrixD> &eeCovV,
-		CovStruct_t &eeCovM, int showChangedCov);
+		CovStruct_t &eeCovM, int showChangedCov,
+		int plotCmp);
 
 int aggregateUnc(const finfomap_t &fnames, // needed for first value
 		 const std::vector<TMatrixD> &covStatV,
@@ -205,7 +275,21 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 		    int excludeSyst=0, // 1 - all, 2 - Acc only
 		    TString saveTag="")
 {
+  closeCanvases(5);
   const int changeNames=1;
+
+  std::string showCanvs;
+  //showCanvs+=" plotChannelInputCov";
+ // whether relative uncertainty in Acc in the channels is similar
+  //showCanvs+=" plotChannelRelSystAccUnc";
+  // compare randomized vs provided uncertainties
+  //showCanvs+=" plotAdjUnc";
+  //showCanvs+=" plotAdjCov";
+  //showCanvs+=" plotInputContributedCovs"; // 4 canvases in each channel
+  showCanvs+= " plotFinalCovsByType"; // 4 canvases in the combined channel
+
+  std::string showCombinationCanvases;
+  //showCombinationCanvases="ALL";
 
   std::vector<int> eeCovIdx, mmCovIdx;
   std::vector<TString> eeOldFName, eeNewFName; // for file name changing
@@ -297,8 +381,11 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   CovStruct_t eeCovS(eeCovStat); // creates and nullifies
   CovStruct_t mmCovS(mmCovStat);
 
-  adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov);
-  adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov);
+  int plotCmpUnc= (hasValue("plotAdjUnc",showCanvs)) ? 1 : 0;
+  if (hasValue("plotAdjCov",showCanvs)) plotCmpUnc=2;
+
+  adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc);
+  adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc);
 
   if (excludeSyst) {
     if (excludeSyst==1) {
@@ -313,8 +400,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   TH1D* h1csMM_tmp=loadHisto(mmCSFName, mmCSH1Name, "h1csMM_tmp", 1,h1dummy);
   if (!h1csEE_tmp || !h1csMM_tmp) return;
 
-
-  if (1) {
+  // plot input covariance in ee and mm channels
+  if (hasValue("plotChannelInputCov",showCanvs)) {
     double ymin=0, ymax=0;
     ymin=1e-9; ymax=20.;
     mmCovS.Plot("mmCov",h1csMM_tmp);
@@ -325,7 +412,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   }
 
   // check whether mmCovS.Syst_Acc = eeCovS.Syst_Acc
-  if (1) {
+  if (hasValue("plotChannelRelSystAccUnc",showCanvs)) {
     TH1D *h1mmAcc_rel= uncFromCov(mmCovS.covSyst_Acc,"h1mmAcc_rel",
 				  h1csMM_tmp,h1csMM_tmp,0);
     TH1D *h1eeAcc_rel= uncFromCov(eeCovS.covSyst_Acc,"h1eeAcc_rel",
@@ -335,6 +422,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     plotHistoSame(h1eeAcc_rel,"cAccUnc","LP","ee");
     //std::cout << "stopping\n"; return;
   }
+
 
   // create Acc theory-correlated uncertainty
   TMatrixD emCovTot(TMatrixD::kZero, eeCovS.covSyst_Acc);
@@ -348,6 +436,14 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     eeCovS.ReduceCorrelations(reductionFactor);
     mmCovS.ReduceCorrelations(reductionFactor);
     if (includeLumiUnc!=2) emCovTot.Zero();
+  }
+
+  if (0) {
+    if (!eeCovS.PrintZRangeUnc("ee",h1csEE_tmp,0) ||
+	!mmCovS.PrintZRangeUnc("mm",h1csMM_tmp,0)) {
+      std::cout << "error\n";
+    }
+    return;
   }
 
   TMatrixD eeCovTot(eeCovS.Sum());
@@ -382,24 +478,26 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   if (excludeSyst) fileTag.Append(Form("_excludeSyst%d",excludeSyst));
   if (saveTag.Length()) fileTag.Append(saveTag);
 
+
   BLUEResult_t *blue=
-    combineData(&eeCovTot,&mmCovTot,&emCovTot,fileTag,plotTag,printCanvases);
+    combineData(&eeCovTot,&mmCovTot,&emCovTot,fileTag,plotTag,printCanvases,
+		showCombinationCanvases);
   if (!blue) { std::cout << "failed to get BLUE result\n"; return; }
 
   if (includeLumiUnc) {
     TMatrixD totFinalCov(*blue->getCov());
     TMatrixD ca(0,0), cb(0,0);
-    TH1D *h1csLL= convert2histo1D(*blue->getEst(),totFinalCov,
-				  "h1csLL_test","h1csLL test",NULL);
-    if (!addLumiCov(ca,cb,totFinalCov,-lumiUnc,h1csLL)) return;
+    TH1D *h1csLL_test= convert2histo1D(*blue->getEst(),totFinalCov,
+				       "h1csLL_test","h1csLL test",NULL);
+    if (!addLumiCov(ca,cb,totFinalCov,-lumiUnc,h1csLL_test)) return;
     plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi");
   }
 
-  if (1) {
+  if (hasValue("plotInputContributedCovs",showCanvs)) {
     PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
     TH1D* h1csEE_tmp=loadHisto(eeCSFName, eeCSH1Name, "h1csEE_tmp", 1,h1dummy);
     TH1D* h1csMM_tmp=loadHisto(mmCSFName, mmCSH1Name, "h1csMM_tmp", 1,h1dummy);
-    if (0)
+    if (1)
     for (int i=1; i<=4; i++) {
       TString tagName="ee_" + eeCovS.GetPartName(i);
       TMatrixD partM= eeCovS.GetPart(i);
@@ -425,7 +523,14 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   TH1D* h1csLL_tmp= cloneHisto(h1csEE_tmp, "h1csLL_tmp", "h1csLL_tmp");
   h1csLL_tmp->GetXaxis()->SetTitle( niceMassAxisLabel(2,"",0) );
   h1csLL_tmp->GetYaxis()->SetTitle( niceMassAxisLabel(2,"",1) );
-  TH1D* h1deltacsLL_tmp= cloneHisto(h1csEE_tmp, "h1dcsLL_tmp", "h1dcsLL_tmp");
+
+  TH1D *h1csLL_badBinning= convert2histo1D(*blue->getEst(),*blue->getCov(),
+			   "h1csLL_badBinning","h1csLL_badBinning",NULL);
+  if (!h1csLL_badBinning) return;
+  if (!copyContents(h1csLL_tmp, h1csLL_badBinning)) return;
+
+  TH1D* h1deltacsLL_tmp= cloneHisto(h1csLL_tmp,
+				    "h1deltacsLL_tmp", "h1deltacsLL_tmp");
   h1deltacsLL_tmp->GetXaxis()->SetTitle( niceMassAxisLabel(2,"",0) );
   h1deltacsLL_tmp->GetYaxis()->SetTitle( "\\delta" + niceMassAxisLabel(2,"",1) );
 
@@ -452,6 +557,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   }
 
   TMatrixD sumContributedCov(TMatrixD::kZero,eeCovTot);
+  CovStruct_t llCovS(eeCovStat); // creates and nullifies
   for (int iFlag=1; iFlag<=4; iFlag++) {
     CovStruct_t::TCovPart_t part=CovStruct_t::TCovPart_t(iFlag);
     double accCorrFlag= (corrCase==1) ? 1. : 0.;
@@ -460,18 +566,46 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     if (0) plotCovCorr(measCov,NULL,"h2covMeas"+label,"cCovMeas_"+label,
 		       optCCNoLog,NULL);
     TMatrixD covFin_contrib= blue->contributedCov(measCov);
+    llCovS.SetPart(part,covFin_contrib);
     sumContributedCov+=covFin_contrib;
-    TH2D* h2cov_contrib=NULL;
-    plotCovCorr(covFin_contrib,h1csLL_tmp,
-		"h2covFin_from"+label,"cCovFin_from_"+label,
-		PlotCovCorrOpt_t(),&h2cov_contrib);
-    TH1D *h1_dCS_contrib= uncFromCov(covFin_contrib,
-				     "h1_dCS_from_"+label,
-				     h1deltacsLL_tmp,NULL,0);
-    if (!h2cov_contrib || !h1_dCS_contrib) return;
-    hsVec[iFlag-1].SetStyle(h1_dCS_contrib);
-    plotHistoAuto(h1_dCS_contrib,"canvContrUnc",1,1,"LPE",label);
+    if (hasValue("plotFinalCovByType",showCanvs)) {
+      TH2D* h2cov_contrib=NULL;
+      plotCovCorr(covFin_contrib,h1csLL_tmp,
+		  "h2covFin_from"+label,"cCovFin_from_"+label,
+		  PlotCovCorrOpt_t(),&h2cov_contrib);
+      TH1D *h1_dCS_contrib= uncFromCov(covFin_contrib,
+				       "h1_dCS_from_"+label,
+				       h1deltacsLL_tmp,NULL,0);
+      if (!h2cov_contrib || !h1_dCS_contrib) return;
+      hsVec[iFlag-1].SetStyle(h1_dCS_contrib);
+      plotHistoAuto(h1_dCS_contrib,"canvContrUnc",1,1,"LPE",label);
+    }
   }
+
+  if (1) {
+    if (!eeCovS.PrintZRangeUnc("ee",h1csEE_tmp,0) ||
+	!mmCovS.PrintZRangeUnc("mm",h1csMM_tmp,0) ||
+	!llCovS.PrintZRangeUnc("ll",h1csLL_tmp,0)) {
+      std::cout << "error\n";
+    }
+
+    if (0) {
+      std::cout << "\n EE    MM    Combi-XSect\n";
+      const TH1D *h1def=h1csEE_tmp;
+      for (int ibin=1; ibin<=h1def->GetNbinsX(); ibin++) {
+	std::cout << "ibin=" << ibin << " " << h1def->GetBinLowEdge(ibin)
+		  << " -- "
+		  << (h1def->GetBinLowEdge(ibin)+h1def->GetBinWidth(ibin))
+		  << "  "
+		  << h1csEE_tmp->GetBinContent(ibin) << "   "
+		  << h1csMM_tmp->GetBinContent(ibin) << "   "
+		  << h1csLL_tmp->GetBinContent(ibin) << "\n";
+      }
+    }
+  }
+
+
+
 
   //TMatrixD sumContrChk( sumContributedCov, TMatrixD::kMinus, *blue->getCov() );
   //sumContrChk.Print();
@@ -557,7 +691,8 @@ int addLumiCov(TMatrixD &eeCov, TMatrixD &mmCov, TMatrixD &emCov,
 
 int adjustMMUnc(const finfomap_t &mmCovFNames,
 		std::vector<TMatrixD> &mmCovV,
-		CovStruct_t &mmCovS, int plotChangedCov)
+		CovStruct_t &mmCovS, int plotChangedCov,
+		int plotCmp)
 {
   finfomap_t mmUncFiles, mmUncStat, mmUncSyst;
   fvarweightmap_t relUncW;
@@ -608,7 +743,6 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
   relUncW   [_varAcc]= 1;
 
   const TH1D *h1central= (1) ? h1csMM : NULL;
-  int plotCmp=1;
   int change_covV=1+(plotChangedCov!=0) ? 1:0;
   int res=adjustUnc( 0,
 		     mmCovFNames, mmCovV,
@@ -628,7 +762,8 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 
 int adjustEEUnc(const finfomap_t &eeCovFNames,
 		std::vector<TMatrixD> &eeCovV,
-		CovStruct_t &eeCovS, int plotChangedCov)
+		CovStruct_t &eeCovS, int plotChangedCov,
+		int plotCmp)
 {
   finfomap_t eeUncFiles, eeUncStat, eeUncSyst;
   fvarweightmap_t relUncW;
@@ -679,7 +814,6 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
   relUncW   [_varAcc]= 0.01;
 
   const TH1D *h1central= (1) ? h1csEE : NULL;
-  int plotCmp=1;
   int change_covV=1 + (plotChangedCov!=0) ? 1:0;
   int res=adjustUnc( 1,
 		     eeCovFNames, eeCovV,
