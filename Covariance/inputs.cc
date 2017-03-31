@@ -130,7 +130,7 @@ void addToVector(std::vector<int> &vec, int count, ...)
   va_start(vl,count);
   for (int i=0; i<count; i++) {
     int val=va_arg(vl,int);
-    std::cout << " adding int " << val << "\n";
+    //std::cout << " adding int " << val << "\n";
     vec.push_back(val);
   }
   va_end(vl);
@@ -1465,6 +1465,11 @@ int randomizeWithinPosNegErr(const TH2D *h2_errPos,
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
+void printMDim(const TString name, const TMatrixD &m)
+{ std::cout << name << "[" << m.GetNrows() << "x" << m.GetNcols() << "]"; }
+
+// ---------------------------------------------------------
+
 TMatrixD submatrix(const TMatrixD &M, int idxMin, int idxMax)
 {
   TMatrixD mNew(idxMax-idxMin,idxMax-idxMin);
@@ -1746,6 +1751,38 @@ TH2D* cov2corr(const TH2D* h2cov)
     }
   }
   return h2corr;
+}
+
+// ---------------------------------------------------------
+
+double sumCov(const TMatrixD &cov, int idxMin, int idxMax,
+	      const TH1D *h1binWidth_def, int printNumbers)
+{
+  if ((idxMax<idxMin) || (idxMin<0)) {
+    std::cout << "sumCov: incorrect idx values: "
+	      << idxMin << " " << idxMax << "\n";
+    return 0;
+  }
+  double sum=0;
+  for (int ir=idxMin; ir<idxMax; ir++) {
+    for (int ic=idxMin; ic<idxMax; ic++) {
+      double val= cov(ir,ic);
+      if (printNumbers) {
+	std::cout << Form("(ir,ic)=(%d,%d) ",ir,ic) << " val=" << val;
+      }
+      if (h1binWidth_def) {
+	val*=
+	  h1binWidth_def->GetBinWidth(ir+1) * h1binWidth_def->GetBinWidth(ic+1);
+	if (printNumbers) {
+	  std::cout << " * [bw] " << h1binWidth_def->GetBinWidth(ir+1) << " * "
+		    << h1binWidth_def->GetBinWidth(ic+1);
+	}
+      }
+      if (printNumbers) std::cout << "\n";
+      sum+= val;
+    }
+  }
+  return sum;
 }
 
 // ---------------------------------------------------------

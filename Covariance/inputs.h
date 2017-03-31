@@ -527,6 +527,7 @@ int randomizeWithinPosNegErr(const TH2D *h2_errPos,
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 
+void printMDim(const TString name, const TMatrixD &M);
 TMatrixD submatrix(const TMatrixD &M, int idxMin, int idxMax);
 void printRatio(TString label1, const TVectorD &v1, TString label2, const TVectorD &v2);
 
@@ -597,6 +598,12 @@ int deriveCovariance(const std::vector<TH1D*> &rndCS,
 
 //TH2D* convert(const TMatrixD &m, const
 TH2D* cov2corr(const TH2D* h2cov);
+
+// covariance of summed quantities, like sigmaZ=sum_a sigma_a
+// idxMin..(idxMax_p1-1) correspond to lower and upper indices of the range
+// if h1binWidth_def is provided, the covariance is assumed to be normalized
+double sumCov(const TMatrixD &cov, int idxMin, int idxMax_p1,
+	      const TH1D *h1binWidth_def=NULL, int printNumbers=0);
 
 // uncertainty from covariance. If h1centralVal is supplied, the returned
 // uncertainty is relative
@@ -713,6 +720,13 @@ template<class T>
 inline
 int hasValue(const T val, const std::string targets)
 { return valueEquals(val,targets); }
+
+// -----------------------------------
+
+template<>
+inline
+int hasValue(const char *val, const std::string targets)
+{ return valueEquals<std::string>(std::string(val),targets); }
 
 // -----------------------------------
 
