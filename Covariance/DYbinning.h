@@ -136,6 +136,19 @@ int InsideMassRange(Double_t m)
 // -------------------------------------------------------------
 
 inline
+int ZmassRange(double ZrangeMin, double ZrangeMax, int &idxMin, int &idxMax)
+{
+  idxMin=-1; idxMax=-1;
+  for (int im=0; im<=nMassBins; im++) {
+    if (fabs(massBinEdges[im]-ZrangeMin)<1e-3) idxMin=im;
+    if (fabs(massBinEdges[im]-ZrangeMax)<1e-3) idxMax=im;
+  }
+  return ((idxMin!=-1) && (idxMax!=-1) && (idxMin<idxMax)) ? 1:0;
+}
+
+// -------------------------------------------------------------
+
+inline
 int InAcceptance_mm(const TLorentzVector *v1, const TLorentzVector *v2) {
   if ((fabs(v1->Eta())<2.4) && (fabs(v2->Eta())<2.4)) {
     if (((v1->Pt() > 22.) && (v2->Pt() > 10.)) ||
