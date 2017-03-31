@@ -738,7 +738,7 @@ double BLUEResult_t::getCombinedChi2(int iMeas1, int iMeas2, double factor) cons
 
 // -------------------------------------------------------------------
 
-int BLUEResult_t::write(TFile &fout, TString tag)
+int BLUEResult_t::write(TFile &fout, TString tag) const
 {
   fout.cd();
   if (meas) meas->Write("blue_meas_"+tag);

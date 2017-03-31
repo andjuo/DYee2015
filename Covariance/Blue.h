@@ -177,7 +177,7 @@ public:
     return cCorrPart;
   }
 
-  TMatrixD contributedCorrPartial(const TMatrixD &inpCov, int isMeasA)
+  TMatrixD contributedCorrPartial(const TMatrixD &inpCov, int isMeasA) const
   { return contributedCorrPartial(measCovMatrix(inpCov,isMeasA)); }
 
 
@@ -191,7 +191,7 @@ public:
   static int isSquare(const TMatrixD &a)
   { return (a.GetNrows()==a.GetNcols()) ? 1:0; }
 
-  int write(TFile &fout, TString tag);
+  int write(TFile &fout, TString tag) const;
   int read(TFile &fin, TString tag);
 };
 
