@@ -25,6 +25,9 @@ typedef enum { _tnpSyst_none=0,
 	       _tnpSyst_bkgPdf, _tnpSyst_sigPdf, _tnpSyst_NLOvsLO,
 	       _tnpSyst_tagDef, _tnpSyst_last } TTnPSystType_t;
 
+typedef std::map<TVaried_t,TString> finfomap_t;
+typedef std::map<TVaried_t,double> fvarweightmap_t;
+
 TString variedVarName(TVaried_t);
 TString bkgName(TBkg_t);
 TString csTypeName(TCSType_t);
@@ -37,6 +40,27 @@ TBkg_t next(TBkg_t &b)
 inline
 TTnPSystType_t next(TTnPSystType_t &s)
 { if (s<_tnpSyst_last) s=TTnPSystType_t(int(s)+1); return s; }
+
+// -----------------------------------------------------------
+
+template<class type_t>
+int findVaried(const std::map<TVaried_t,type_t> &aMap, TVaried_t var,
+	       int verbose=0)
+{
+  int ii=0, idx=-1;
+  for (finfomap_t::const_iterator it= aMap.begin();
+       it!=aMap.end(); it++, ii++) {
+    //std::cout << "chk ii=" << ii << " " << variedVarName(it->first) << "\n";
+    if (it->first == var) {
+      idx=ii;
+      break;
+    }
+  }
+  if ((idx==-1) && verbose) {
+    std::cout << "failed to find " << variedVarName(var) << " in the map\n";
+  }
+  return idx;
+}
 
 // -----------------------------------------------------------
 

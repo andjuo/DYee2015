@@ -1,8 +1,8 @@
 #include "inputs.h"
 #include "crossSection.h"
 #include "Blue.h"
-#include "analyseBLUEResult.C"
-#include "work13TeV.C"
+#include "analyseBLUEResult.h"
+//#include "work13TeV.C" // making it obsolete
 #include "DYbinning.h"
 
 // -------------------------------------------------------
@@ -195,9 +195,6 @@ TMatrixD constructMeasCov(const CovStruct_t &eeCovS, const CovStruct_t &mmCovS,
 			  CovStruct_t::TCovPart_t covFlag, double accCorrFactor,
 			  BLUEResult_t *blue);
 
-int addLumiCov(TMatrixD &eeCov, TMatrixD &mmCov, TMatrixD &emCov,
-	       double lumiRelUnc, const TH1D *h1cs=NULL);
-
 int loadUncData(int isEE,
 		const finfomap_t &fNames,
 		const finfomap_t &h1names,
@@ -244,7 +241,7 @@ int compareUnc(const std::vector<TString> &labelV,
 	       TString tag);
 
 // -------------------------------------------------------
-
+/*
 template<class type_t>
 int findVaried(const std::map<TVaried_t,type_t> &aMap, TVaried_t var,
 	       int verbose=0)
@@ -263,10 +260,14 @@ int findVaried(const std::map<TVaried_t,type_t> &aMap, TVaried_t var,
   }
   return idx;
 }
-
+*/
 // -------------------------------------------------------
 
 const int useUncorrYieldUnc=0;
+TString eeCSFName="cs_DYee_13TeV_El3.root";
+TString eeCSH1Name="h1PreFSRCS";
+TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+TString mmCSH1Name="h1CS";
 
 // -------------------------------------------------------
 
@@ -286,7 +287,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   //showCanvs+=" plotAdjUnc";
   //showCanvs+=" plotAdjCov";
   //showCanvs+=" plotInputContributedCovs"; // 4 canvases in each channel
-  showCanvs+= " plotFinalCovsByType"; // 4 canvases in the combined channel
+  showCanvs+= " plotFinalCovByType"; // 4 canvases in the combined channel
 
   std::string showCombinationCanvases;
   //showCombinationCanvases="ALL";
@@ -371,8 +372,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   // xxCovStat is the covariance of measured yield
   // xxCovSyst equals to other covariances
   // xxCovV contains all covariance matrices
-  if (!loadCovData(eeCovFNames,eeCovH2D,eeCovV,eeCovStat,eeCovSyst) ||
-      !loadCovData(mmCovFNames,mmCovH2D,mmCovV,mmCovStat,mmCovSyst)) {
+  if (!loadCovData("ee",eeCovFNames,eeCovH2D,eeCovV,eeCovStat,eeCovSyst) ||
+      !loadCovData("mm",mmCovFNames,mmCovH2D,mmCovV,mmCovStat,mmCovSyst)) {
     std::cout << "failed to load covariances\n";
     return;
   }
@@ -458,7 +459,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
       lumiUnc=0.26;
       fileTagExtra="_wLumi10x"; plotTagExtra=" (wLumi10x)";
     }
-    if (!addLumiCov(eeCovTot,mmCovTot,emCovTot, lumiUnc)) return;
+    if (!addLumiCov(eeCovTot,mmCovTot,emCovTot, lumiUnc, h1csEE_tmp,h1csMM_tmp))
+      return;
   }
 
   if (corrCase==0) {
@@ -486,10 +488,9 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 
   if (includeLumiUnc) {
     TMatrixD totFinalCov(*blue->getCov());
-    TMatrixD ca(0,0), cb(0,0);
     TH1D *h1csLL_test= convert2histo1D(*blue->getEst(),totFinalCov,
 				       "h1csLL_test","h1csLL test",NULL);
-    if (!addLumiCov(ca,cb,totFinalCov,-lumiUnc,h1csLL_test)) return;
+    if (!addLumiCov(totFinalCov,-lumiUnc,h1csLL_test)) return;
     plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi");
   }
 
@@ -622,69 +623,6 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     fout.Close();
     std::cout << "file <" << fout.GetName() << "> created\n";
   }
-}
-
-// -------------------------------------------------------
-
-int addLumiCov(TMatrixD &eeCov, TMatrixD &mmCov, TMatrixD &emCov,
-	       double lumiRelUnc, const TH1D *h1cs)
-{
-  if (lumiRelUnc==0.) {
-    std::cout << "addLumiCov: lumiUnc=0., no effect\n";
-    return 1;
-  }
-
-  TH1D* h1csEE=loadHisto(eeCSFName, eeCSH1Name, "h1csEE", 1,h1dummy);
-  TH1D* h1csMM=loadHisto(mmCSFName, mmCSH1Name, "h1csMM", 1,h1dummy);
-  if (!h1csEE || !h1csMM) return 0;
-
-  double sign= (lumiRelUnc>0) ? 1 : -1;
-
-  for (int ir=0; ir<eeCov.GetNrows(); ir++) {
-    for (int ic=0; ic<eeCov.GetNcols(); ic++) {
-      eeCov(ir,ic) +=
-	h1csEE->GetBinContent(ir+1) * h1csEE->GetBinContent(ic+1)
-	* pow( lumiRelUnc, 2) * sign;
-    }
-  }
-  for (int ir=0; ir<mmCov.GetNrows(); ir++) {
-    for (int ic=0; ic<mmCov.GetNcols(); ic++) {
-      mmCov(ir,ic) +=
-	h1csMM->GetBinContent(ir+1) * h1csMM->GetBinContent(ic+1)
-	* pow( lumiRelUnc, 2) * sign;
-    }
-  }
-
-  if (h1cs==NULL) {
-    for (int ir=0; ir<eeCov.GetNrows(); ir++) {
-      for (int ic=0; ic<eeCov.GetNcols(); ic++) {
-	emCov(ir,ic) +=
-	  h1csEE->GetBinContent(ir+1) * h1csMM->GetBinContent(ic+1)
-	  * pow( lumiRelUnc, 2) * sign;
-      }
-    }
-  }
-  else {
-    for (int ir=0; ir<emCov.GetNrows(); ir++) {
-      for (int ic=0; ic<emCov.GetNcols(); ic++) {
-	emCov(ir,ic) +=
-	  h1cs->GetBinContent(ir+1) * h1cs->GetBinContent(ic+1)
-	  * pow( lumiRelUnc, 2) * sign;
-      }
-    }
-  }
-
-  if (1) {
-    double diagMultEE=1., diagMultMM=1.;
-    for (int ir=0; ir<eeCov.GetNrows(); ir++) {
-      diagMultEE *= eeCov(ir,ir);
-      diagMultMM *= mmCov(ir,ir);
-    }
-    std::cout << "diagMultEE=" << diagMultEE << ", diagMultMM=" << diagMultMM << "\n";
-    //return 0;
-  }
-
-  return 1;
 }
 
 // -------------------------------------------------------

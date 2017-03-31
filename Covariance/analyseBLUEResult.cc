@@ -1,14 +1,115 @@
-#include "inputs.h"
-#include "crossSection.h"
-#include "Blue.h"
+#include "analyseBLUEResult.h"
 
+// -------------------------------------------------------
+// -------------------------------------------------------
+
+int loadCovData(TString lepTag,
+		const finfomap_t &covFNames,
+		std::vector<TH2D*> &covAsH2D, std::vector<TMatrixD> &covV,
+		TMatrixD &eeCovStat, TMatrixD &eeCovSyst)
+{
+  for (finfomap_t::const_iterator it= covFNames.begin();
+       it!=covFNames.end(); it++) {
+    TString fname= it->second;
+    TString h2newName = "h2Cov_" + lepTag + "_" + variedVarName(it->first);
+    TH2D *h2= loadHisto(fname,"h2Cov",h2newName,h2dummy);
+    if (!h2) return 0;
+    std::cout << "got " << h2newName << "\n";
+    covAsH2D.push_back(h2);
+    covV.push_back(convert2mat(h2));
+    if (it->first==_varYield) eeCovStat+= covV.back();
+    else eeCovSyst+= covV.back();
+  }
+  return 1;
+}
+
+// -------------------------------------------------------
+
+int addLumiCov(TMatrixD &cov, double lumiRelUnc, const TH1D *h1cs)
+{
+  if (lumiRelUnc==0.) {
+    std::cout << "addLumiCov(cov,lumiRelUnc,h1cs): lumiUnc=0., no effect\n";
+    return 1;
+  }
+
+  if (!h1cs) {
+    std::cout << "addLumiCov(cov,lumiRelUnc,h1cs): null histo\n";
+    return 0;
+  }
+
+  double sign= (lumiRelUnc>0) ? 1 : -1;
+
+  for (int ir=0; ir<cov.GetNrows(); ir++) {
+    for (int ic=0; ic<cov.GetNcols(); ic++) {
+      cov(ir,ic) +=
+	h1cs->GetBinContent(ir+1) * h1cs->GetBinContent(ic+1)
+	* pow( lumiRelUnc, 2) * sign;
+    }
+  }
+
+  return 1;
+}
+
+// -------------------------------------------------------
+
+int addLumiCov(TMatrixD &eeCov, TMatrixD &mmCov, TMatrixD &emCov,
+	       double lumiRelUnc, const TH1D *h1csEE, const TH1D *h1csMM)
+{
+  if (lumiRelUnc==0.) {
+    std::cout << "addLumiCov: lumiUnc=0., no effect\n";
+    return 1;
+  }
+  if (!h1csEE || !h1csMM) {
+    std::cout << "addLumiCov: null cs histo\n";
+    return 0;
+  }
+
+  double sign= (lumiRelUnc>0) ? 1 : -1;
+
+  for (int ir=0; ir<eeCov.GetNrows(); ir++) {
+    for (int ic=0; ic<eeCov.GetNcols(); ic++) {
+      eeCov(ir,ic) +=
+	h1csEE->GetBinContent(ir+1) * h1csEE->GetBinContent(ic+1)
+	* pow( lumiRelUnc, 2) * sign;
+    }
+  }
+  for (int ir=0; ir<mmCov.GetNrows(); ir++) {
+    for (int ic=0; ic<mmCov.GetNcols(); ic++) {
+      mmCov(ir,ic) +=
+	h1csMM->GetBinContent(ir+1) * h1csMM->GetBinContent(ic+1)
+	* pow( lumiRelUnc, 2) * sign;
+    }
+  }
+
+  for (int ir=0; ir<eeCov.GetNrows(); ir++) {
+    for (int ic=0; ic<eeCov.GetNcols(); ic++) {
+      emCov(ir,ic) +=
+	h1csEE->GetBinContent(ir+1) * h1csMM->GetBinContent(ic+1)
+	* pow( lumiRelUnc, 2) * sign;
+    }
+  }
+
+  if (1) {
+    double diagMultEE=1., diagMultMM=1.;
+    for (int ir=0; ir<eeCov.GetNrows(); ir++) {
+      diagMultEE *= eeCov(ir,ir);
+      diagMultMM *= mmCov(ir,ir);
+    }
+    std::cout << "diagMultEE=" << diagMultEE << ", diagMultMM=" << diagMultMM << "\n";
+    //return 0;
+  }
+
+  return 1;
+}
+
+// -------------------------------------------------------
 // -------------------------------------------------------
 
 BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  const TMatrixD *covMM_inp,
 			  const TMatrixD *covEM_inp,
 			  TString outputFileTag, TString plotTag,
-			  int printCanvases, std::string showCanvases="ALL")
+			  int printCanvases, std::string showCanvases)
 {
   double scale=1; //100000.; // 1000000
 
@@ -312,3 +413,6 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 
   return blue;
 }
+
+// -------------------------------------------------------
+// -------------------------------------------------------
