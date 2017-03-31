@@ -1,6 +1,62 @@
 #include "analyseBLUEResult.h"
 
 // -------------------------------------------------------
+// -----------------------------------------------------------------------
+
+int loadUncData(TString lepTag,
+		const finfomap_t &fNames,
+		const finfomap_t &h1names,
+		const fvarweightmap_t &relUncW,
+		const TH1D *h1binning,
+		const TH1D *h1centralVal, // if the uncertainty is relative
+		std::vector<TH1D*> &h1uncV,
+		TString tag)
+{
+  //std::cout << "Entered loadUncData\n";
+  //if (h1centralVal) printHisto(h1centralVal);
+
+
+  for (finfomap_t::const_iterator it= fNames.begin(); it!=fNames.end(); it++) {
+    TString fname= it->second;
+    TString h1newName= "h1unc_" + lepTag + "_" + variedVarName(it->first) + tag;
+    TH1D *h1unc= cloneHisto(h1binning, h1newName,h1newName);
+    h1unc->Reset();
+    h1uncV.push_back(h1unc);
+    if (fname.Length()==0) continue;
+
+    finfomap_t::const_iterator itHName= h1names.find(it->first);
+    if (itHName==h1names.end()) {
+      std::cout << "could not find the histo name for "
+		<< variedVarName(it->first) << "\n";
+      return 0;
+    }
+    if (itHName->second.Length()==0) continue;
+
+    fvarweightmap_t::const_iterator itRelW= relUncW.find(it->first);
+    if (itRelW==relUncW.end()) {
+      std::cout << "coult not find the relUncW for "
+		<< variedVarName(it->first) << "\n";
+      return 0;
+    }
+
+    TH1D *h1= loadHisto(fname,itHName->second,itHName->second + "_tmp",h1dummy);
+    if (!h1) return 0;
+    std::cout << "got " << h1newName << "\n";
+    //printHisto(h1);
+    //std::cout << "\n\n" << std::endl;
+    if (itRelW->second!=0.) {
+      if (!copyContents(h1unc, h1)) return 0;
+    }
+    if ((h1centralVal!=NULL) && (itRelW->second!=0.)) {
+      std::cout << "scaling uncertainty for " << variedVarName(it->first) << "\n";
+      h1unc->Multiply(h1centralVal);
+      h1unc->Scale(itRelW->second);
+    }
+  }
+  return 1;
+}
+
+// -------------------------------------------------------
 // -------------------------------------------------------
 
 int loadCovData(TString lepTag,
@@ -103,6 +159,51 @@ int addLumiCov(TMatrixD &eeCov, TMatrixD &mmCov, TMatrixD &emCov,
 }
 
 // -------------------------------------------------------
+
+int compareUncAndScale(const std::vector<TString> &labelV,
+		       const std::vector<TH1D*> &h1V_target,
+		       std::vector<TMatrixD> &covV,
+		       int plotCmp,
+		       int change_covV,
+		       TString tag)
+{
+  for (unsigned int i=0; i<labelV.size(); i++) {
+    TString h2Name=h1V_target[i]->GetName() + TString("_cov");
+    TH2D *h2cov= convert2histo(covV[i],h1V_target[i],h2Name,h2Name,NULL);
+    TH1D *h1uncFromCov= uncFromCov(h2cov,NULL,0);
+    if (plotCmp) {
+      TString canvName="cCmpUnc_" + labelV[i] + "_" + tag;
+      TH1D *h1= cloneHisto(h1V_target[i],
+			   h1V_target[i]->GetName() + TString("_plotClone")+tag,
+			   h1V_target[i]->GetTitle());
+      hsRed.SetStyle(h1);
+      h1->GetYaxis()->SetTitleOffset(1.5);
+      logAxis(h1,1+8,"M [GeV]","","");
+      TCanvas *cx=plotHisto(h1,canvName,1,1,"LP",labelV[i] + " target");
+      setLeftMargin(cx,0.15);
+      moveLegend(cx,0.05,0.);
+      plotHistoSame(h1uncFromCov,canvName,"LP",labelV[i] + " cov");
+    }
+    if (plotCmp==2) {
+      TString canvName2= "cCov_" + labelV[i] + "_" + tag;
+      PlotCovCorrOpt_t opt;
+      plotCovCorr(covV[i],h1V_target[1],"h2cov_"+labelV[i]+"_"+tag,
+		  canvName2,opt);
+    }
+
+    if (change_covV) {
+      if (h1V_target[i]->Integral()!=double(0)) {
+	std::cout << "adjusting covV of " << labelV[i] << "\n";
+	if (!changeCov(covV[i],h1V_target[i])) return 0;
+      }
+      else {
+	std::cout << "no adjustment of covV for " << labelV[i] << "\n";
+      }
+    }
+  }
+  return 1;
+}
+
 // -------------------------------------------------------
 
 BLUEResult_t* combineData(const TMatrixD *covEE_inp,
