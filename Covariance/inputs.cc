@@ -793,6 +793,21 @@ TH2D* errorAsCentral(const TH2D* h2, int relative) {
 
 // ---------------------------------------------------------
 
+TH1D *addUncertainty(const TString newName, const TH1D *h1_dest,
+		     const TH1D *h1err, const TH1D *h1central)
+{
+  TH1D *h1= cloneHisto(h1_dest,newName,newName);
+  for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+    double err1= h1_dest->GetBinError(ibin);
+    double err2= h1err->GetBinContent(ibin);
+    if (h1central) err2*= h1central->GetBinContent(ibin);
+    h1->SetBinError(ibin, sqrt(err1*err1 + err2*err2));
+  }
+  return h1;
+}
+
+// ---------------------------------------------------------
+
 int setError(TH1D *h1dest, const TH1D* h1src)
 {
   if (!compareRanges(h1dest,h1src,0)) {
@@ -1123,6 +1138,26 @@ TH1D* perMassBinWidth(const TH1D* h1_orig, int prnBinW)
     h1->SetBinError  ( ibin, h1_orig->GetBinError(ibin)/w   );
   }
   return h1;
+}
+
+// ---------------------------------------------------------
+
+TH2D* perMassBinWidth(const TH2D* h2_orig, int prnBinW)
+{
+  TH2D* h2=(TH2D*)h2_orig->Clone(h2_orig->GetName() + TString("_perMassBinW"));
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    double dX= h2->GetXaxis()->GetBinWidth(ibin);
+    for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) {
+      double dY= h2->GetYaxis()->GetBinWidth(jbin);
+      if (prnBinW) {
+	std::cout << "ibin=" << ibin << ", jbin=" << jbin
+		  << ", dX=" << dX << ", dY=" << dY << "\n";
+      }
+      h2->SetBinContent( ibin,jbin, h2_orig->GetBinContent(ibin,jbin)/(dX*dY) );
+      h2->SetBinError  ( ibin,jbin, h2_orig->GetBinError(ibin,jbin)/(dX*dY)   );
+    }
+  }
+  return h2;
 }
 
 // ---------------------------------------------------------
@@ -2060,6 +2095,15 @@ void writeTimeTag(TFile *fout)
   if (fout) fout->cd();
   TObjString timeTag(DayAndTimeTag(0));
   timeTag.Write(timeTag.String());
+}
+
+// ---------------------------------------------------------
+
+void writeMsg(TString msg, TFile *fout)
+{
+  if (fout) fout->cd();
+  TObjString str(msg);
+  str.Write(str.String());
 }
 
 // --------------------------------------------------------------

@@ -179,6 +179,8 @@ int deriveRelSyst(const TH1D *h1ref, const std::vector<TH1D*> &h1V,
 
 TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 TH2D* errorAsCentral(const TH2D* h2, int relative=0);
+TH1D* addUncertainty(const TString newName, const TH1D *h1_dest,
+		     const TH1D *h1err, const TH1D *h1central=NULL);
 int setError(TH1D *h1dest, const TH1D *h1src);
 int setError(TH2D *h2dest, const TH2D *h2src);
 int allGE(const TH1D *h1a, const TH1D *h1b); // 1 if h1a[i]>=h1b[i] for all i.
@@ -207,6 +209,7 @@ void setToOne(TH2D* h2);
 // -----------------------------------------------------------
 
 TH1D* perMassBinWidth(const TH1D* h1, int prnBinW=0);
+TH2D* perMassBinWidth(const TH2D* h2, int prnBinW=0);
 TH1D* timesMassBinWidth(const TH1D* h1, int prnBinW=0);
 TH1D* flattenHisto(const TH2D *h2, TString setName);
 
@@ -648,6 +651,7 @@ void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
 // if listOfCanvNames="ALL", saves all canvases
 int  SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout=NULL);
 void writeTimeTag(TFile *fout=NULL);
+void writeMsg(TString msg, TFile *fout=NULL);
 int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> *h1V=NULL,
 			std::vector<TH2D*> *h2V=NULL);
 
