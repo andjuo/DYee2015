@@ -150,7 +150,8 @@ public:
   int estimate(const TMatrixD &set_meas, const TMatrixD &set_cov);
   int estimate(const TMatrixD &set_measA, const TMatrixD &set_covA,
 	       const TMatrixD &set_measB, const TMatrixD &set_covB,
-	       const TMatrixD &set_corrAB);
+	       const TMatrixD &set_corrAB,
+	       double scale=1.);
 
 
   // arrange according to Valassi paper 2003

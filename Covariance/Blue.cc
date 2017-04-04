@@ -508,6 +508,7 @@ int BLUEResult_t::estimate()
   TMatrixD chi2_asM= meas_diff_est_tr * covInpInv * meas_diff_est;
   print("chi2",chi2_asM);
   chi2= chi2_asM(0,0);
+  std::cout << Form("det was = %g",det) << ", chi2=" << chi2 << "\n";
   return 1;
 }
 
@@ -545,13 +546,34 @@ int BLUEResult_t::estimate(const TMatrixD &set_meas, const TMatrixD &set_cov)
 
 // -------------------------------------------------------------------
 
-int BLUEResult_t::estimate(const TMatrixD &set_measA, const TMatrixD &set_covA,
-			   const TMatrixD &set_measB, const TMatrixD &set_covB,
-			   const TMatrixD &set_covAB)
+int BLUEResult_t::estimate(const TMatrixD &set_measA_inp,
+			   const TMatrixD &set_covA_inp,
+			   const TMatrixD &set_measB_inp,
+			   const TMatrixD &set_covB_inp,
+			   const TMatrixD &set_covAB_inp,
+			   double scale)
 {
-  if (!compareDimRC(set_measA,set_measB)) {
+  if (!compareDimRC(set_measA_inp,set_measB_inp)) {
     std::cout << "estimate A+B is not ready for different number of measurements\n";
     return 0;
+  }
+
+  if (scale==0.0) {
+    std::cout << "error in estimate: scale=0.\n";
+    return 0;
+  }
+
+  TMatrixD set_measA(set_measA_inp);
+  TMatrixD set_measB(set_measB_inp);
+  TMatrixD set_covA(set_covA_inp);
+  TMatrixD set_covB(set_covB_inp);
+  TMatrixD set_covAB(set_covAB_inp);
+  if (scale!=1.0) {
+    set_measA *= scale;
+    set_measB *= scale;
+    set_covA *= (scale*scale);
+    set_covB *= (scale*scale);
+    set_covAB *= (scale*scale);
   }
 
   if (meas) delete meas;
@@ -609,7 +631,14 @@ int BLUEResult_t::estimate(const TMatrixD &set_measA, const TMatrixD &set_covA,
     }
   }
   print("covInp",covInp);
-  return estimate();
+  int res= estimate();
+  if (!res) return res;
+
+  if (scale!=1.) {
+    (*est) *= (1./scale);
+    (*covOut) *= (1./(scale*scale));
+  }
+  return 1;
 }
 
 // -------------------------------------------------------------------
