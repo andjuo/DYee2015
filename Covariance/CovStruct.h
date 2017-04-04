@@ -13,10 +13,12 @@ struct CovStruct_t {
   typedef enum { _varCov_none=0, _varCov_statYield, _varCov_statNonYield,
 		 _varCov_systAcc, _varCov_systNonAcc } TCovPart_t;
 
+  int plotStatYieldOnly;
   TMatrixD covStat_Yield, covStat_nonYield;
   TMatrixD covSyst_Acc, covSyst_nonAcc;
 public:
   CovStruct_t(const TMatrixD &M) :
+    plotStatYieldOnly(0),
     covStat_Yield(TMatrixD::kZero,M), covStat_nonYield(TMatrixD::kZero,M),
     covSyst_Acc(TMatrixD::kZero,M), covSyst_nonAcc(TMatrixD::kZero,M) {}
 
@@ -24,6 +26,7 @@ public:
 	      const TMatrixD &set_covStatNonYield,
 	      const TMatrixD &set_covSystAcc,
 	      const TMatrixD &set_covSystNonAcc) :
+    plotStatYieldOnly(0),
     covStat_Yield(set_covStatYield),
     covStat_nonYield(set_covStatNonYield),
     covSyst_Acc(set_covSystAcc),
@@ -31,6 +34,7 @@ public:
   {}
 
   CovStruct_t(const CovStruct_t &s) :
+    plotStatYieldOnly(s.plotStatYieldOnly),
     covStat_Yield(s.covStat_Yield), covStat_nonYield(s.covStat_nonYield),
     covSyst_Acc(s.covSyst_Acc), covSyst_nonAcc(s.covSyst_nonAcc)
   {}
@@ -149,9 +153,11 @@ public:
 
   void Plot(TString tag, TH1D *h1binning) {
     plotCovCorr(covStat_Yield,h1binning,"h2CovStatYield_"+tag,"c2CovStatYield_"+tag);
-    plotCovCorr(covStat_nonYield,h1binning,"h2CovStatNonYield_"+tag,"c2CovStatNonYield_"+tag);
-    plotCovCorr(covSyst_Acc,h1binning,"h2CovSystAcc_"+tag,"c2CovSystAcc_"+tag);
-    plotCovCorr(covSyst_nonAcc,h1binning,"h2CovSystNonAcc_"+tag,"c2CovSystNonAcc_"+tag);
+    if (!plotStatYieldOnly) {
+      plotCovCorr(covStat_nonYield,h1binning,"h2CovStatNonYield_"+tag,"c2CovStatNonYield_"+tag);
+      plotCovCorr(covSyst_Acc,h1binning,"h2CovSystAcc_"+tag,"c2CovSystAcc_"+tag);
+      plotCovCorr(covSyst_nonAcc,h1binning,"h2CovSystNonAcc_"+tag,"c2CovSystNonAcc_"+tag);
+    }
   }
 
   void PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal=NULL,
@@ -179,9 +185,11 @@ public:
     TString cName="cCovStructUnc_"+tag;
     logAxis(h1statYield,1+8);
     plotHisto(h1statYield,cName,1,1,"LP","stat Yield");
-    plotHistoSame(h1statNonYield,cName,"LP","stat nonYield");
-    plotHistoSame(h1systAcc,cName,"LP","syst Acc");
-    plotHistoSame(h1systNonAcc,cName,"LP","syst nonAcc");
+    if (!plotStatYieldOnly) {
+      plotHistoSame(h1statNonYield,cName,"LP","stat nonYield");
+      plotHistoSame(h1systAcc,cName,"LP","syst Acc");
+      plotHistoSame(h1systNonAcc,cName,"LP","syst nonAcc");
+    }
     plotHistoSame(h1tot,cName,"LP","total");
   }
 

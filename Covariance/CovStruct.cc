@@ -19,6 +19,8 @@ int detailedCovPlots(const BLUEResult_t *blue,
   if (hasValue("plotInputContributedCovs",showCanvs)) {
     PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
     for (int i=1; i<=4; i++) {
+      if ((eeCovS.plotStatYieldOnly ||
+	   mmCovS.plotStatYieldOnly) && (i>1)) break;
       TString tagName="ee_" + eeCovS.GetPartName(i);
       TMatrixD partM= eeCovS.GetPart(i);
       //plotCovCorr(partM,h1csEE_tmp,"h2_"+tagName,"c2_"+tagName,optCC);
@@ -79,6 +81,8 @@ int detailedCovPlots(const BLUEResult_t *blue,
   TMatrixD sumContributedCov(TMatrixD::kZero,eeCovS.getStatYield());
   CovStruct_t llCovS(eeCovS.getStatYield()); // creates and nullifies
   for (int iFlag=1; iFlag<=4; iFlag++) {
+    if ((eeCovS.plotStatYieldOnly ||
+	 mmCovS.plotStatYieldOnly) && (iFlag>1)) break;
     CovStruct_t::TCovPart_t part=CovStruct_t::TCovPart_t(iFlag);
     double accCorrFlag= (corrCase==1) ? 1. : 0.;
     TMatrixD measCov= constructMeasCov(eeCovS,mmCovS,part,accCorrFlag,blue);
