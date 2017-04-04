@@ -3,6 +3,17 @@
 // -------------------------------------------------------
 // -----------------------------------------------------------------------
 
+TString eeCSFName="cs_DYee_13TeV_El3.root";
+TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+TString theoryCSFName="theory13TeVmm.root";
+TString eeCSHisto1DName="h1PreFSRCS";
+TString mmCSHisto1DName="h1CS";
+TString theoryCSHisto1DName="h1cs_theory";
+int theoryCSHisto1D_perMBW=0;
+
+// -------------------------------------------------------
+// -----------------------------------------------------------------------
+
 int loadUncData(TString lepTag,
 		const finfomap_t &fNames,
 		const finfomap_t &h1names,
@@ -210,13 +221,13 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  const TMatrixD *covMM_inp,
 			  const TMatrixD *covEM_inp,
 			  TString outputFileTag, TString plotTag,
-			  int printCanvases, std::string showCanvases)
+			  int printCanvases, std::string showCanvases,
+			  double scale)
 {
-  double scale=1; //100000.; // 1000000
 
   if (showCanvases=="ALL") {
     showCanvases="";
-    //showCanvases+= " showCSCheck"; // plot 1D xs in channels vs theory
+    showCanvases+= " showCSCheck"; // plot 1D xs in channels vs theory
     //showCanvases+= " showCSCheckInRanges"; // plot 1D xs in channels vs theory
     //showCanvases+= " showCombiCS"; // plot 1D xs in the combined channel vs inp
     // plot 1D xs in the combined channel vs theory
@@ -240,14 +251,16 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   plotTagSafe.ReplaceAll(".","");
   plotTagSafe.ReplaceAll(";","_");
 
-  TString eeCSFName="cs_DYee_13TeV_El3.root";
-  TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+  //TString eeCSFName="cs_DYee_13TeV_El3.root";
+  //TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
 
-  TH1D* h1csEE=loadHisto(eeCSFName, "h1PreFSRCS", "h1csEE", 1,h1dummy);
-  TH1D* h1csMM=loadHisto(mmCSFName, "h1CS", "h1csMM", 1,h1dummy);
-  TH1D* h1csTheory=perMassBinWidth(loadHisto("theory13TeVmm.root",
-					     "h1cs_theory", "h1cs_theory",
-					     1,h1dummy));
+  TH1D* h1csEE=loadHisto(eeCSFName, eeCSHisto1DName, "h1csEE", 1,h1dummy);
+  TH1D* h1csMM=loadHisto(mmCSFName, mmCSHisto1DName, "h1csMM", 1,h1dummy);
+  TH1D* h1csTheory_onFile=loadHisto(theoryCSFName,
+				    theoryCSHisto1DName, "h1cs_theory",
+				    1,h1dummy);
+  TH1D *h1csTheory= (theoryCSHisto1D_perMBW) ?
+    h1csTheory_onFile : perMassBinWidth(h1csTheory_onFile);
   TH1D *h1csTheoryRed=(TH1D*)h1csTheory->Clone("h1csTheoryRed");
 
   TString massStr= niceMassAxisLabel(2,"");
@@ -348,14 +361,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   }
 
   BLUEResult_t *blue= new BLUEResult_t();
-  if (scale!=1.) {
-    measEE *= scale;
-    covEE *= scale*scale;
-    measMM *= scale;
-    covMM *= scale*scale;
-    covEM *= scale*scale;
-  }
-  if (!blue->estimate(measEE,covEE,measMM,covMM,covEM)) {
+  if (!blue->estimate(measEE,covEE,measMM,covMM,covEM,scale)) {
     std::cout << "combineData failed\n";
     return NULL;
   }

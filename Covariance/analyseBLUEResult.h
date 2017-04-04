@@ -5,6 +5,14 @@
 #include "crossSection.h"
 #include "Blue.h"
 
+extern TString eeCSFName;
+extern TString mmCSFName;
+extern TString theoryCSFName;
+extern TString eeCSHisto1DName;
+extern TString mmCSHisto1DName;
+extern TString theoryCSHisto1DName;
+extern int theoryCSHisto1D_perMBW; // whether theory is per mass bin width
+
 // -------------------------------------------------------
 // -------------------------------------------------------
 
@@ -37,7 +45,8 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  const TMatrixD *covMM_inp,
 			  const TMatrixD *covEM_inp,
 			  TString outputFileTag, TString plotTag,
-			  int printCanvases, std::string showCanvases="ALL");
+			  int printCanvases, std::string showCanvases="ALL",
+			  double internal_scale=1.);
 
 // -------------------------------------------------------
 // -------------------------------------------------------
