@@ -3,21 +3,23 @@
 // -------------------------------------------------------
 // -------------------------------------------------------
 
-int detailedCovPlots(const BLUEResult_t *blue,
-		     int corrCase,
-		     const TH1D *h1csEE,
-		     const TH1D *h1csMM,
-		     const CovStruct_t &eeCovS,
-		     const CovStruct_t &mmCovS,
-		     std::string showCanvs)
+CovStruct_t* detailedCovPlots(const BLUEResult_t *blue,
+			      int corrCase,
+			      const TH1D *h1csEE,
+			      const TH1D *h1csMM,
+			      const CovStruct_t &eeCovS,
+			      const CovStruct_t &mmCovS,
+			      std::string showCanvs,
+			      PlotCovCorrOpt_t *optCC_user)
 {
   if (!blue || !h1csEE || !h1csMM) {
     std::cout << "detailedCovPlots: null ptr\n";
     return 0;
   }
+  PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
+  if (optCC_user) optCC.assign(*optCC_user);
 
   if (hasValue("plotInputContributedCovs",showCanvs)) {
-    PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
     for (int i=1; i<=4; i++) {
       if ((eeCovS.plotStatYieldOnly ||
 	   mmCovS.plotStatYieldOnly) && (i>1)) break;
@@ -70,7 +72,7 @@ int detailedCovPlots(const BLUEResult_t *blue,
     TH2D* h2cov_fromYield=NULL;
     plotCovCorr(covFin_yield,h1csLL_tmp,
 		"h2covFin_fromYield_chk","cCovFin_fromYield_chk",
-		PlotCovCorrOpt_t(),&h2cov_fromYield);
+		optCC,&h2cov_fromYield);
     TH1D *h1_dCS_fromYield= uncFromCov(covFin_yield,
 				       "h1_dCS_fromYield_chk",
 				       h1deltacsLL_tmp,NULL,0);
@@ -78,6 +80,7 @@ int detailedCovPlots(const BLUEResult_t *blue,
     printHisto(h1_dCS_fromYield);
   }
 
+  /*
   TMatrixD sumContributedCov(TMatrixD::kZero,eeCovS.getStatYield());
   CovStruct_t llCovS(eeCovS.getStatYield()); // creates and nullifies
   for (int iFlag=1; iFlag<=4; iFlag++) {
@@ -103,6 +106,35 @@ int detailedCovPlots(const BLUEResult_t *blue,
       if (!h2cov_contrib || !h1_dCS_contrib) return 0;
       hsVec[iFlag-1].SetStyle(h1_dCS_contrib);
       plotHistoAuto(h1_dCS_contrib,"canvContrUnc",1,1,"LPE",label);
+    }
+  }
+  */
+
+  //TMatrixD sumContributedCov(TMatrixD::kZero,eeCovS.getStatYield());
+  int res=1;
+  CovStruct_t llCovS= constructCombCov(eeCovS,mmCovS,blue,corrCase,res);
+  if (!res) {
+    std::cout << "failed to construct CombCov\n";
+    return NULL;
+  }
+  TMatrixD sumContributedCov= llCovS.Sum();
+  if (hasValue("plotFinalCovByType",showCanvs)) {
+    for (int iFlag=1; iFlag<=4; iFlag++) {
+      if (llCovS.plotStatYieldOnly && (iFlag>1)) break;
+      //CovStruct_t::TCovPart_t part=CovStruct_t::TCovPart_t(iFlag);
+      //double accCorrFlag= (corrCase==1) ? 1. : 0.;
+      TString label= llCovS.GetPartName(iFlag);
+      TMatrixD covFin_contrib= llCovS.GetPart(iFlag);
+      TH2D* h2cov_contrib=NULL;
+      plotCovCorr(covFin_contrib,h1csLL_tmp,
+		  "h2covFin_from"+label,"cCovFin_from_"+label,
+		  optCC,&h2cov_contrib);
+      TH1D *h1_dCS_contrib= uncFromCov(covFin_contrib,
+				       "h1_dCS_from_"+label,
+				       h1deltacsLL_tmp,NULL,0);
+      if (!h2cov_contrib || !h1_dCS_contrib) return 0;
+      hsVec[iFlag-1].SetStyle(h1_dCS_contrib);
+      plotHistoAuto(h1_dCS_contrib,"canvContrUnc",optCC.logScaleX,1,"LPE",label);
     }
   }
 
@@ -131,7 +163,7 @@ int detailedCovPlots(const BLUEResult_t *blue,
   //TMatrixD sumContrChk( sumContributedCov, TMatrixD::kMinus, *blue->getCov() );
   //sumContrChk.Print();
 
-  return 1;
+  return new CovStruct_t(llCovS);
 }
 
 
@@ -325,6 +357,38 @@ TMatrixD constructMeasCov(const CovStruct_t &eeCovS, const CovStruct_t &mmCovS,
   }
   return measCov;
 }
+
+// -------------------------------------------------------
+
+CovStruct_t constructCombCov(const CovStruct_t &eeCovS,
+			     const CovStruct_t &mmCovS,
+			     const BLUEResult_t *blue,
+			     int corrAccCase,
+			     int &flag)
+{
+  CovStruct_t llCovS(eeCovS.getStatYield()); // creates and nullifies
+  llCovS.plotStatYieldOnly=
+    (eeCovS.plotStatYieldOnly || mmCovS.plotStatYieldOnly) ? 1:0;
+  flag=0;
+  if (!blue) return llCovS;
+
+  for (int iFlag=1; iFlag<=4; iFlag++) {
+    CovStruct_t::TCovPart_t part=CovStruct_t::TCovPart_t(iFlag);
+    TMatrixD measCov= constructMeasCov(eeCovS,mmCovS,part,corrAccCase,blue);
+    TString label= eeCovS.GetPartName(iFlag);
+    if (0) {
+      PlotCovCorrOpt_t optCCNoLog;
+      optCCNoLog.setLogScale(0,0);
+      plotCovCorr(measCov,NULL,"h2covMeas"+label,"cCovMeas_"+label,
+		  optCCNoLog,NULL);
+    }
+    TMatrixD covFin_contrib= blue->contributedCov(measCov);
+    llCovS.SetPart(part,covFin_contrib);
+  }
+  flag=1;
+  return llCovS;
+}
+
 
 // -------------------------------------------------------
 
