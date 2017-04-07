@@ -40,6 +40,27 @@ const double _flatBins2D[_nFlatBins2D+1] = {
   120, 121, 122, 123, 124, 125, 126, 127, 128, 129,
   130, 131, 132 };
 
+const double _flatBins2D_rapBinW[_nFlatBins2D+1] = {
+  0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,
+  1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,
+  2.0,2.1,2.2,2.3,2.4, // 20-30 GeV
+  2.5,2.6,2.7,2.8,2.9,
+  3.0,3.1,3.2,3.3,3.4,3.5,3.6,3.7,3.8,3.9,
+  4.0,4.1,4.2,4.3,4.4,4.5,4.6,4.7,4.8, // 30-45GeV
+  4.9,
+  5.0,5.1,5.2,5.3,5.4,5.5,5.6,5.7,5.8,5.9,
+  6.0,6.1,6.2,6.3,6.4,6.5,6.6,6.7,6.8,6.9,
+  7.0,7.1,7.2, // 45-60GeV
+  7.3,7.4,7.5,7.6,7.7,7.8,7.9,
+  8.0,8.1,8.2,8.3,8.4,8.5,8.6,8.7,8.8,8.9,
+  9.0,9.1,9.2,9.3,9.4,9.5,9.6,  // 60-120GeV
+  9.7,9.8,9.9,
+  10.0,10.1,10.2,10.3,10.4,10.5,10.6,10.7,10.8,10.9,
+  11.0,11.1,11.2,11.3,11.4,11.5,11.6,11.7,11.8,11.9,
+  12.0, // 120-200GeV
+  12.2,12.4,12.6,12.8,13.0,13.2,13.4,13.6,13.8,14.0,14.2,14.4 // 200-1500GeV
+};
+
 // -------------------------------------------------------------
 
 typedef enum { _20to30=0, _30to45, _45to60, _60to120, _120to200, _200to1500,
@@ -458,6 +479,7 @@ TString formNumber(double val0, double err0, int verbatim=0)
 
 // -------------------------------------------------------------
 
+#ifndef Inputs_H
 inline
 void printHisto(const TH1D* h)
 {
@@ -467,6 +489,7 @@ void printHisto(const TH1D* h)
 	      << " +- " << h->GetBinError(ibin) << "\n";
   }
 }
+#endif
 
 // -------------------------------------------------------------
 
@@ -552,7 +575,8 @@ TH1D *loadASfile_asOneHisto2D(TString fname,
   int ibin;
   double x,y,val,err;
 
-  TH1D *h1=new TH1D(label,label, _nFlatBins2D, 0, _nFlatBins2D);
+  TH1D *h1=new TH1D(label,label+";#it{i}_{(m,y)};#sigma",
+		    _nFlatBins2D,0, _nFlatBins2D);
   h1->SetDirectory(0);
 
   ibin=0;
@@ -634,6 +658,33 @@ int loadASfile2D_as1DHistoVec(TString fname,
   fin.close();
 
   return 1;
+}
+
+// -----------------------------------------------------------------
+
+inline
+TH2D* perMassRapidityBinWidth(const TH2D *h2_inp, int prnW=0)
+{
+  if ((h2_inp->GetNbinsX()!=_nFlatBins2D) ||
+      (h2_inp->GetNbinsY()!=_nFlatBins2D)) {
+    std::cout << "perMassRapidityBinWidth: incorrect binning: expected "
+	      << _nFlatBins2D << ", got " << h2_inp->GetNbinsX() << "x"
+	      << h2_inp->GetNbinsY() << "\n";
+    return NULL;
+  }
+  TH2D *h2= (TH2D*)h2_inp->Clone(h2_inp->GetName() + TString("_perMYbin"));
+  h2->SetDirectory(0);
+  for (int ibin=1; ibin<=h2_inp->GetNbinsX(); ibin++) {
+    double dx= (ibin <= _nFlatBins2D-12) ? 0.1 : 0.2;
+    for (int jbin=1; jbin<=h2_inp->GetNbinsY(); jbin++) {
+      double dy= (jbin <= _nFlatBins2D-12) ? 0.1 : 0.2;
+      if (prnW) std::cout << Form("(%d,%d)",ibin,jbin)
+			  << " dx*dy=" << dx << "*" << dy << "\n";
+      h2->SetBinContent(ibin,jbin, h2_inp->GetBinContent(ibin,jbin)/(dx*dy));
+      h2->SetBinError  (ibin,jbin, h2_inp->GetBinError(ibin,jbin)/(dx*dy));
+    }
+  }
+  return h2;
 }
 
 // -----------------------------------------------------------------
