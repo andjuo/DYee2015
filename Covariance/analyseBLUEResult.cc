@@ -223,7 +223,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  TString outputFileTag, TString plotTag,
 			  int printCanvases, std::string showCanvases,
 			  double scale,
-			  PlotCovCorrOpt_t *ccOpt_user)
+			  const PlotCovCorrOpt_t *ccOpt_user)
 {
 
   if (showCanvases=="ALL") {
