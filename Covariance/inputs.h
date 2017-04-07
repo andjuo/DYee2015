@@ -79,10 +79,14 @@ public:
   PlotCovCorrOpt_t(int set_autoZRangeCorr=1, int set_gridLines=1,
 		   int set_logScale=1, double set_yTitleOffset=1.5,
 		   double set_leftMargin=0.15, double set_rightMargin=0.15);
+  PlotCovCorrOpt_t(const TString key, int value);
   PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o);
 
   void setLogScale(int logX=1, int logY=1)
   { logScaleX=logX; logScaleY=logY; }
+
+  void assign(const PlotCovCorrOpt_t &opt);
+  int setValue(TString key, int value, int verbose=1);
 };
 
 // -----------------------------------------------------------
@@ -150,9 +154,9 @@ inline void plotHisto(TH2* h2, TString cName, int logX=0, int logY=0,
 		      int gridLines=1)
 {  plotHisto((TH2D*)h2,cName,logX,logY,1.5,gridLines,0.); }
 
-inline void printHisto(TH1* h1)
+inline void printHistoTH1(TH1* h1)
 {  printHisto((TH1D*)h1); }
-inline void printHisto(TH2* h2)
+inline void printHistoTH2(TH2* h2)
 {  printHisto((TH2D*)h2); }
 
 
@@ -211,6 +215,7 @@ void setToOne(TH2D* h2);
 TH1D* perMassBinWidth(const TH1D* h1, int prnBinW=0);
 TH2D* perMassBinWidth(const TH2D* h2, int prnBinW=0);
 TH1D* timesMassBinWidth(const TH1D* h1, int prnBinW=0);
+TH2D* timesMassBinWidth(const TH2D* h2, int prnBinW=0);
 TH1D* flattenHisto(const TH2D *h2, TString setName);
 
 TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,

@@ -87,12 +87,59 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
 
 // -----------------------------------------------------------
 
+PlotCovCorrOpt_t:: PlotCovCorrOpt_t(const TString key, int value) :
+  autoZRangeCorr(1), gridLines(1),
+  logScaleX(1), logScaleY(1),
+  yTitleOffset(1.5),
+  leftMargin(0.15), rightMargin(0.15)
+{
+  setValue(key,value,0);
+}
+
+// -----------------------------------------------------------
+
 PlotCovCorrOpt_t::PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o) :
   autoZRangeCorr(o.autoZRangeCorr), gridLines(o.gridLines),
   logScaleX(o.logScaleX), logScaleY(o.logScaleY),
   yTitleOffset(o.yTitleOffset),
   leftMargin(o.leftMargin), rightMargin(o.rightMargin)
 {}
+
+// -----------------------------------------------------------
+
+void PlotCovCorrOpt_t::assign(const PlotCovCorrOpt_t &opt)
+{
+  autoZRangeCorr= opt.autoZRangeCorr;
+  gridLines= opt.gridLines;
+  logScaleX= opt.logScaleX;
+  logScaleY= opt.logScaleY;
+  yTitleOffset= opt.yTitleOffset;
+  leftMargin= opt.leftMargin;
+  rightMargin= opt.rightMargin;
+}
+
+// -----------------------------------------------------------
+
+int PlotCovCorrOpt_t::setValue(TString key, int value, int verbose)
+{
+  int res=1;
+  if (key==TString("logScale")) {
+    logScaleX= value;
+    logScaleY= value;
+    if (verbose) {
+      std::cout << "PlotCovCorrOpt_t::setValue got key=" << key
+		<< " changing value of logScaleX,logScaleY\n";
+    }
+  }
+  else {
+    res=0;
+    if (verbose) {
+      std::cout << "PlotCovCorrOpt_t::setValue got unrecognized key=" << key
+		<< ". No action taken\n";
+    }
+  }
+  return res;
+}
 
 // -----------------------------------------------------------
 // -----------------------------------------------------------
@@ -1172,6 +1219,24 @@ TH1D* timesMassBinWidth(const TH1D* h1_orig, int prnBinW)
     h1->SetBinError  ( ibin, h1_orig->GetBinError(ibin)*w   );
   }
   return h1;
+}
+
+// ---------------------------------------------------------
+
+TH2D* timesMassBinWidth(const TH2D* h2_orig, int prnBinW)
+{
+  TH2D* h2=(TH2D*)h2_orig->Clone(h2_orig->GetName() +TString("_timesMassBinW"));
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    double dx= h2->GetXaxis()->GetBinWidth(ibin);
+    for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) {
+      double dy= h2->GetYaxis()->GetBinWidth(jbin);
+      if (prnBinW) std::cout << "ibin=" << ibin << ", jbin=" << jbin
+			     << ", dx*dy=" << dx << "*" << dy << "\n";
+      h2->SetBinContent( ibin,jbin, h2_orig->GetBinContent(ibin,jbin)*dx*dy );
+      h2->SetBinError  ( ibin,jbin, h2_orig->GetBinError(ibin,jbin)*dx*dy   );
+    }
+  }
+  return h2;
 }
 
 // ---------------------------------------------------------
