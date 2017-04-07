@@ -46,7 +46,8 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  const TMatrixD *covEM_inp,
 			  TString outputFileTag, TString plotTag,
 			  int printCanvases, std::string showCanvases="ALL",
-			  double internal_scale=1.);
+			  double internal_scale=1.,
+			  PlotCovCorrOpt_t *ccOpt_user=NULL);
 
 // -------------------------------------------------------
 // -------------------------------------------------------

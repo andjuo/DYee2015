@@ -222,7 +222,8 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
 			  const TMatrixD *covEM_inp,
 			  TString outputFileTag, TString plotTag,
 			  int printCanvases, std::string showCanvases,
-			  double scale)
+			  double scale,
+			  PlotCovCorrOpt_t *ccOpt_user)
 {
 
   if (showCanvases=="ALL") {
@@ -308,6 +309,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
   //printHisto(h1csMM);
 
   PlotCovCorrOpt_t optCC(1,1,1,1.8,0.15,0.15);
+  if (ccOpt_user) optCC.assign(*ccOpt_user);
 
   if (hasValue("showCSCheck",showCanvases)) {
     TH1D *h1frame= cloneHisto(h1csEE,"h1frame_inpCS","frame");
@@ -316,7 +318,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     h1frame->SetTitle("input cross section");
     h1frame->GetYaxis()->SetTitleOffset(1.5);
     h1frame->GetYaxis()->SetRangeUser(1e-8,1e3);
-    TCanvas *cx=plotHisto(h1frame,"cCScheck",1,1, "");
+    TCanvas *cx=plotHisto(h1frame,"cCScheck",optCC.logScaleX,1, "");
     plotHistoSame(h1csEE,"cCScheck","LPE1", DYeeStr);
     setLeftMargin(cx,0.15); moveLegend(cx,0.05,0.);
     plotHistoSame(h1csMM,"cCScheck", "LPE1", DYmmStr);
@@ -384,7 +386,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       h1frame->SetTitle("cross section");
       h1frame->GetYaxis()->SetTitleOffset(1.5);
       h1frame->GetYaxis()->SetRangeUser(1e-8,1e3);
-      TCanvas *cx=plotHisto(h1frame,"cCombiCS",1,1, "");
+      TCanvas *cx=plotHisto(h1frame,"cCombiCS",optCC.logScaleX,1, "");
       plotHistoSame(h1csEE,"cCombiCS","LPE1", DYeeStr);
       setLeftMargin(cx,0.15); moveLegend(cx,0.05,0.);
       plotHistoSame(h1csMM,"cCombiCS", "LPE1", DYmmStr);
@@ -418,7 +420,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
     if (hasValue("showCombiCSCheck",showCanvases)) {
       h1csTheoryRed->GetYaxis()->SetRangeUser(1e-7,1e3);
       h1csTheoryRed->GetYaxis()->SetTitleOffset(1.4);
-      plotHisto(h1csTheoryRed,"cCombiCS2Theory",1,1,"LPE","theory");
+      plotHisto(h1csTheoryRed,"cCombiCS2Theory",optCC.logScaleX,1,"LPE","theory");
       plotHistoSame(h1comb,"cCombiCS2Theory","LPE1","combined " + plotTag);
 
       TH1D *h1ratio=(TH1D*)h1comb->Clone("h1ratio");
@@ -426,7 +428,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       h1ratio->GetXaxis()->SetTitle(massStr);
       h1ratio->GetYaxis()->SetRangeUser(-0.5,1.5);
       h1ratio->GetYaxis()->SetTitle("combined/theory");
-      plotRatio(h1ratio,"cCombiCS2TheoryRatio",1,0,"LPE1");
+      plotRatio(h1ratio,"cCombiCS2TheoryRatio",optCC.logScaleX,0,"LPE1");
     }
 
     // compare the uncertainties
@@ -437,7 +439,7 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       TH1D *h1MMErr= errorAsCentral(h1csMM,0);
       TH1D *h1LLErr= errorAsCentral(h1comb,0);
 
-      TCanvas *cErr=plotHisto(h1EEErr,"cErr",1,1,"LPE1",DYeeStr);
+      TCanvas *cErr=plotHisto(h1EEErr,"cErr",optCC.logScaleX,1,"LPE1",DYeeStr);
       setLeftMargin(cErr,0.15); moveLegend(cErr,0.05,0.);
       plotHistoSame(h1MMErr,"cErr","LPE1",DYmmStr);
       plotHistoSame(h1LLErr,"cErr","LPE1",DYllStr);
