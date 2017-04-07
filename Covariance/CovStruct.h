@@ -205,7 +205,7 @@ public:
 
   void PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal=NULL,
 	       double yrangeMin=0, double yrangeMax=0,
-	       int logX=1, int logY=1) {
+	       int logX=1, int logY=1) const {
     TH1D *h1statYield= uncFromCov(covStat_Yield,"h1statYield_"+tag,
 				  h1binning,h1centralVal,1);
     TH1D *h1statNonYield= uncFromCov(covStat_nonYield,"h1statNonYield_"+tag,
@@ -237,6 +237,12 @@ public:
     plotHistoSame(h1tot,cName,"LP","total");
   }
 
+  void PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal,
+	       double yrangeMin, double yrangeMax,
+	       const PlotCovCorrOpt_t &opt) const {
+    PlotUnc(tag,h1binning,h1centralVal,yrangeMin,yrangeMax,
+	    opt.logScaleX,opt.logScaleY);
+  }
 };
 
 // -------------------------------------------------------
