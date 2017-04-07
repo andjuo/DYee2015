@@ -36,7 +36,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   const int changeNames=1;
 
   std::string showCanvs;
-  //showCanvs+=" plotChannelInputCovOnFileAdj";
+  showCanvs+=" plotChannelInputCovOnFileAdj";
  // whether relative uncertainty in Acc in the channels is similar
   //showCanvs+=" plotChannelRelSystAccUnc";
   // compare randomized vs provided uncertainties
@@ -124,6 +124,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 	      << it->second << "\n";
   }
 
+  PlotCovCorrOpt_t ccOpt;
+
   std::vector<TH2D*> eeCovH2D, mmCovH2D;
   std::vector<TMatrixD> eeCovV, mmCovV;
   TMatrixD eeCovStat(43,43);
@@ -167,10 +169,10 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   if (hasValue("plotChannelInputCovOnFileAdj",showCanvs)) {
     double ymin=0, ymax=0;
     ymin=1e-9; ymax=20.;
-    mmCovS.Plot("mmCov_onFile_adj",h1csMM_tmp);
-    mmCovS.PlotUnc("mmCovUnc_onFile_adj",h1csMM_tmp,NULL,ymin,ymax);
-    eeCovS.Plot("eeCov_onFile_adj",h1csEE_tmp);
-    eeCovS.PlotUnc("eeCovUnc_onFile_adj",h1csEE_tmp,NULL,ymin,ymax);
+    mmCovS.Plot("mmCov_onFile_adj",h1csMM_tmp,ccOpt);
+    mmCovS.PlotUnc("mmCovUnc_onFile_adj",h1csMM_tmp,NULL,ymin,ymax,ccOpt);
+    eeCovS.Plot("eeCov_onFile_adj",h1csEE_tmp,ccOpt);
+    eeCovS.PlotUnc("eeCovUnc_onFile_adj",h1csEE_tmp,NULL,ymin,ymax,ccOpt);
     //return;
   }
 
@@ -244,9 +246,11 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 
 
   std::cout << "showCombinationCanvases=" << showCombinationCanvases << "\n";
+
+  double internalScale=1.;
   BLUEResult_t *blue=
     combineData(&eeCovTot,&mmCovTot,&emCovTot,fileTag,plotTag,printCanvases,
-		showCombinationCanvases);
+		showCombinationCanvases,internalScale,&ccOpt);
   if (!blue) { std::cout << "failed to get BLUE result\n"; return; }
 
   if (includeLumiUnc) {
@@ -254,7 +258,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     TH1D *h1csLL_test= convert2histo1D(*blue->getEst(),totFinalCov,
 				       "h1csLL_test","h1csLL test",NULL);
     if (!addLumiCov(totFinalCov,-lumiUnc,h1csLL_test)) return;
-    plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi");
+    plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi",ccOpt);
   }
 
   // make analysing plots
