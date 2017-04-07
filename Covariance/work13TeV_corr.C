@@ -36,7 +36,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   const int changeNames=1;
 
   std::string showCanvs;
-  //showCanvs+=" plotChannelInputCov";
+  //showCanvs+=" plotChannelInputCovOnFileAdj";
  // whether relative uncertainty in Acc in the channels is similar
   //showCanvs+=" plotChannelRelSystAccUnc";
   // compare randomized vs provided uncertainties
@@ -46,7 +46,13 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   showCanvs+= " plotFinalCovByType"; // 4 canvases in the combined channel
 
   std::string showCombinationCanvases;
-  //showCombinationCanvases="ALL";
+  if (0) {
+    showCombinationCanvases="ALL";
+  }
+  else {
+    showCombinationCanvases+= " showCombiCSCheck";
+    showCombinationCanvases+= " showCombiCSUnc";
+  }
 
   std::vector<int> eeCovIdx, mmCovIdx;
   std::vector<TString> eeOldFName, eeNewFName; // for file name changing
@@ -158,13 +164,13 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   if (!h1csEE_tmp || !h1csMM_tmp) return;
 
   // plot input covariance in ee and mm channels
-  if (hasValue("plotChannelInputCov",showCanvs)) {
+  if (hasValue("plotChannelInputCovOnFileAdj",showCanvs)) {
     double ymin=0, ymax=0;
     ymin=1e-9; ymax=20.;
-    mmCovS.Plot("mmCov",h1csMM_tmp);
-    mmCovS.PlotUnc("mmCovUnc_",h1csMM_tmp,NULL,ymin,ymax);
-    eeCovS.Plot("eeCov",h1csEE_tmp);
-    eeCovS.PlotUnc("eeCovUnc_",h1csEE_tmp,NULL,ymin,ymax);
+    mmCovS.Plot("mmCov_onFile_adj",h1csMM_tmp);
+    mmCovS.PlotUnc("mmCovUnc_onFile_adj",h1csMM_tmp,NULL,ymin,ymax);
+    eeCovS.Plot("eeCov_onFile_adj",h1csEE_tmp);
+    eeCovS.PlotUnc("eeCovUnc_onFile_adj",h1csEE_tmp,NULL,ymin,ymax);
     //return;
   }
 
@@ -237,6 +243,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   if (saveTag.Length()) fileTag.Append(saveTag);
 
 
+  std::cout << "showCombinationCanvases=" << showCombinationCanvases << "\n";
   BLUEResult_t *blue=
     combineData(&eeCovTot,&mmCovTot,&emCovTot,fileTag,plotTag,printCanvases,
 		showCombinationCanvases);
