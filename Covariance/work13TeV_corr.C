@@ -10,40 +10,50 @@
 int adjustMMUnc(const finfomap_t &mmCovFNames, // needed for first value
 		std::vector<TMatrixD> &mmCovV,
 		CovStruct_t &covM, int showChangedCov,
-		int plotCmp);
+		int plotCmp, int noUncAdjustment=0);
 
 int adjustEEUnc(const finfomap_t &eeCovFNames, // needed for first value
 		std::vector<TMatrixD> &eeCovV,
 		CovStruct_t &eeCovM, int showChangedCov,
-		int plotCmp);
+		int plotCmp, int noUncAdjustment=0);
 
 // -------------------------------------------------------
 
 const int useUncorrYieldUnc=0;
-TString eeCSFName="cs_DYee_13TeV_El3.root";
-TString eeCSH1Name="h1PreFSRCS";
-TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
-TString mmCSH1Name="h1CS";
+//TString eeCSFName="cs_DYee_13TeV_El3.root";
+//TString eeCSH1Name="h1PreFSRCS";
+//TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+//TString mmCSH1Name="h1CS";
 
 // -------------------------------------------------------
 
 void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 		    int plotChangedCov=0,
 		    int excludeSyst=0, // 1 - all, 2 - Acc only
-		    TString saveTag="")
+		    TString saveTag="",
+		    int noUncAdjustment=0)
 {
   closeCanvases(5);
   const int changeNames=1;
+
+  eeCSFName="cs_DYee_13TeV_El3.root";
+  eeCSHisto1DName="h1PreFSRCS";
+  mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+  mmCSHisto1DName="h1CS";
 
   std::string showCanvs;
   showCanvs+=" plotChannelInputCovOnFileAdj";
  // whether relative uncertainty in Acc in the channels is similar
   //showCanvs+=" plotChannelRelSystAccUnc";
   // compare randomized vs provided uncertainties
-  //showCanvs+=" plotAdjUnc";
+  showCanvs+=" plotAdjUnc";
   //showCanvs+=" plotAdjCov";
   //showCanvs+=" plotInputContributedCovs"; // 4 canvases in each channel
   showCanvs+= " plotFinalCovByType"; // 4 canvases in the combined channel
+
+  std::cout << "eeCSFName=" << eeCSFName << ", eeCSHisto1DName=" << eeCSHisto1DName << "\n";
+  std::cout << "mmCSFName=" << mmCSFName << ", mmCSHisto1DName=" << mmCSHisto1DName << "\n";
+
 
   std::string showCombinationCanvases;
   if (0) {
@@ -149,8 +159,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   int plotCmpUnc= (hasValue("plotAdjUnc",showCanvs)) ? 1 : 0;
   if (hasValue("plotAdjCov",showCanvs)) plotCmpUnc=2;
 
-  adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc);
-  adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc);
+  if (!adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc,noUncAdjustment)) return;
+  if (!adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc,noUncAdjustment)) return;
 
   if (excludeSyst) {
     if (excludeSyst==1) {
@@ -161,8 +171,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     eeCovS.editSystAcc().Zero();
   }
 
-  TH1D* h1csEE_tmp=loadHisto(eeCSFName, eeCSH1Name, "h1csEE_tmp", 1,h1dummy);
-  TH1D* h1csMM_tmp=loadHisto(mmCSFName, mmCSH1Name, "h1csMM_tmp", 1,h1dummy);
+  TH1D* h1csEE_tmp=loadHisto(eeCSFName,eeCSHisto1DName,"h1csEE_tmp", 1,h1dummy);
+  TH1D* h1csMM_tmp=loadHisto(mmCSFName,mmCSHisto1DName,"h1csMM_tmp", 1,h1dummy);
   if (!h1csEE_tmp || !h1csMM_tmp) return;
 
   // plot input covariance in ee and mm channels
@@ -264,7 +274,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   // make analysing plots
   if (!detailedCovPlots(blue,corrCase,
 			h1csEE_tmp,h1csMM_tmp,
-			eeCovS,mmCovS,showCanvs)) return;
+			eeCovS,mmCovS,showCanvs)) return; //,&ccOpt)) return;
 
   if (printCanvases || (saveTag.Length()>0)) {
     TString outFName="dyll-combi-" + fileTag + ".root";
@@ -284,14 +294,14 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 int adjustMMUnc(const finfomap_t &mmCovFNames,
 		std::vector<TMatrixD> &mmCovV,
 		CovStruct_t &mmCovS, int plotChangedCov,
-		int plotCmp)
+		int plotCmp, int noUncAdjustment)
 {
   finfomap_t mmUncFiles, mmUncStat, mmUncSyst;
   fvarweightmap_t relUncW;
 
-  TH1D* h1csEE_loc=loadHisto(eeCSFName, eeCSH1Name, "h1csEE_loc", 1,h1dummy);
-  TH1D* h1csMM_loc=loadHisto(mmCSFName, mmCSH1Name, "h1csMM_loc", 1,h1dummy);
-  if (!h1csEE_loc || !h1csMM_loc) return 0;
+  //TH1D* h1csEE_loc=loadHisto(eeCSFName,eeCSHisto1DName,"h1csEE_loc", 1,h1dummy);
+  TH1D* h1csMM_loc=loadHisto(mmCSFName,mmCSHisto1DName,"h1csMM_loc", 1,h1dummy);
+  if (!h1csMM_loc) return 0;
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYmm_ROOTFile_Input-20170207.root";
@@ -335,7 +345,8 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
   relUncW   [_varAcc]= 1;
 
   const TH1D *h1central= (1) ? h1csMM : NULL;
-  int change_covV=1+(plotChangedCov!=0) ? 1:0;
+  int change_covV=(noUncAdjustment) ? 0:1;
+  if(change_covV && plotChangedCov) change_covV++;
   int res=adjustUnc( "mm",
 		     mmCovFNames, mmCovV,
 		     mmUncFiles,mmUncStat,mmUncSyst,relUncW,
@@ -349,6 +360,25 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
     return 0;
   }
 
+  // study DetRes
+  if (0) {
+    int idx= findVaried(mmCovFNames,_varDetRes);
+    if (idx==-1) {
+      std::cout << "failed to find detRes (needed for the electron channel)\n";
+      return 0;
+    }
+    std::cout << "idx(_varDetRes)=" << idx << "\n";
+    TH1D *h1KL= loadHisto(mmUncFiles[_varDetRes],mmUncStat[_varDetRes],
+			      "h1KL",h1dummy);
+    h1KL->Multiply(h1csMM_loc);
+    TH1D* h1uncFromCovDetRes= uncFromCov(mmCovV[idx],
+					 "h1uncFromCovDetRes",
+					 h1KL);
+    printRatio(h1KL,h1uncFromCovDetRes);
+    return 0;
+  }
+
+
   return 1;
 }
 // -----------------------------------------------------------------------
@@ -356,14 +386,14 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 int adjustEEUnc(const finfomap_t &eeCovFNames,
 		std::vector<TMatrixD> &eeCovV,
 		CovStruct_t &eeCovS, int plotChangedCov,
-		int plotCmp)
+		int plotCmp, int noUncAdjustment)
 {
   finfomap_t eeUncFiles, eeUncStat, eeUncSyst;
   fvarweightmap_t relUncW;
 
-  TH1D* h1csEE_loc=loadHisto(eeCSFName, eeCSH1Name, "h1csEE_loc", 1,h1dummy);
-  TH1D* h1csMM_loc=loadHisto(mmCSFName, mmCSH1Name, "h1csMM_loc", 1,h1dummy);
-  if (!h1csEE_loc || !h1csMM_loc) return 0;
+  TH1D* h1csEE_loc=loadHisto(eeCSFName, eeCSHisto1DName, "h1csEE_loc", 1,h1dummy);
+  //TH1D* h1csMM_loc=loadHisto(mmCSFName, mmCSHisto1DName, "h1csMM_loc", 1,h1dummy);
+  if (!h1csEE_loc) return 0;
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYee_ROOTFile_Input-20170208.root";
@@ -407,7 +437,8 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
   relUncW   [_varAcc]= 0.01;
 
   const TH1D *h1central= (1) ? h1csEE : NULL;
-  int change_covV=1 + (plotChangedCov!=0) ? 1:0;
+  int change_covV=(noUncAdjustment) ? 0:1;
+  if(change_covV && plotChangedCov) change_covV++;
   int res=adjustUnc( "ee",
 		     eeCovFNames, eeCovV,
 		     eeUncFiles,eeUncStat,eeUncSyst,relUncW,
