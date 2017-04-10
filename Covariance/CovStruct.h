@@ -287,7 +287,7 @@ CovStruct_t* detailedCovPlots(const BLUEResult_t *blue,
 			      const CovStruct_t &eeCovS,
 			      const CovStruct_t &mmCovS,
 			      std::string showCanvs,
-			      PlotCovCorrOpt_t *optCC_user=NULL);
+			      const PlotCovCorrOpt_t *optCC_user=NULL);
 
 // -------------------------------------------------------
 // -------------------------------------------------------

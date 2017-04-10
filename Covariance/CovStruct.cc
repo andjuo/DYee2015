@@ -10,8 +10,9 @@ CovStruct_t* detailedCovPlots(const BLUEResult_t *blue,
 			      const CovStruct_t &eeCovS,
 			      const CovStruct_t &mmCovS,
 			      std::string showCanvs,
-			      PlotCovCorrOpt_t *optCC_user)
+			      const PlotCovCorrOpt_t *optCC_user)
 {
+
   if (!blue || !h1csEE || !h1csMM) {
     std::cout << "detailedCovPlots: null ptr\n";
     return 0;
