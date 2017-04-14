@@ -82,6 +82,7 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
   autoZRangeCorr(set_autoZRangeCorr), gridLines(set_gridLines),
   logScaleX(set_logScale), logScaleY(set_logScale),
   yTitleOffset(set_yTitleOffset),
+  setTickX(0), setTickY(1),
   leftMargin(set_leftMargin), rightMargin(set_rightMargin)
 {}
 
@@ -91,6 +92,7 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(const TString key, int value) :
   autoZRangeCorr(1), gridLines(1),
   logScaleX(1), logScaleY(1),
   yTitleOffset(1.5),
+  setTickX(0), setTickY(1),
   leftMargin(0.15), rightMargin(0.15)
 {
   setValue(key,value,0);
@@ -102,6 +104,7 @@ PlotCovCorrOpt_t::PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o) :
   autoZRangeCorr(o.autoZRangeCorr), gridLines(o.gridLines),
   logScaleX(o.logScaleX), logScaleY(o.logScaleY),
   yTitleOffset(o.yTitleOffset),
+  setTickX(o.setTickX), setTickY(setTickY),
   leftMargin(o.leftMargin), rightMargin(o.rightMargin)
 {}
 
@@ -113,6 +116,8 @@ void PlotCovCorrOpt_t::assign(const PlotCovCorrOpt_t &opt)
   gridLines= opt.gridLines;
   logScaleX= opt.logScaleX;
   logScaleY= opt.logScaleY;
+  setTickX= opt.setTickX;
+  setTickY= opt.setTickY;
   yTitleOffset= opt.yTitleOffset;
   leftMargin= opt.leftMargin;
   rightMargin= opt.rightMargin;
@@ -139,6 +144,16 @@ int PlotCovCorrOpt_t::setValue(TString key, int value, int verbose)
     }
   }
   return res;
+}
+
+// -----------------------------------------------------------
+
+void PlotCovCorrOpt_t::adjustTicks(TCanvas *c) const
+{
+  c->SetTickx(setTickX);
+  c->SetTicky(setTickY);
+  c->Modified();
+  c->Update();
 }
 
 // -----------------------------------------------------------
@@ -302,6 +317,24 @@ TCanvas* plotHistoAuto(TH1D *h1, TString canvName, int logX, int logY,
   if (!c) c=plotHisto(h1,canvName,logX,logY,drawOpt,explain,gridLines);
   else plotHistoSame(h1,canvName,drawOpt,explain);
   return c;
+}
+
+// ---------------------------------------------------------
+
+TCanvas* plotHistoError(const TH1D* h1, TString cName, int logX, int logY,
+			TString drawOpt, TString explain, int gridLines)
+{
+  TH1D *h1err= errorAsCentral(h1);
+  return plotHisto(h1err,cName,logX,logY,drawOpt,explain,gridLines);
+}
+
+// ---------------------------------------------------------
+
+TCanvas* plotHistoErrorSame(const TH1D *h1, TString canvName, TString drawOpt,
+			    TString explain)
+{
+  TH1D *h1err= errorAsCentral(h1);
+  return plotHistoSame(h1err,canvName,drawOpt,explain);
 }
 
 // ---------------------------------------------------------

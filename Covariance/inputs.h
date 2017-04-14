@@ -74,6 +74,7 @@ public:
 struct PlotCovCorrOpt_t
 {
   int autoZRangeCorr, gridLines, logScaleX, logScaleY;
+  int setTickX, setTickY;
   double yTitleOffset, leftMargin, rightMargin;
 public:
   PlotCovCorrOpt_t(int set_autoZRangeCorr=1, int set_gridLines=1,
@@ -84,9 +85,15 @@ public:
 
   void setLogScale(int logX=1, int logY=1)
   { logScaleX=logX; logScaleY=logY; }
+  void noLogScale() { logScaleX=0; logScaleY=0; }
+
+  void setTicksX() { setTickX=1; }
+  void setTicksY() { setTickY=1; }
+  void setTicks(int setx, int sety) { setTickX=setx; setTickY=sety; }
 
   void assign(const PlotCovCorrOpt_t &opt);
   int setValue(TString key, int value, int verbose=1);
+  void adjustTicks(TCanvas *c) const;
 };
 
 // -----------------------------------------------------------
@@ -120,6 +127,12 @@ TCanvas* plotHistoSame(TH1D *h1, TString canvName, TString drawOpt, TString expl
 // combination of plotHisto & plotHistoSame
 TCanvas *plotHistoAuto(TH1D *h1, TString canvName, int logX=0, int logY=0,
 	       TString drawOpt="LPE", TString explain="", int gridLines=3);
+
+TCanvas* plotHistoError(const TH1D* h1, TString cName, int logX=0, int logY=0,
+		TString drawOpt="LPE", TString explain="", int gridLines=3);
+TCanvas* plotHistoErrorSame(const TH1D *h1, TString canvName, TString drawOpt,
+			    TString explain="");
+
 TCanvas* plotGraphSame(TGraphErrors *h1, TString canvName, TString drawOpt, TString explain="");
 TCanvas* plotRatio(TH1D* h1, TString cName, int logX=0, int logY=0,
 		   TString drawOpt="LPE", TString explain="", int gridLines=3,
