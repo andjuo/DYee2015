@@ -19,7 +19,7 @@ int adjustEEUnc(const finfomap_t &eeCovFNames, // needed for first value
 
 // -------------------------------------------------------
 
-const int useUncorrYieldUnc=0;
+const int useUncorrYieldUnc=1;
 //TString eeCSFName="cs_DYee_13TeV_El3.root";
 //TString eeCSH1Name="h1PreFSRCS";
 //TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
@@ -177,12 +177,30 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 
   // plot input covariance in ee and mm channels
   if (hasValue("plotChannelInputCovOnFileAdj",showCanvs)) {
-    double ymin=0, ymax=0;
+    double ymin=0, ymax=0, yminRel=0, ymaxRel=0;
     ymin=1e-9; ymax=20.;
-    mmCovS.Plot("mmCov_onFile_adj",h1csMM_tmp,ccOpt);
-    mmCovS.PlotUnc("mmCovUnc_onFile_adj",h1csMM_tmp,NULL,ymin,ymax,ccOpt);
-    eeCovS.Plot("eeCov_onFile_adj",h1csEE_tmp,ccOpt);
-    eeCovS.PlotUnc("eeCovUnc_onFile_adj",h1csEE_tmp,NULL,ymin,ymax,ccOpt);
+    yminRel=1e-3; ymaxRel=10;
+    PlotCovCorrOpt_t ccOpt_loc(ccOpt);
+    ccOpt_loc.yTitleOffset=1.2;
+    PlotCovCorrOpt_t ccOpt_locRel(ccOpt_loc);
+    //ccOpt_locRel.noLogScale();
+    TString canvNameTag="_onFile";
+    if (!noUncAdjustment) canvNameTag+= "_adj";
+    mmCovS.Plot("mmCov"+canvNameTag,h1csMM_tmp,ccOpt);
+    mmCovS.PlotUnc("mmCovUnc"+canvNameTag,h1csMM_tmp,NULL,ymin,ymax,ccOpt_loc,
+		   "#delta#sigma_{#mu#mu}");
+    TCanvas *cUncRelMM=mmCovS.PlotUnc("mmCovUncRel"+canvNameTag,
+	      h1csMM_tmp,h1csMM_tmp, yminRel,ymaxRel,ccOpt_locRel,
+				      "#delta#sigma_{#mu#mu}/#sigma_{#mu#mu}");
+    eeCovS.Plot("eeCov"+canvNameTag,h1csEE_tmp,ccOpt);
+    eeCovS.PlotUnc("eeCovUnc"+canvNameTag,h1csEE_tmp,NULL,ymin,ymax,ccOpt_loc,
+		   "#delta#sigma_{ee}");
+    TCanvas *cUncRelEE=eeCovS.PlotUnc("eeCovUncRel"+canvNameTag,
+	      h1csEE_tmp,h1csEE_tmp, yminRel,ymaxRel,ccOpt_locRel,
+				      "#delta#sigma_{ee}/#sigma_{ee}");
+    double dyLeg=0.48;
+    moveLegend(cUncRelMM,0,dyLeg);
+    moveLegend(cUncRelEE,0,dyLeg);
     //return;
   }
 
