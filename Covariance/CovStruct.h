@@ -203,9 +203,10 @@ public:
     }
   }
 
-  void PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal=NULL,
-	       double yrangeMin=0, double yrangeMax=0,
-	       int logX=1, int logY=1) const {
+  TCanvas* PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal=NULL,
+		   double yrangeMin=0, double yrangeMax=0,
+		   int logX=1, int logY=1, TString yAxisTitle="",
+		   double yTitleOffset=0.) const {
     TH1D *h1statYield= uncFromCov(covStat_Yield,"h1statYield_"+tag,
 				  h1binning,h1centralVal,1);
     TH1D *h1statNonYield= uncFromCov(covStat_nonYield,"h1statNonYield_"+tag,
@@ -227,21 +228,31 @@ public:
       h1statYield->GetYaxis()->SetRangeUser(yrangeMin,yrangeMax);
     }
     TString cName="cCovStructUnc_"+tag;
-    logAxis(h1statYield,1+8);
-    plotHisto(h1statYield,cName,logX,logY,"LP","stat Yield");
+    logAxis(h1statYield,1+8,"",yAxisTitle);
+    if (yTitleOffset!=0.) h1statYield->GetYaxis()->SetTitleOffset(yTitleOffset);
+    TCanvas *c=plotHisto(h1statYield,cName,logX,logY,"LP","stat Yield");
     if (!plotStatYieldOnly) {
       plotHistoSame(h1statNonYield,cName,"LP","stat nonYield");
       plotHistoSame(h1systAcc,cName,"LP","syst Acc");
       plotHistoSame(h1systNonAcc,cName,"LP","syst nonAcc");
     }
     plotHistoSame(h1tot,cName,"LP","total");
+    return c;
   }
 
-  void PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal,
-	       double yrangeMin, double yrangeMax,
-	       const PlotCovCorrOpt_t &opt) const {
-    PlotUnc(tag,h1binning,h1centralVal,yrangeMin,yrangeMax,
-	    opt.logScaleX,opt.logScaleY);
+  TCanvas* PlotUnc(TString tag, TH1D *h1binning, TH1D *h1centralVal,
+		   double yrangeMin, double yrangeMax,
+		   const PlotCovCorrOpt_t &opt, TString yAxisTitle="") const
+  {
+    TCanvas *c=PlotUnc(tag,h1binning,h1centralVal,yrangeMin,yrangeMax,
+		       opt.logScaleX,opt.logScaleY,yAxisTitle,opt.yTitleOffset);
+    opt.adjustTicks(c);
+    PlotCovCorrOpt_t cc;
+    if ((opt.leftMargin!=opt.leftMargin) || (opt.rightMargin!=opt.rightMargin))
+      {
+	setLeftRightMargins(c,opt.leftMargin,opt.rightMargin);
+      }
+    return c;
   }
 };
 
