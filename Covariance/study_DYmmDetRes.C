@@ -321,6 +321,67 @@ void study_DYmmDetRes(int nSample, int studyCase=_mu76XdetRes4p3)
     return;
   }
 
+  // check properties of mSmear matrix
+  if (1) {
+    std::cout << "\n\tREPLACING mSmear by mSmearInv\n\n"; mSmear=mSmearInv;
+    std::cout << "check diagonal-dominant properties of mSmear matrix (row)\n";
+    int isDiagDom=1;
+    double smallestRatio=100.;
+    for (int ir=0; ir<mSmear.GetNrows(); ir++) {
+      double sumAbsNonDiag=0, sumRow=0;
+      for (int ic=0; ic<mSmear.GetNcols(); ic++) {
+	if (ir!=ic) sumAbsNonDiag+= fabs(mSmear(ir,ic));
+	sumRow+= mSmear(ir,ic);
+      }
+      double dg= fabs(mSmear(ir,ir));
+      std::cout << "ir=" << ir << "  ";
+      std::cout << "dgEntry=" << mSmear(ir,ir) << ", sumRow=" << sumRow << "  ";
+      std::cout << dg << " " << sumAbsNonDiag << " ";
+      if (dg>sumAbsNonDiag) {
+	std::cout << "ok  " << dg/sumAbsNonDiag << "\n";
+	if (smallestRatio> dg/sumAbsNonDiag) smallestRatio=dg/sumAbsNonDiag;
+      }
+      else {
+	std::cout << "!!\n";
+	isDiagDom=0;
+      }
+    }
+    std::cout << "isDiagDom=" << isDiagDom << "\n";
+    if (isDiagDom) std::cout << " -- smallest ratio=" << smallestRatio << "\n";
+    plotCovCorr(mSmear,h1measData_file,"h2mSmear","cMSmear");
+    return;
+  }
+  if (1) {
+    std::cout << "\n\tREPLACING mSmear by mSmearInv\n\n"; mSmear=mSmearInv;
+    std::cout << "check diagonal-dominant properties of mSmear matrix (column)\n";
+    int isDiagDom=1;
+    double smallestRatio=100.;
+    for (int ic=0; ic<mSmear.GetNcols(); ic++) {
+      double sumAbsNonDiag=0, sumCol=0;
+      for (int ir=0; ir<mSmear.GetNrows(); ir++) {
+	if (ir!=ic) sumAbsNonDiag+= fabs(mSmear(ir,ic));
+	sumCol+= mSmear(ir,ic);
+      }
+      double dg= fabs(mSmear(ic,ic));
+      std::cout << "ic=" << ic << "  ";
+      std::cout << "dgEntry=" << mSmear(ic,ic) << ", sumCol=" << sumCol << "  ";
+      std::cout << dg << " " << sumAbsNonDiag << " ";
+      if (dg>sumAbsNonDiag) {
+	std::cout << "ok  " << dg/sumAbsNonDiag << "\n";
+	if (smallestRatio> dg/sumAbsNonDiag) smallestRatio=dg/sumAbsNonDiag;
+      }
+      else {
+	std::cout << "!!\n";
+	isDiagDom=0;
+      }
+    }
+    std::cout << "isDiagDom=" << isDiagDom << "\n";
+    if (isDiagDom) std::cout << " -- smallest ratio=" << smallestRatio << "\n";
+
+    plotCovCorr(mSmear,h1measData_file,"h2mSmear","cMSmear");
+    return;
+  }
+
   TH1D *h1uncFromCov= uncFromCov(h2unfCov);
   TH1D *h1unfCheck= cloneHisto(h1measData_file,"h1unfCheck","h1unfCheck");
 
