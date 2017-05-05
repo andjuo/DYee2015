@@ -81,8 +81,8 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
 		    double set_leftMargin, double set_rightMargin) :
   autoZRangeCorr(set_autoZRangeCorr), gridLines(set_gridLines),
   logScaleX(set_logScale), logScaleY(set_logScale),
-  yTitleOffset(set_yTitleOffset),
   setTickX(0), setTickY(1),
+  yTitleOffset(set_yTitleOffset),
   leftMargin(set_leftMargin), rightMargin(set_rightMargin)
 {}
 
@@ -91,8 +91,8 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
 PlotCovCorrOpt_t:: PlotCovCorrOpt_t(const TString key, int value) :
   autoZRangeCorr(1), gridLines(1),
   logScaleX(1), logScaleY(1),
-  yTitleOffset(1.5),
   setTickX(0), setTickY(1),
+  yTitleOffset(1.5),
   leftMargin(0.15), rightMargin(0.15)
 {
   setValue(key,value,0);
@@ -103,8 +103,8 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(const TString key, int value) :
 PlotCovCorrOpt_t::PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o) :
   autoZRangeCorr(o.autoZRangeCorr), gridLines(o.gridLines),
   logScaleX(o.logScaleX), logScaleY(o.logScaleY),
-  yTitleOffset(o.yTitleOffset),
   setTickX(o.setTickX), setTickY(setTickY),
+  yTitleOffset(o.yTitleOffset),
   leftMargin(o.leftMargin), rightMargin(o.rightMargin)
 {}
 
