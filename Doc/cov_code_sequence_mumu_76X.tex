@@ -1,4 +1,4 @@
-it \documentclass[a4paper]{article}
+\documentclass[a4paper]{article}
 
 \pdfoutput=1
 %\usepackage{jheppub} 
@@ -171,6 +171,38 @@ due to some unaccounted factor that has changed. The variation takes
 place only in the mass bins 830-1000~GeV (the relative difference is
 $2.567\%$ and 1000-1500~GeV ($1.135\%$).
 
+I am not sure when the change occured, but later I found that the
+backgrounds from ZZ and WZ should by multiplied by the corresponding
+event efficiency scale factor in each mass bin.
+
+Note from May 5, 2017. Kyeongpil provided a new set of inputs. The
+histograms with the ZZ background had names \myund{h_ZZ_HLTv4p2}\ and
+\myund{h_ZZ_HLTv4p3}, and the WZ background had the corresponding
+names with WZ. I started to snoop around and found this need (encoded
+in \myund{MuonCrossSection_t::sampleRndVec}) to rescale the
+backgrounds by $\lumi{HLT period}\times\rho_{HLT period}$. Other
+backgrounds are normalized to $\lumi{tot}$.
+
+In fact, Kyeongpil explained that the scale factor is not the average
+one. It was applied per-event, which explains the residual difference
+of up to $1.5\%$, after I use the named factors. The macro name is
+\myund{checkDYmmInputs_Bkg.C}. If I follow the procedure that
+Kyeongpil delineated, the sum of the properly-weighted backgrounds
+equals the difference between measured and signal yields:
+\begin{eqnarray}
+N_\mathrm{sig,HLTv}-N_\mathrm{obs,HLTv} &=& N_{ZZ,\textrm{HLTv}}
+  + N_{WZ,\textrm{HLTv}} \nonumber \\
+ &+&
+\sum\limits_{bkg\in\{WW,t{\bar t},DY\tau\tau,tW,Wjets,QCD\}}
+  \frac{\lumi{HLTv}}{\lumi{tot}} N_{bkg}.
+\end{eqnarray}
+The use of the averaged $ZZ$ and $WZ$ background gives deviation of
+$0.34-0.35\%$ in the mass bins 86-91-96\GeV. The final cross section
+agrees well (the difference is negligible), with an exception for the
+mass bin 1000-1500\GeV, where the relative difference is $0.8\%$, if
+the flag ``removeNegativeSignal'' is not set to 1. If negative signal
+is removed, the difference is negligible in all mass bins.
+
 \textbf{Secondly, the randomized event-effciency scale factors should
   be prepared.}  The code \myund{process_DYmm_RECO.C}\ reads the
 ``compressed'' n-tuple and produces detector resolution and the
@@ -207,7 +239,7 @@ The unimplemented variables are: \myund{_varSig}, \myund{_varRho}.
 (Note: \myund{_varRhoFile}\ is implemented to use the ensemble
 produced by the code \myund{calcRhoRndVec.C}.)
 
-Note June 8: It seems that the uncertainties from \myund{_varEff} and
+Note June 8, 2016: It seems that the uncertainties from \myund{_varEff} and
 \myund{_varAcc} are smaller than the ones provided for
 \myund{_varEffAcc}. That is, the combined uncertainty of
 $\varepsilon\times A$ is smaller than provided by KL.
