@@ -9,7 +9,8 @@
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
-void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
+void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0,
+			     int checkStep=-1)
 {
   TString srcPath="/media/ssd/v20160214_1st_CovarianceMatrixInputs/";
   srcPath="/mnt/sdb/andriusj/v20160214_1st_CovarianceMatrixInputs/";
@@ -29,7 +30,7 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
     lumi42=865.919;
     lumiTot=2832.673;
   }
-  else if (1) {
+  else if (0) {
     srcPath="/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/";
     inpVer=_verMuApproved;
     inpVerTag=versionName(inpVer);
@@ -40,14 +41,94 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
     fname2Base="ROOTFile_Histograms_Bkg.root";
     fname6Base="ROOTFile_Input6_CrossCheck.root";
   }
+  else if (1) {
+    srcPath="/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov/";
+    inpVer=_verMuMay2017;
+    inpVerTag=versionName(inpVer);
+    lumi42=843.404;
+    lumiTot=2759.017;
+
+    fname1Base="ROOTFile_Histograms_Data.root";
+    fname2Base="ROOTFile_Histograms_Bkg.root";
+    fname6Base="ROOTFile_Input6_CrossCheck.root";
+  }
 
   int checkBackgrounds=0;
+  if ((checkStep==3) || (checkStep==4)) checkBackgrounds=1;
 
   TH1D* h1Dummy=NULL;
   //TH2D* h2Dummy=NULL;
 
   double lumi43= lumiTot-lumi42;
   std::cout << "lumi42=" << Form("%7.3lf",lumi42) << ", lumi43=" << Form("%7.3lf",lumi43) << "\n";
+
+
+
+  // --------- Load corrections
+
+  TString fname6= srcPath + fname6Base;
+  TFile fin6(fname6);
+  if (!fin6.IsOpen()) {
+    std::cout << "failed to open the file <" << fin6.GetName() << ">\n";
+    return;
+  }
+  TGraphAsymmErrors *grAcc=(TGraphAsymmErrors*)fin6.Get("g_Acc");
+  TGraphAsymmErrors *grEff=(TGraphAsymmErrors*)fin6.Get("g_Eff");
+  TGraphAsymmErrors *grAccEff=(TGraphAsymmErrors*)fin6.Get("g_AccEff");
+  TGraphAsymmErrors *grEffSF_HLTv4p2=(TGraphAsymmErrors*)fin6.Get("g_EffSF_HLTv4p2");
+  TGraphAsymmErrors *grEffSF_HLTv4p3=(TGraphAsymmErrors*)fin6.Get("g_EffSF_HLTv4p3");
+  RooUnfoldResponse *rooUnfDetRes= loadRooUnfoldResponse(fin6,"UnfoldRes_DetectorResol", "rooUnfDetRes");
+  RooUnfoldResponse *rooFSRRes= loadRooUnfoldResponse(fin6,"UnfoldRes_FSR", "rooUnfFSR");
+  TH1D *h1_DiffXSec_data= loadHisto(fin6,"h_DiffXsec_Data", "h1KL_xsec", 1, h1Dummy);
+  fin6.Close();
+  if (!grAcc || !grEff || !grAccEff || !grEffSF_HLTv4p2 || !grEffSF_HLTv4p3 ||
+      !rooUnfDetRes || !rooFSRRes || !h1_DiffXSec_data) return;
+  //plotHisto(*rooUnfDetRes,"cDetRes",1,1);
+  //plotHisto(*rooFSRRes,"cFSRRes",1,1);
+
+  int plotAccEff=0;
+  TH1D *h1Acc= convert(grAcc, "h1Acc","Acceptance;M_{#mu#mu} [GeV];A", plotAccEff);
+  TH1D *h1Eff= convert(grEff ,"h1Eff","Efficiency;M_{#mu#mu} [GeV];#epsilon", plotAccEff);
+  TH1D *h1EffAcc= convert(grAccEff, "h1EffAcc","Acc #times Eff;M_{#mu#mu} [GeV];A #times #epsilon", plotAccEff);
+  if (!h1Acc || !h1Eff || !h1EffAcc) return;
+  int plotIt_sf=0;
+  TH1D *h1SF42= convert(grEffSF_HLTv4p2, "h1SF42","ScaleFactors 4.2;M_{#mu#mu} [GeV];eff.s.f. (v.4.2)", plotIt_sf);
+  if (!h1SF42) return;
+  TH1D *h1SF43= convert(grEffSF_HLTv4p3, "h1SF43","ScaleFactors 4.3;M_{#mu#mu} [GeV];eff.s.f. (v.4.3)", plotIt_sf);
+  if (!h1SF43) return;
+
+  if (0 || (checkStep==1)) {
+    TH1D *h1effAcc_check= cloneHisto(h1Eff,"h1effAcc_check","h1effAcc_check");
+    for (int ibin=1; ibin<=h1Acc->GetNbinsX(); ibin++) {
+      double a= h1Eff->GetBinContent(ibin);
+      double da= h1Eff->GetBinError(ibin);
+      double b= h1Acc->GetBinContent(ibin);
+      double db= h1Acc->GetBinError(ibin);
+      double val= a * b;
+      double unc= sqrt( b*b * da*da + a*a * db*db );
+      h1effAcc_check->SetBinContent( ibin, val );
+      h1effAcc_check->SetBinError( ibin, unc );
+
+      if (1) {
+	std::cout << "ibin=" << ibin << ", eff=" << a << " +- " << da
+		  << ", acc=" << b << " +- " << db
+		  << ", (eff x acc)=" << val << " +- " << unc << ", KL value ="
+		  << h1EffAcc->GetBinContent(ibin) << " +- " << h1EffAcc->GetBinError(ibin)
+		  << "\n";
+	if (1) {
+	  std::cout << "  relEff=" << da/a << ", relAcc=" << db/b << ", rel effxAcc=" << unc/val << "; rel KL=" << h1EffAcc->GetBinError(ibin)/h1EffAcc->GetBinContent(ibin) << "\n";
+	}
+	if (1) {
+	  std::cout << "  eff =" << grEff->GetY()[ibin-1] << " +" << grEff->GetEYhigh()[ibin-1] << " -" << grEff->GetEYlow()[ibin-1] << ", acc=" << grAcc->GetY()[ibin-1] << " +" << grAcc->GetEYhigh()[ibin-1] << " -" << grAcc->GetEYlow()[ibin-1] << ", eff x Acc = "<< grAccEff->GetY()[ibin-1] << " +" << grAccEff->GetEYhigh()[ibin-1] << " -" << grAccEff->GetEYlow()[ibin-1] << "\n";
+	}
+      }
+    }
+    plotHisto(h1EffAcc, "cEffAcc", 1,1, "LPE1", "origEffAcc");
+    plotHistoSame(h1effAcc_check, "cEffAcc", "LPE", "effAcc_check");
+    printRatio(h1EffAcc,h1effAcc_check);
+    std::cout << "checkStep induced stop\n";
+    return;
+  }
 
   // ---------------- load the observed and background-subracted (signal) yield
   TString fname1= srcPath + fname1Base;
@@ -88,7 +169,42 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
   bkgWeightUnc.reserve(_bkgLast);
   for (TBkg_t b=_bkgZZ; b<_bkgLast; next(b)) {
     std::cout << "b=" << bkgName(b) << "\n";
-    TH1D *h1= loadHisto(fin2, "h_"+bkgName(b), "h_"+bkgName(b),1,h1Dummy);
+    TString histoBkgName="h_"+bkgName(b);
+    TH1D *h1=NULL;
+    if ((inpVer==_verMuMay2017) && ((b==_bkgZZ) || (b==_bkgWZ))) {
+      TString tmpName="h_"+bkgName(b) + "_HLTv4p2";
+      TH1D *h1a= loadHisto(fin2, tmpName, tmpName,1,h1Dummy);
+      tmpName.ReplaceAll("4p2","4p3");
+      TH1D *h1b= loadHisto(fin2, tmpName, tmpName,1,h1Dummy);
+      if (!h1a || !h1b) return;
+      TH1D *h1sf42= cloneHisto(h1SF42,"h1sf42"+bkgName(b),"sf42");
+      removeError(h1sf42);
+      TH1D *h1sf43= cloneHisto(h1SF43,"h1sf43"+bkgName(b),"sf43");
+      removeError(h1sf43);
+      h1a->Divide(h1sf42);
+      h1a->Scale(lumiTot/lumi42);
+      h1b->Divide(h1sf43);
+      h1b->Scale(lumiTot/lumi43);
+      h1=cloneHisto(h1b,"h_"+bkgName(b),"h_"+bkgName(b));
+      if (1)
+      for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
+	h1->SetBinContent(ibin,
+		  0.5*(h1a->GetBinContent(ibin)+h1b->GetBinContent(ibin)));
+      }
+      if (checkStep==2) {
+	hsBlue.SetStyle(h1a);
+	hsGreen.SetStyle(h1b);
+	hsRed.SetStyle(h1);
+	TString cNameChk="cBkg_"+bkgName(b);
+	plotHisto(h1a,cNameChk,1,1,"LPE1","HLTv4p2");
+	plotHistoSame(h1b,cNameChk,"LPE1","HLTv4p3");
+	plotHistoSame(h1,cNameChk,"LPE1","avg");
+	std::cout << "remember that HLTv4p2 and 4p3 are (un)scaled by SF\n";
+      }
+    }
+    else {
+      h1= loadHisto(fin2, "h_"+bkgName(b), "h_"+bkgName(b),1,h1Dummy);
+    }
     if (!h1) return;
 
     int hasNegative=0;
@@ -119,7 +235,7 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
     }
     else {
       std::cout << "bkg cross section uncertainty is not defined for gInpVer="
-		<< int(inpVer) << "\n";
+		<< int(inpVer) << " (" << versionName(inpVer) << ")\n";
     }
     bkgWeightUnc.push_back(dw);
     hBkgV.push_back(h1);
@@ -128,7 +244,20 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
     std::cout << "  = "; printBin(h1BkgTot,1,1);
   }
   fin2.Close();
-  plotHisto(h1BkgTot, "cBkgTot",1,1);
+  plotHisto(h1BkgTot, "cBkgTot",1,1,"histo","h1BkgTot");
+
+  if (checkStep==2) {
+    if (1) {
+      TH1D *h1_bkg_4p2= cloneHisto(h1BkgTot,"h1_bkg_4p2","h1_bkg_4p2");
+      h1_bkg_4p2->Scale(lumi42/lumiTot);
+      TH1D *h1_bkg_4p3= cloneHisto(h1BkgTot,"h1_bkg_4p3","h1_bkg_4p3");
+      h1_bkg_4p3->Scale(lumi43/lumiTot);
+      printRatio(h1_bkg_4p2,h1_bkg_4p3);
+    }
+
+    std::cout << "checkStep induced stop\n";
+    return;
+  }
 
 
   if (checkBackgrounds) {
@@ -136,8 +265,10 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
     h1Bkg42_chk->Add(h1Signal_42, -1);
     TH1D* h1Bkg43_chk= cloneHisto(h1Yield_43, "h1Bkg43_chk", "h1Bkg43_chk");
     h1Bkg43_chk->Add(h1Signal_43, -1);
-    plotHistoSame(h1Bkg42_chk, "cBkgTot","hist");
-    TCanvas *ctmp=plotHistoSame(h1Bkg43_chk, "cBkgTot","hist");
+    hsBlue.SetStyle(h1Bkg42_chk);
+    hsGreen.SetStyle(h1Bkg43_chk);
+    plotHistoSame(h1Bkg42_chk, "cBkgTot","hist","h1Bkg42_chk");
+    TCanvas *ctmp=plotHistoSame(h1Bkg43_chk, "cBkgTot","hist","h1Bkg43_chk");
     ctmp->SetTitle("cBkgTot - compare shapes of bkgs");
 
     std::cout << "compare the backgrounds\n";
@@ -154,17 +285,18 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
     }
     h1ratio42->GetYaxis()->SetRangeUser(0,2.);
     h1ratio42->SetTitle("ratio42 = (Nyield-Nsig)/NtotBkg");
-    plotHisto(h1ratio42, "cRatio42",1);
-    ctmp=plotHistoSame(h1ratio43, "cRatio42", "hist");
-    ctmp->SetTitle("cRatio42 - ratio of backgrounds - expectation is 1");
+    plotHisto(h1ratio42, "cRatio",1,0,"LPE","h1ratio42");
+    ctmp=plotHistoSame(h1ratio43, "cRatio", "hist","h1ratio43");
+    ctmp->SetTitle("cRatio - ratio of backgrounds - expectation is 1");
     //printHisto(h1ratio42);
     //printHisto(h1ratio43);
     //TH1D *h1ratio43_to_42= cloneHisto(h1ratio43, "h1ratio43_to_42","ratio43_to_42");
     //h1ratio43_to_42->Divide(h1ratio42);
     //printHisto(h1ratio43_to_42);
     printRatio(h1ratio43,h1ratio42);
+    std::cout << "remember that some HLTv4p2/4p3 bkgs are (un)scaled by SF\n";
 
-    if (1) {
+    if (0 || (checkStep==4)) {
       TH1D *h1BkgSum= cloneHisto(h1Bkg42_chk, "h1BkgSum", "BkgSum");
       h1BkgSum->Add(h1Bkg43_chk);
       TH1D *h1Bkg_ChkDiff= cloneHisto(h1BkgSum, "h1Bkg_ChkDiff", "Bkg_ChkDiff");
@@ -175,6 +307,7 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
       ctmp->SetTitle("cBkg_ChkDiff - difference in backgrounds - expectation is 0");
     }
 
+    std::cout << "checkStep induced stop\n";
     return;
   }
 
@@ -191,69 +324,7 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0)
     }
   }
 
-  // --------- Load corrections
-
-  TString fname6= srcPath + fname6Base;
-  TFile fin6(fname6);
-  if (!fin6.IsOpen()) {
-    std::cout << "failed to open the file <" << fin6.GetName() << ">\n";
-    return;
-  }
-  TGraphAsymmErrors *grAcc=(TGraphAsymmErrors*)fin6.Get("g_Acc");
-  TGraphAsymmErrors *grEff=(TGraphAsymmErrors*)fin6.Get("g_Eff");
-  TGraphAsymmErrors *grAccEff=(TGraphAsymmErrors*)fin6.Get("g_AccEff");
-  TGraphAsymmErrors *grEffSF_HLTv4p2=(TGraphAsymmErrors*)fin6.Get("g_EffSF_HLTv4p2");
-  TGraphAsymmErrors *grEffSF_HLTv4p3=(TGraphAsymmErrors*)fin6.Get("g_EffSF_HLTv4p3");
-  RooUnfoldResponse *rooUnfDetRes= loadRooUnfoldResponse(fin6,"UnfoldRes_DetectorResol", "rooUnfDetRes");
-  RooUnfoldResponse *rooFSRRes= loadRooUnfoldResponse(fin6,"UnfoldRes_FSR", "rooUnfFSR");
-  TH1D *h1_DiffXSec_data= loadHisto(fin6,"h_DiffXsec_Data", "h1KL_xsec", 1, h1Dummy);
-  fin6.Close();
-  if (!grAcc || !grEff || !grAccEff || !grEffSF_HLTv4p2 || !grEffSF_HLTv4p3 ||
-      !rooUnfDetRes || !rooFSRRes || !h1_DiffXSec_data) return;
-  //plotHisto(*rooUnfDetRes,"cDetRes",1,1);
-  //plotHisto(*rooFSRRes,"cFSRRes",1,1);
-
-  int plotAccEff=0;
-  TH1D *h1Acc= convert(grAcc, "h1Acc","Acceptance;M_{#mu#mu} [GeV];A", plotAccEff);
-  TH1D *h1Eff= convert(grEff ,"h1Eff","Efficiency;M_{#mu#mu} [GeV];#epsilon", plotAccEff);
-  TH1D *h1EffAcc= convert(grAccEff, "h1EffAcc","Acc #times Eff;M_{#mu#mu} [GeV];A #times #epsilon", plotAccEff);
-  if (!h1Acc || !h1Eff || !h1EffAcc) return;
-  int plotIt_sf=0;
-  TH1D *h1SF42= convert(grEffSF_HLTv4p2, "h1SF42","ScaleFactors 4.2;M_{#mu#mu} [GeV];eff.s.f. (v.4.2)", plotIt_sf);
-  if (!h1SF42) return;
-  TH1D *h1SF43= convert(grEffSF_HLTv4p3, "h1SF43","ScaleFactors 4.3;M_{#mu#mu} [GeV];eff.s.f. (v.4.3)", plotIt_sf);
-  if (!h1SF43) return;
-
-  if (0) {
-    TH1D *h1effAcc_check= cloneHisto(h1Eff,"h1effAcc_check","h1effAcc_check");
-    for (int ibin=1; ibin<=h1Acc->GetNbinsX(); ibin++) {
-      double a= h1Eff->GetBinContent(ibin);
-      double da= h1Eff->GetBinError(ibin);
-      double b= h1Acc->GetBinContent(ibin);
-      double db= h1Acc->GetBinError(ibin);
-      double val= a * b;
-      double unc= sqrt( b*b * da*da + a*a * db*db );
-      h1effAcc_check->SetBinContent( ibin, val );
-      h1effAcc_check->SetBinError( ibin, unc );
-
-      if (1) {
-	std::cout << "ibin=" << ibin << ", eff=" << a << " +- " << da
-		  << ", acc=" << b << " +- " << db
-		  << ", (eff x acc)=" << val << " +- " << unc << ", KL value ="
-		  << h1EffAcc->GetBinContent(ibin) << " +- " << h1EffAcc->GetBinError(ibin)
-		  << "\n";
-	if (1) {
-	  std::cout << "  relEff=" << da/a << ", relAcc=" << db/b << ", rel effxAcc=" << unc/val << "; rel KL=" << h1EffAcc->GetBinError(ibin)/h1EffAcc->GetBinContent(ibin) << "\n";
-	}
-	if (1) {
-	  std::cout << "  eff =" << grEff->GetY()[ibin-1] << " +" << grEff->GetEYhigh()[ibin-1] << " -" << grEff->GetEYlow()[ibin-1] << ", acc=" << grAcc->GetY()[ibin-1] << " +" << grAcc->GetEYhigh()[ibin-1] << " -" << grAcc->GetEYlow()[ibin-1] << ", eff x Acc = "<< grAccEff->GetY()[ibin-1] << " +" << grAccEff->GetEYhigh()[ibin-1] << " -" << grAccEff->GetEYlow()[ibin-1] << "\n";
-	}
-      }
-    }
-    plotHisto(h1EffAcc, "cEffAcc", 1,1, "LPE1", "origEffAcc");
-    plotHistoSame(h1effAcc_check, "cEffAcc", "LPE", "effAcc_check");
-    printRatio(h1EffAcc,h1effAcc_check);
-  }
+  // Bundle to one object
 
 
   MuonCrossSection_t muCS("muCS",inpVerTag,lumi42,lumi43,inpVer);

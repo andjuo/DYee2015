@@ -21,6 +21,7 @@ TString versionName(TVersion_t ver)
   case _verMu1: name="Mu1"; break;
   case _verMu76X: name="Mu76X"; break;
   case _verMuApproved: name="MuApproved"; break;
+  case _verMuMay2017: name="MuMay2017"; break;
   case _verEl1: name="El1"; break;
   case _verEl2: name="El2"; break;
   case _verEl2skim: name="El2skim"; break;
@@ -42,7 +43,7 @@ int leptonIdx(TVersion_t v) {
   switch(v) {
   case _verUndef: i=-1;
     break;
-  case _verMu1: case _verMu76X: case _verMuApproved:
+  case _verMu1: case _verMu76X: case _verMuApproved: case _verMuMay2017:
     i=1;
     break;
   case _verEl1: case _verEl2: case _verEl2skim: case _verEl2skim2:

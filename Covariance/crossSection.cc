@@ -336,6 +336,7 @@ void CrossSection_t::setNIters_internal(TVersion_t)
   switch(fVersion) {
   case _verMu76X: fNItersDetRes=17; fNItersFSR=100; break;
   case _verMuApproved: fNItersDetRes=17; fNItersFSR=100; break;
+  case _verMuMay2017: fNItersDetRes=17; fNItersFSR=100; break;
   case _verEl2skim: fNItersDetRes=15; fNItersFSR=15; break;
   default: ; // nothing
   }
@@ -501,7 +502,8 @@ TH1D* CrossSection_t::calcCrossSection(int removeNegativeSignal)
 
     TH1D *h1UnfFSR_loc= cloneHisto(fh1Yield, "h1UnfFSR_loc","h1UnfFSR_loc");
     h1UnfFSR_loc->Reset();
-    if ((fVersion!=_verMu76X) && (fVersion!=_verMuApproved)) {
+    if ((fVersion!=_verMu76X) && (fVersion!=_verMuApproved) &&
+	(fVersion!=_verMuMay2017)) {
       std::cout << "fsr unfold Bayes\n";
       fFSRBayes= new RooUnfoldBayes( fFSRRes, fh1UnfRhoEffAccCorr,fNItersFSR,false);
       copyContents(h1UnfFSR_loc,fFSRBayes->Hreco());
@@ -1484,7 +1486,7 @@ int MuonCrossSection_t::recalcBkg(const std::vector<double> *weights,
   }
 
   double loc_lumiTot= fCSa.lumi() + fCSb.lumi();
-  if (fVersion==_verMuApproved) {
+  if ((fVersion==_verMuApproved) || (fVersion==_verMuMay2017)) {
     if (!fCSa.h1Rho() || !fCSb.h1Rho()) {
       std::cout << "MuonCrossSection_t::recalcBkg -- fCSv.h1Rho() is lacking\n";
       return 0;
@@ -1702,7 +1704,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
       std::vector<TH1D*> rndBkgVa, rndBkgVb;
       TH1D *h1rnd= NULL;
       double loc_lumiTot= fCSa.lumi() + fCSb.lumi();
-      if (fVersion!=_verMuApproved) {
+      if ((fVersion!=_verMuApproved) && (fVersion!=_verMuMay2017)) {
 	for (int i=0; i<sampleSize; i++) {
 	  TString useTag= Form("_rnd%d",i) + fTag;
 	  h1rnd=cloneHisto(fh1Bkg,
@@ -1914,7 +1916,8 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 				      "h1preFSR_" + respName +
 			      TString(";") + fh1Bkg->GetXaxis()->GetTitle()
 		   +TString("; preFSR full space cs"), h1dummy);
-      if ((fVersion!=_verMu76X) && (fVersion!=_verMuApproved)) {
+      if ((fVersion!=_verMu76X) && (fVersion!=_verMuApproved) &&
+	  (fVersion!=_verMuMay2017)) {
 	//std::cout << "\n\taaaaa\n"; return 0;
 	fFSRBayes= new RooUnfoldBayes( rRnd, h1tmp, fCSa.fNItersFSR, false);
 	copyContents(h1preFSRYield, fFSRBayes->Hreco());
@@ -2230,7 +2233,8 @@ TH1D* MuonCrossSection_t::calcPreFsrCS_sumAB(const TH1D *h1a,
 
   if (fh1PreFSR) { delete fh1PreFSR; }
   fh1PreFSR = cloneHisto(fh1PostFSR, "h1Unf_loc","h1Unf_loc");
-  if ((fVersion!=_verMu76X) && (fVersion!=_verMuApproved)) {
+  if ((fVersion!=_verMu76X) && (fVersion!=_verMuApproved) &&
+      (fVersion!=_verMuMay2017)) {
     fFSRBayes= new RooUnfoldBayes( fCSa.fFSRRes, fh1PostFSR, fCSa.fNItersFSR, false);
     copyContents(fh1PreFSR,fFSRBayes->Hreco());
   }
