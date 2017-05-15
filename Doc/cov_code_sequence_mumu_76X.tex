@@ -197,9 +197,9 @@ N_\mathrm{sig,HLTv}-N_\mathrm{obs,HLTv} &=& N_{ZZ,\textrm{HLTv}}
   \frac{\lumi{HLTv}}{\lumi{tot}} N_{bkg}.
 \end{eqnarray}
 The use of the averaged $ZZ$ and $WZ$ background gives deviation of
-$0.34-0.35\%$ in the mass bins 86-91-96\GeV. The final cross section
+$0.34-0.35\%$ in the mass bins 86-91-96~GeV. The final cross section
 agrees well (the difference is negligible), with an exception for the
-mass bin 1000-1500\GeV, where the relative difference is $0.8\%$, if
+mass bin 1000-1500~GeV, where the relative difference is $0.8\%$, if
 the flag ``removeNegativeSignal'' is not set to 1. If negative signal
 is removed, the difference is negligible in all mass bins.
 
@@ -246,6 +246,9 @@ $\varepsilon\times A$ is smaller than provided by KL.
 
 The code \myund{calcRhoRndVec.C}\ compares the calculated event
 efficiency scale factor to the provided event efficiency scale factor.
+
+Note May 9, 2017: It was not documented, but for yield uncertainty
+\myund{_varYieldPoisson}\ should be used.
 
 \subsection{Verification}
 
@@ -356,7 +359,10 @@ uncertainty values from the covariance matrices.
 % ----------------------------------
 \section{Calculation of the combined result}
 
-The BLEU method is wrapped in the class \myund{BLUEResult_t}. The
+The BLUE method is wrapped in the class \myund{BLUEResult_t}.
+
+\textit{This is outdated since February 2017.}
+The
 combination is defined in the macro analyseBLUEResult.C that contains
 only one function,\\
 \indent
@@ -368,7 +374,24 @@ Its performance can be checked assuming no correlations (and taking
 the uncertainties from the embeded in analyseBLUEResult.C input files)
 by using the code \myund{work13TeV_noCorr.C}.
 
+\textit{The latest code} used for the combination of the results is
+\myund{work13TeV_corr.C}. It handles both the correlated case and
+uncorrelated case. It also allows adjustment of the covariance matrix
+to the externally-evaluated uncertainties.
 
+A helper struct \myund{CovStruct_t}\ (defined in CovStruct.h) was
+introduced to separated the uncertainties into four cathegories: the
+statistical covariance of the observed yield (\myund{covStat_Yield}),
+the statistical covariance not of the observed yield
+(\myund{covStat_nonYield}), the systematic covariance of the acceptance
+(\myund{covStat_Acc}), and the systematic covariance not of the
+acceptance (\myund{covSyst_nonAcc}). The rationale for the division is
+that the statistical uncertainty of the yield is a publishable
+number. The statistical uncertainties can be evaluated by my codes,
+thus the uncertainties can be evaluated properly. The systematic
+uncertainty on the acceptance is correlated between the electron and
+the muon channel. Finally, the systematic uncertainty on other
+quantities is sometimes adjusted by hand.
 
 
 \end{document}
