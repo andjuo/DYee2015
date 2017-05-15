@@ -1728,6 +1728,12 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 	if (!recalcBkg(NULL,&h1bkg_fromMC,&h1bkg_fromData)) {
 	  std::cout << "failed to prepare bkg vectors\n";
 	}
+	if (0) {
+	  printHisto(h1bkg_fromMC);
+	  printHisto(h1bkg_fromData);
+	  return 0;
+	}
+
 	TH1D *h1rndData=NULL;
 	for (int i=0; i<sampleSize; i++) {
 	  TString useTag= Form("_rnd%d",i) + fTag;

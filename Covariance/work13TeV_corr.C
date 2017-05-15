@@ -36,10 +36,14 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   closeCanvases(5);
   const int changeNames=1;
 
+  TVersion_t inpVer=_verMuApproved;
+  inpVer=_verMuMay2017;
+
   eeCSFName="cs_DYee_13TeV_El3.root";
   eeCSHisto1DName="h1PreFSRCS";
-  mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+  //mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
   mmCSHisto1DName="h1CS";
+  mmCSFName="cs_DYmm_13TeVMuMay2017_cs.root";
 
   std::string showCanvs;
   showCanvs+=" plotChannelInputCovOnFileAdj";
@@ -80,7 +84,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 		_varRhoFile, _varAcc, _varFSRRes);
   }
 
-  if (changeNames) {
+  if (changeNames && (inpVer==_verMuApproved)) {
     eeOldFName.push_back("cov_ee_varYield_2000.root");
     eeNewFName.push_back("cov_ee_varYield_5000.root");
     eeOldFName.push_back("cov_ee_varRhoFile_2000.root");
@@ -89,6 +93,16 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     mmNewFName.push_back("dymm_cov_varYield5000_20170202-covOnly.root");
     mmOldFName.push_back("cov_mumu_varRhoFile_2000.root");
     mmNewFName.push_back("cov_mumu_varRhoFile_5000.root");
+  }
+  else if (changeNames && (inpVer==_verMuMay2017)) {
+    eeOldFName.push_back("cov_ee_varYield_2000.root");
+    eeNewFName.push_back("cov_ee_varYield_5000.root");
+    eeOldFName.push_back("cov_ee_varRhoFile_2000.root");
+    eeNewFName.push_back("cov_ee_varRhoFile_5000.root");
+    mmOldFName.push_back("cov_mumu_varYield_2000.root");
+    mmNewFName.push_back("cov_mumu_varYieldPoisson_2000.root");
+    //mmOldFName.push_back("cov_mumu_varRhoFile_2000.root");
+    //mmNewFName.push_back("cov_mumu_varRhoFile_5000.root");
   }
 
   TString fileTag="_corr";
@@ -323,6 +337,7 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYmm_ROOTFile_Input-20170207.root";
+  inpFile=inpPath + "DYmm_ROOTFile_Input-20170504.root";
 
   TH1D *h1csMM= cloneHisto(h1csMM_loc,"h1csMM","h1csMM");
   if (0) {

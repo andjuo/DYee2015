@@ -21,6 +21,7 @@ void calcRhoRndVec(int nSamples=100)
   TVersion_t inpVersion=_verMu1;
   inpVersion=_verMu76X;
   inpVersion=_verMuApproved;
+  inpVersion=_verMuMay2017;
 
   if ((inpVersion!=_verMu1) && (DYtools::nMassBins!=DYtools::nMassBins43)) {
     std::cout << "a potential DYbinning.h problem\n";
@@ -32,6 +33,9 @@ void calcRhoRndVec(int nSamples=100)
   }
   else if (inpVersion==_verMuApproved) {
     fnameChk="/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/ROOTFile_Input6_CrossCheck.root";
+  }
+  else if (inpVersion==_verMuMay2017) {
+    fnameChk="/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov/ROOTFile_Input6_CrossCheck.root";
   }
 
   // Load data

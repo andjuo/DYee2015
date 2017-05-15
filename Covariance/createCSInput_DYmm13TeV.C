@@ -177,6 +177,11 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0,
       tmpName.ReplaceAll("4p2","4p3");
       TH1D *h1b= loadHisto(fin2, tmpName, tmpName,1,h1Dummy);
       if (!h1a || !h1b) return;
+      if (0) {
+	printHisto(h1a);
+	printHisto(h1b);
+	return;
+      }
       TH1D *h1sf42= cloneHisto(h1SF42,"h1sf42"+bkgName(b),"sf42");
       removeError(h1sf42);
       TH1D *h1sf43= cloneHisto(h1SF43,"h1sf43"+bkgName(b),"sf43");

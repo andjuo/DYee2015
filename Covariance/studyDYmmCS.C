@@ -14,7 +14,8 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0,
   TVersion_t inpVer=_verMu1;
   TString inpVerTag="_v1";
   if (0) { inpVer=_verMu76X; inpVerTag="_76X"; }
-  else if (1) { inpVer=_verMuApproved; inpVerTag=versionName(inpVer); }
+  else if (0) { inpVer=_verMuApproved; inpVerTag=versionName(inpVer); }
+  else if (1) { inpVer=_verMuMay2017; inpVerTag=versionName(inpVer); }
 
   MuonCrossSection_t muCS("muCS",inpVerTag,0,0,inpVer);
   if (!muCS.load("cs_DYmm_13TeV" + inpVerTag, inpVerTag)) {
@@ -29,18 +30,23 @@ void studyDYmmCS(TVaried_t var= _varNone, int nSample=10, int doSave=0,
     TCanvas *c= muCS.plotCrossSection("cs");
     if (!c) return;
 
-    plotHisto(cloneHisto(muCS.h1Bkg(),"h1tmp1","tmp1"),"ctmp1",1,1,"hist");
+    plotHisto(cloneHisto(muCS.h1Bkg(),"h1tmp1","tmp1"),"ctmp1",1,1,"hist",
+	      "original bkg");
 
     std::vector<double> bkgW;
     bkgW.reserve(muCS.bkgWUnc().GetNoElements());
     for (int i=0; i<muCS.bkgWUnc().GetNoElements(); i++) {
-      bkgW.push_back(2.);
+      bkgW.push_back(1.);
     }
     if (!muCS.recalcBkg(&bkgW)) return;
-    plotHistoSame(cloneHisto(muCS.h1Bkg(),"h1tmp2","tmp2"),"ctmp1","LPE");
+    plotHistoSame(cloneHisto(muCS.h1Bkg(),"h1tmp2","tmp2"),"ctmp1","LPE",
+		  "modified bkg");
  
     TCanvas *c2= muCS.plotCrossSection("cs2",1);
     if (!c2) return;
+
+    printHisto(muCS.h1Bkg());
+    printRatio(muCS.h1CS(),muCS.h1Theory());
   }
   else {
     std::cout << "perform study\n";

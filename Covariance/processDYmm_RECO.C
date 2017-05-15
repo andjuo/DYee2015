@@ -25,6 +25,7 @@ void processDYmm_RECO(Int_t maxEntries=-1)
   TVersion_t inpVersion=_verMu1;
   inpVersion=_verMu76X;
   inpVersion=_verMuApproved;
+  inpVersion=_verMuMay2017;
 
   if (inpVersion!=_verMu1) {
     if (DYtools::nMassBins!=DYtools::nMassBins43) {
@@ -54,6 +55,12 @@ void processDYmm_RECO(Int_t maxEntries=-1)
     TString srcPath76X="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
     srcPath="/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/";
     fnameEff= srcPath76X + "Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
+    dataFName=srcPath + "ROOTFile_Input_CovarianceMatrix.root";
+  }
+  else if (inpVersion==_verMuMay2017) {
+    TString srcPath76X="/mnt/sdb/andriusj/v20160527_1st_CovarianceMatrixInputs_76X/";
+    fnameEff= srcPath76X + "Input5/ROOTFile_TagProbeEfficiency_76X_v20160502.root";
+    srcPath="/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov/";
     dataFName=srcPath + "ROOTFile_Input_CovarianceMatrix.root";
   }
   std::cout << "dataFName=" << dataFName << ", fnameEff=" << fnameEff << "\n";
