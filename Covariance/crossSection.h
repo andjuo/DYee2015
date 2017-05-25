@@ -138,6 +138,7 @@ class CrossSection_t {
   TH1D *fh1Varied;
   RooUnfoldResponse *fResVaried;
   RooUnfoldBayes *fDetResBayes, *fFSRBayes;
+  bool fForceOverflow;
  public:
   CrossSection_t(TString setName="xs", TString setTag="",
 		 TCSType_t setCSType=_csPreFsrFullSp,
@@ -166,10 +167,10 @@ class CrossSection_t {
   void removeEffAcc() { if (fh1EffAcc) { delete fh1EffAcc; fh1EffAcc=NULL; } }
   const RooUnfoldResponse* detRes() const { return fDetRes; }
   RooUnfoldResponse* detResPtr() { return fDetRes; }
-  void detRes(const RooUnfoldResponse &rs) { fDetRes= new RooUnfoldResponse(rs); }
+  void detRes(const RooUnfoldResponse &rs);
   const RooUnfoldResponse* fsrRes() const { return fFSRRes; }
   RooUnfoldResponse* fsrResPtr() { return fFSRRes; }
-  void fsrRes(const RooUnfoldResponse &rs) { fFSRRes= new RooUnfoldResponse(rs); }
+  void fsrRes(const RooUnfoldResponse &rs);
   TString name() const { return fName; }
   void name(TString new_name) { fName=new_name; }
   TString tag() const { return fTag; }
@@ -188,6 +189,8 @@ class CrossSection_t {
   void nItersFSR(int setIters) { fNItersFSR=setIters; }
   double lumi() const { return fLumi; }
   void lumi(double set_lumi) { fLumi=set_lumi; }
+  void useOverflow(bool setVal);
+  bool useOverflow() const { return fForceOverflow; }
 
   const TH1D* h1Theory() const { return fh1Theory; }
   void h1Theory(const TH1D *h1) { fh1Theory=copy(h1,"h1Theory",fTag); }
@@ -281,6 +284,12 @@ class MuonCrossSection_t {
   void version(TVersion_t setVersion) { fVersion=setVersion; }
   void lumi(double lumiA, double lumiB) { fCSa.lumi(lumiA); fCSb.lumi(lumiB); }
   double lumiTot() const { return (fCSa.lumi() + fCSb.lumi()); }
+
+  void useOverflow(bool setVal) {
+    fCSa.useOverflow(setVal);
+    fCSb.useOverflow(setVal);
+  }
+  bool useOverflow() const { return fCSa.useOverflow(); }
 
   const TH1D* h1Bkg() const { return fh1Bkg; }
   // The latest version of muon results used backgrounds that were partially

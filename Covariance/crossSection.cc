@@ -271,7 +271,8 @@ CrossSection_t::CrossSection_t(TString setName, TString setTag,
   fh1UnfRhoEffCorr(NULL), fh1UnfRhoEffAccCorr(NULL),
   fh1PreFsr(NULL), fh1PreFsrCS(NULL),
   fh1Varied(NULL), fResVaried(NULL),
-  fDetResBayes(NULL), fFSRBayes(NULL)
+  fDetResBayes(NULL), fFSRBayes(NULL),
+  fForceOverflow(false) // do not use overflow bins
 {
   this->setNIters_internal(fVersion);
 }
@@ -294,7 +295,8 @@ CrossSection_t::CrossSection_t(const CrossSection_t &cs,
   fh1UnfRhoEffCorr(NULL), fh1UnfRhoEffAccCorr(NULL),
   fh1PreFsr(NULL), fh1PreFsrCS(NULL),
   fh1Varied(NULL), fResVaried(NULL),
-  fDetResBayes(NULL), fFSRBayes(NULL)
+  fDetResBayes(NULL), fFSRBayes(NULL),
+  fForceOverflow(false) // do not use overflow bins
 {
   if (!this->assign(cs)) {
     std::cout << "error in CrossSection_t::CrossSection_t(CrossSection_t)\n";
@@ -331,6 +333,22 @@ void CrossSection_t::clearAllPtrs()
 
 // --------------------------------------------------------------
 
+void CrossSection_t::detRes(const RooUnfoldResponse &rs)
+{
+  fDetRes= new RooUnfoldResponse(rs);
+  fDetRes->UseOverflow(fForceOverflow);
+}
+
+// --------------------------------------------------------------
+
+void CrossSection_t::fsrRes(const RooUnfoldResponse &rs)
+{
+  fFSRRes= new RooUnfoldResponse(rs);
+  fFSRRes->UseOverflow(fForceOverflow);
+}
+
+// --------------------------------------------------------------
+
 void CrossSection_t::setNIters_internal(TVersion_t)
 {
   switch(fVersion) {
@@ -344,6 +362,16 @@ void CrossSection_t::setNIters_internal(TVersion_t)
   }
 }
 
+
+// --------------------------------------------------------------
+
+void CrossSection_t::useOverflow(bool setVal)
+{
+  if (fDetRes) fDetRes->UseOverflow(setVal);
+  if (fFSRRes) fFSRRes->UseOverflow(setVal);
+  if (fResVaried) fResVaried->UseOverflow(setVal);
+  fForceOverflow=setVal;
+}
 
 // --------------------------------------------------------------
 
@@ -423,6 +451,11 @@ int CrossSection_t::assign(const CrossSection_t &cs)
   fh1UnfRhoEffAccCorr= copy(cs.fh1UnfRhoEffAccCorr);
   fh1Varied= copy(cs.fh1Varied);
   if (cs.fResVaried) fResVaried= new RooUnfoldResponse(*cs.fResVaried);
+  fForceOverflow= cs.fForceOverflow;
+
+  if (fDetRes) fDetRes->UseOverflow(fForceOverflow);
+  if (fFSRRes) fFSRRes->UseOverflow(fForceOverflow);
+  if (fResVaried) fResVaried->UseOverflow(fForceOverflow);
 
   int res= checkPtrs();
   std::cout << "assign res=" << res << "\n";
@@ -1057,7 +1090,7 @@ int CrossSection_t::sampleRndResponse(TVaried_t new_var, int sampleSize,
     std::cout << "\n\nrandomize: i=" << i << ", " << variedVarName(new_var) << "\n";
     TString respName= variedVarName(new_var) + Form("_%d",i) + fTag;
     fResVaried= randomizeWithinErr(r, respName, poissonRnd);
-    fResVaried->UseOverflow(false); // ensure correct behavior
+    fResVaried->UseOverflow(fForceOverflow); // ensure requested behavior
     TH1D* h1=copy(calcCrossSection(new_var,i,removeNegativeSignal));
     rndCS.push_back(h1);
     if (rndV_out) {
@@ -1224,6 +1257,8 @@ int CrossSection_t::save(TString fname) const
   infoNIterFSR.Write("infoNIterFSR");
   TObjString infoLumi(Form("%lf",fLumi));
   infoLumi.Write("lumi");
+  TObjString infoForceOverflow(Form("%d",int(fForceOverflow)));
+  infoForceOverflow.Write("forceUseOverflow");
   TObjString timeTag(DayAndTimeTag(0));
   timeTag.Write("timeTag");
   TObjString explain("productionTime");
@@ -1247,13 +1282,21 @@ int CrossSection_t::load(TString fname, TString setTag)
   if (setTag.Length()) fTag=setTag;
   clearAllPtrs();
 
+  TObjString *useOverflowVar=(TObjString*)fin.Get("forceUseOverflow");
+  if (!useOverflowVar) {
+    //res=0;
+    HERE("useOverflowVar is null");
+    fForceOverflow=false; // set default behavior
+  }
+  else fForceOverflow=bool(atoi(useOverflowVar->String().Data()));
+
   TH1D *h1dummy=NULL;
   fh1Yield= loadHisto(fin,"h1Yield","h1Yield" + fTag, 1, h1dummy);
   fh1Bkg  = loadHisto(fin,"h1Bkg", "h1Bkg" + fTag, 1, h1dummy);
   fDetRes = loadRooUnfoldResponse(fin, "detRes", "detRes" + fTag );
   fFSRRes = loadRooUnfoldResponse(fin, "FSRRes", "FSRRes" + fTag );
-  if (fDetRes) fDetRes->UseOverflow(false);
-  if (fFSRRes) fFSRRes->UseOverflow(false);
+  if (fDetRes) fDetRes->UseOverflow(fForceOverflow);
+  if (fFSRRes) fFSRRes->UseOverflow(fForceOverflow);
   fh1Eff  = loadHisto(fin, "h1Eff", "h1Eff" + fTag, 0, h1dummy);
   fh1Rho  = loadHisto(fin, "h1Rho", "h1Rho" + fTag, 1, h1dummy);
   fh1Acc  = loadHisto(fin, "h1Acc", "h1Acc" + fTag, 0, h1dummy);
@@ -1268,7 +1311,7 @@ int CrossSection_t::load(TString fname, TString setTag)
   fh1Theory = loadHisto(fin, "h1Theory", "h1Theory" + fTag, 0, h1dummy);
   fh1Varied = loadHisto(fin, "h1Varied", "h1Varied" + fTag, 0, h1dummy);
   fResVaried= loadRooUnfoldResponse(fin, "respVaried","respVaried"+fTag,0);
-  if (fResVaried) fResVaried->UseOverflow(false);
+  if (fResVaried) fResVaried->UseOverflow(fForceOverflow);
   fDetResBayes= loadRooUnfoldBayes(fin, "detResBayes", "detResBayes" + fTag);
   fFSRBayes = loadRooUnfoldBayes(fin, "fsrBayes", "fsrBayes" + fTag);
 
@@ -1908,7 +1951,7 @@ int MuonCrossSection_t::sampleRndVec(TVaried_t new_var, int sampleSize,
 	std::cout << "failed to get randomized response\n";
 	return 0;
       }
-      rRnd->UseOverflow(false); // ensure correct behavior
+      rRnd->UseOverflow(fCSa.useOverflow()); // ensure requested behavior
       if (fFSRBayes) { delete fFSRBayes; fFSRBayes=NULL; }
       TH1D* h1tmp= cloneHisto(h1postFSRYield,"h1postFSRYield" + respName, "h1postFSRYield"+respName);
 
@@ -2104,6 +2147,12 @@ int MuonCrossSection_t::deriveCov(const std::vector<TH1D*> &rndCS,
 
 int MuonCrossSection_t::save(TString fnameBase)
 {
+  if (fCSa.useOverflow()!=fCSb.useOverflow()) {
+    std::cout << "save() failed consistency check: "
+	      << "useOverflow flag is different in fCSa and fCSb\n";
+    return 0;
+  }
+
   TString fnameA= fnameBase + "_csA.root";
   TString fnameB= fnameBase + "_csB.root";
   int res= (fCSa.save(fnameA) && fCSb.save(fnameB)) ? 1:0;
@@ -2213,6 +2262,13 @@ int MuonCrossSection_t::load(TString fnameBase, TString setTag)
   //else fTag= infoTag->String();
 
   fin.Close();
+
+  if (fCSa.useOverflow()!=fCSb.useOverflow()) {
+    std::cout << "MuonCrossSection_t::load() failed consistency check: "
+	      << "useOverflow flag is different in fCSa and fCSb\n";
+    return 0;
+  }
+
   return 1;
 }
 
