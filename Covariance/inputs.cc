@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 
+
 // --------------------------------------------------------------
 
 const TH1D *h1dummy=NULL;
@@ -30,6 +31,7 @@ TString versionName(TVersion_t ver)
   case _verEl3: name="El3"; break;
   case _verEl3mb41: name="El3mb41"; break;
   case _verEl3mb42: name="El3mb42"; break;
+  case _verElMay2017: name="ElMay2017"; break;
   default:
     std::cout << "versionName is not ready for this version type\n";
   }
@@ -49,6 +51,7 @@ int leptonIdx(TVersion_t v) {
   case _verEl1: case _verEl2: case _verEl2skim: case _verEl2skim2:
   case _verEl2skim3: case _verEl3:
   case _verEl3mb41: case _verEl3mb42:
+  case _verElMay2017:
     i=0;
     break;
   default:

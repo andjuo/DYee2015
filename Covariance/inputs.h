@@ -34,7 +34,8 @@ typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verMuApproved=102,
 	       _verEl1=200,
 	       _verEl2=201, _verEl2skim=202, _verEl2skim2=203,
 	       _verEl2skim3=204,
-	       _verEl3=301, _verEl3mb41=302, _verEl3mb42=303
+	       _verEl3=301, _verEl3mb41=302, _verEl3mb42=303,
+	       _verElMay2017=304
 } TVersion_t;
 
 TString versionName(TVersion_t);

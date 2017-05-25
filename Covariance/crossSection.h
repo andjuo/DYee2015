@@ -342,7 +342,8 @@ namespace DYtools {
 #  ifdef def_42massBin
   const TVersion_t activeVer= _verEl3mb42;
 #  else
-  const TVersion_t activeVer= _verEl3;
+  //const TVersion_t activeVer= _verEl3;
+  const TVersion_t activeVer= _verElMay2017;
 #  endif
 #endif
 

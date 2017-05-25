@@ -338,6 +338,8 @@ void CrossSection_t::setNIters_internal(TVersion_t)
   case _verMuApproved: fNItersDetRes=17; fNItersFSR=100; break;
   case _verMuMay2017: fNItersDetRes=17; fNItersFSR=100; break;
   case _verEl2skim: fNItersDetRes=15; fNItersFSR=15; break;
+  case _verEl3: fNItersDetRes=21; fNItersFSR=21; break;
+  case _verElMay2017: fNItersDetRes=21; fNItersFSR=21; break;
   default: ; // nothing
   }
 }
