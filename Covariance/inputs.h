@@ -142,6 +142,7 @@ TCanvas* plotRatio(TH1D* h1, TString cName, int logX=0, int logY=0,
 
 int moveLegend(TCanvas *c, double dxNDC, double dyNDC);
 int increaseLegend(TCanvas *c, double dxNDC_right, double dyNDC_top);
+int changeLegendEntry(TCanvas *c, const TH1D *h1, TString newLabel);
 void setLeftMargin(TCanvas *c, double xMargin);
 void setRightMargin(TCanvas *c, double xMargin);
 void setLeftRightMargins(TCanvas *c, double lMargin, double rMargin);
@@ -191,6 +192,8 @@ void removeErrorH2(th2_t *h2)
     for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++)
       h2->SetBinError(ibin,jbin,0);
 }
+
+void nullifyOverflow(TH1D *h1);
 
 // if h1ref, differences are taken wrt to 1st histo in the array
 int deriveRelSyst(const TH1D *h1ref, const std::vector<TH1D*> &h1V,

@@ -2,6 +2,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cstring>
+#include <TLegendEntry.h>
 
 
 // --------------------------------------------------------------
@@ -431,6 +432,37 @@ int moveLegend(TCanvas *c, double dx, double dy)
 
 // ---------------------------------------------------------
 
+int changeLegendEntry(TCanvas *c, const TH1D *h1, TString newLabel)
+{
+  c->cd();
+  TLegend *leg=(TLegend*)gPad->FindObject("myLegend");
+  if (!leg) {
+    std::cout << "changeLegendEntry: could not find legend\n";
+    return 0;
+  }
+  int ok=0;
+  TObject *obj=NULL;
+  TIter next(leg->GetListOfPrimitives());
+  while ((obj=next())) { // assignment!
+    if (obj->InheritsFrom("TLegendEntry")) {
+      TLegendEntry *info= (TLegendEntry*)obj;
+      if (info->GetObject()->InheritsFrom("TH1D")) {
+	TH1D *hObj=(TH1D*)info->GetObject();
+	if (h1==hObj) {
+	  //std::cout << "change found!\n";
+	  ok=1;
+	  info->SetLabel(newLabel);
+	  break;
+	}
+      }
+    }
+  }
+  if (!ok) std::cout << "changeLegendEntry: failed to locate histo\n";
+  return ok;
+}
+
+// ---------------------------------------------------------
+
 int increaseLegend(TCanvas *c, double dx, double dy)
 {
   c->cd();
@@ -794,6 +826,17 @@ void printField(TString keyName)
     TObjString *str=(TObjString*)obj;
     if (str) std::cout << "value: " << str->String() << "\n";
   }
+}
+
+// ---------------------------------------------------------
+
+void nullifyOverflow(TH1D *h1)
+{
+  h1->SetBinContent(0,0);
+  h1->SetBinError(0,0);
+  int n=h1->GetNbinsX();
+  h1->SetBinContent(n+1,0);
+  h1->SetBinError(n+1,0);
 }
 
 // ---------------------------------------------------------
