@@ -121,6 +121,7 @@ void work(TVersion_t inpVer,
   if (doSave) {
     TString fname="cov_mumu_" + variedVarName(var) + Form("_%d.root",nSample);
     if (doSave==2) fname.ReplaceAll(".root","_slim.root");
+    else if (doSave==3) fname.ReplaceAll(".root","_veryslim.root");
     if (var==_varFSRRes_Poisson) fname.ReplaceAll(".root","-Poisson.root");
     TFile fout(fname,"RECREATE");
     if (!fout.IsOpen()) {
@@ -129,23 +130,25 @@ void work(TVersion_t inpVer,
     }
     std::vector<TString> dirs;
     std::vector<std::vector<TH1D*>*> hVs;
-    if (doSave!=2) {
-      dirs.push_back("rnd_CSa");
-      hVs.push_back(&rndCSaVec);
-      dirs.push_back("rnd_CSb");
-      hVs.push_back(&rndCSbVec);
-      dirs.push_back("rnd_CStot");
-      hVs.push_back(&rndCSVec);
-    }
-    for (unsigned int iDir=0; iDir<dirs.size(); iDir++) {
-      std::vector<TH1D*> *hV= hVs[iDir];
-      if (hV->size()) {
-	fout.mkdir(dirs[iDir]);
-	fout.cd(dirs[iDir]);
-	for (unsigned int ih=0; ih<hV->size(); ih++) {
-	  hV->at(ih)->Write();
+    if (doSave!=3) {
+      if (doSave!=2) {
+	dirs.push_back("rnd_CSa");
+	hVs.push_back(&rndCSaVec);
+	dirs.push_back("rnd_CSb");
+	hVs.push_back(&rndCSbVec);
+	dirs.push_back("rnd_CStot");
+	hVs.push_back(&rndCSVec);
+      }
+      for (unsigned int iDir=0; iDir<dirs.size(); iDir++) {
+	std::vector<TH1D*> *hV= hVs[iDir];
+	if (hV->size()) {
+	  fout.mkdir(dirs[iDir]);
+	  fout.cd(dirs[iDir]);
+	  for (unsigned int ih=0; ih<hV->size(); ih++) {
+	    hV->at(ih)->Write();
+	  }
+	  fout.cd("");
 	}
-	fout.cd("");
       }
     }
     if (muCS.h1CS()) muCS.h1CS()->Write("xsec");
@@ -157,17 +160,19 @@ void work(TVersion_t inpVer,
     if (h1relUncFromCov) h1relUncFromCov->Write("h1relUncFromCov");
     if (c) c->Write();
     if (cx) cx->Write();
-    std::vector<TCanvas*> canvV;
-    TString canvList="muCS_a muCS_b";
-    canvList.Append("cVaried"+muCS.csA().tag());
-    canvList.Append("cVaried"+muCS.csB().tag());
-    if (doSave==2) canvList="";
-    canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csA().tag());
-    canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csB().tag());
-    std::cout << "canvList=" << canvList << "\n";
-    if (findCanvases(canvList,canvV)) {
-      for (unsigned int ic=0; ic<canvV.size(); ic++) {
-	canvV[ic]->Write();
+    if (doSave!=3) {
+      std::vector<TCanvas*> canvV;
+      TString canvList="muCS_a muCS_b";
+      canvList.Append("cVaried"+muCS.csA().tag());
+      canvList.Append("cVaried"+muCS.csB().tag());
+      if (doSave==2) canvList="";
+      canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csA().tag());
+      canvList.Append(" cVaried_" + variedVarName(var) + "_" + muCS.csB().tag());
+      std::cout << "canvList=" << canvList << "\n";
+      if (findCanvases(canvList,canvV)) {
+	for (unsigned int ic=0; ic<canvV.size(); ic++) {
+	  canvV[ic]->Write();
+	}
       }
     }
     TObjString timeTag(DayAndTimeTag(0));
