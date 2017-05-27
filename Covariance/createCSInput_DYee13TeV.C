@@ -6,16 +6,18 @@
 // ---------------------------------------------------------
 // ---------------------------------------------------------
 
-void createCSInput_DYee13TeV(int doSave=0)
+void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
 {
   TString srcPath="/mnt/sdb/andriusj/v1_31052016_CovarianceMatrixInputs/";
   double lumiTot= 2316.97; // approximate
   int setNiters_detRes=4;
   int setNiters_FSR=4;
+  bool forceOverflow=false;
 
   TVersion_t inpVer=_verEl1;
   inpVer=_verEl2;
   inpVer=_verEl3;
+  inpVer=_verElMay2017;
 
   if (inpVer==_verEl2) {
     srcPath="/mnt/sdb/andriusj/v2_08082016_CovarianceMatrixInputs/";
@@ -28,6 +30,14 @@ void createCSInput_DYee13TeV(int doSave=0)
     lumiTot=2316.969; // actually used
     setNiters_detRes=21;
     setNiters_FSR=21;
+    forceOverflow=false;
+  }
+  else if (inpVer==_verElMay2017) {
+    srcPath="/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/";
+    lumiTot=2258.066; // new value
+    setNiters_detRes=21;
+    setNiters_FSR=21;
+    forceOverflow=true;
   }
 
   TString inpVerTag= versionName(inpVer);
@@ -38,6 +48,7 @@ void createCSInput_DYee13TeV(int doSave=0)
   // ---------------- load the observed and background-subracted (signal) yield
   TString fname1=srcPath + "ROOTFile_Input1_Histograms_Data.root";
   TH1D* h1Yield= loadHisto(fname1, "h_data", "h1Yield", 1,h1dummy);
+  //printHisto(h1Yield,1); return;
   TH1D* h1Signal= loadHisto(fname1, "h_yield", "h1Signal", 1,h1dummy);
   if (!h1Yield || !h1Signal) return;
   if (1) {
@@ -67,7 +78,7 @@ void createCSInput_DYee13TeV(int doSave=0)
     h1WZ->Reset();
     h1ZZ->Reset();
   }
-  else if ((inpVer==_verEl2) || (inpVer==_verEl3)) {
+  else if ((inpVer==_verEl2) || (inpVer==_verEl3) || (inpVer==_verElMay2017)) {
     h1WZ= loadHisto(fname2, "h_WZ", "h1WZ", 1,h1dummy);
     h1ZZ= loadHisto(fname2, "h_ZZ", "h1ZZ", 1,h1dummy);
     if (!h1WZ || !h1ZZ) {
@@ -139,7 +150,7 @@ void createCSInput_DYee13TeV(int doSave=0)
     hNameMap[_varEffAcc]= "h_AccEff";
     hNameMap[_varLast]= "h_diffXsec_Meas";
   }
-  else if (inpVer==_verEl3) {
+  else if ((inpVer==_verEl3) || (inpVer==_verElMay2017)) {
     hNameMap[_varDetRes]= "Unfold_DetectorRes";
     hNameMap[_varFSRRes]= "Unfold_FSRCorr";
     hNameMap[_varEff]= "h_Eff";
@@ -175,7 +186,7 @@ void createCSInput_DYee13TeV(int doSave=0)
   //  rooUnfFSRRes->Scale(lumiTot);
   //}
 
-  if (inpVer==_verEl3) {
+  if (0 && ((inpVer==_verEl3) || (inpVer==_verElMay2017))) {
     std::cout << "\n\nReplacing h1EffAcc with my version\n";
     TFile finAJ("dyee_test_dressed_" + versionName(inpVer) + TString(".root"));
     if (!finAJ.IsOpen()) {
@@ -195,8 +206,8 @@ void createCSInput_DYee13TeV(int doSave=0)
     //else csTmp.h1Rho(h1rho_aj);
     csTmp.h1Acc(h1Acc);
     csTmp.h1EffAcc(h1EffPUAcc_aj);
-    rooUnfDetRes->UseOverflow(false);
-    rooUnfFSRRes->UseOverflow(false);
+    rooUnfDetRes->UseOverflow(forceOverflow);
+    rooUnfFSRRes->UseOverflow(forceOverflow);
     csTmp.detRes(*rooUnfDetRes);
     csTmp.fsrRes(*rooUnfFSRRes);
     csTmp.h1Theory(h1_DiffXSec_data);
@@ -204,6 +215,7 @@ void createCSInput_DYee13TeV(int doSave=0)
     csTmp.nItersFSR(setNiters_FSR);
     TH1D *h1cs_aj= csTmp.calcCrossSection();
     TCanvas *canv_aj= csTmp.plotCrossSection();
+    if (!canv_aj) { std::cout << "null canv_aj\n"; }
     printRatio(h1cs_aj,h1_DiffXSec_data);
     // copying
     copyContents(h1Eff, h1EffPU_aj);
@@ -243,7 +255,15 @@ void createCSInput_DYee13TeV(int doSave=0)
   }
 
 
+  if (inpVer==_verElMay2017) {
+    nullifyOverflow(h1Yield);
+    nullifyOverflow(h1BkgTot);
+    printHisto(h1Yield,1);
+    printHisto(h1BkgTot,1);
+  }
+
   CrossSection_t cs("elCS",inpVerTag,_csPreFsrFullSp);
+  cs.useOverflow(forceOverflow);
   cs.lumi(lumiTot);
   cs.h1Yield(h1Yield);
   cs.h1Bkg(h1BkgTot);
@@ -251,8 +271,8 @@ void createCSInput_DYee13TeV(int doSave=0)
   cs.h1Rho(h1Rho);
   cs.h1Acc(h1Acc);
   cs.h1EffAcc(h1EffAcc);
-  rooUnfDetRes->UseOverflow(false);
-  rooUnfFSRRes->UseOverflow(false);
+  rooUnfDetRes->UseOverflow(forceOverflow);
+  rooUnfFSRRes->UseOverflow(forceOverflow);
   cs.detRes(*rooUnfDetRes);
   cs.fsrRes(*rooUnfFSRRes);
   cs.h1Theory(h1_DiffXSec_data);
@@ -263,15 +283,37 @@ void createCSInput_DYee13TeV(int doSave=0)
   if (h1cs) printRatio(h1cs, h1_DiffXSec_data);
 
   TCanvas *canv=cs.plotCrossSection();
+  changeLegendEntry(canv,cs.h1Theory(),"Ridhi calc.");
   TText *info= new TText();
   info->DrawTextNDC(0.45,0.93,inpVerTag);
   canv->Update();
 
+
   TH1D *h1theoryRaw= loadHisto("theory13TeVmm.root","h1cs_theory","h1NNLOtheory",1,h1dummy);
   TH1D *h1theory= perMassBinWidth(h1theoryRaw,0);
   histoStyle(h1theory,kRed,7,1);
-  plotHistoSame(h1theory,"cs","LP");
+  plotHistoSame(h1theory,"cs","LP","theory");
   printRatio(h1cs,h1theory);
+
+  if (printHistosAtTheEnd) {
+    printHisto(h1Yield,1);
+    printHisto(cs.h1Yield(),1);
+    printHisto(cs.h1Signal(),1);
+    printHisto(cs.h1Unf(),1);
+    printHisto(cs.h1UnfRhoCorr(),1);
+    printHisto(cs.h1UnfRhoEffAccCorr());
+    TH1D *h1postFSRcs= cloneHisto(cs.h1UnfRhoEffAccCorr(),
+				  "h1postFSRcs","h1postFSRcs");
+    h1postFSRcs->Scale(1/cs.lumi());
+    printHisto(h1postFSRcs,1);
+    TH1D *h1preFSRcs= cloneHisto(cs.h1PreFsr(),
+				 "h1preFSRcs","h1preFSRcs");
+    h1preFSRcs->Scale(1/cs.lumi());
+    printHisto(h1preFSRcs,1);
+    printHisto(cs.h1PreFsr());
+    printHisto(cs.h1PreFsrCS());
+  }
+
 
   //cs.plotCrossSection_StepByStep("cCalcTest");
 

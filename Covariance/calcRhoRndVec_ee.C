@@ -21,6 +21,7 @@ void calcRhoRndVec_ee(int nSamples=100)
   int elChannelEffVer=1;
 
   inpVersion=_verEl3;
+  inpVersion=_verElMay2017;
 
   if (DYtools::nMassBins!=DYtools::nMassBins43) {
     std::cout << "a potential DYbinning.h problem\n";
@@ -32,6 +33,12 @@ void calcRhoRndVec_ee(int nSamples=100)
     elChannelEffVer=2; // different histogram naming
     dyeeTestFNameBase="dyee_test_dressed_";
     fnameChk="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/ROOTFile_Input6_CrossCheck.root";
+    effSFNameOnFile="h_EffSF";
+  }
+  else if (inpVersion==_verElMay2017) {
+    elChannelEffVer=3;
+    dyeeTestFNameBase="dyee_test_dressed_";
+    fnameChk="/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/ROOTFile_Input6_CrossCheck.root";
     effSFNameOnFile="h_EffSF";
   }
 
@@ -101,6 +108,7 @@ void calcRhoRndVec_ee(int nSamples=100)
 
   h1rho->SetStats(0);
   histoStyle(h1rho,kBlack,5);
+  h1rho->SetTitle("scale factor (ver." + versionName(inpVersion) + ")");
   plotHisto(h1rho,"cRho",1,0,"LPE1","my code");
 
   if (1) {

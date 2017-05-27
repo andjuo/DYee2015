@@ -16,6 +16,7 @@ void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
   TVersion_t inpVer=_verEl3;
   inpVer=_verEl3mb41;
   inpVer=_verEl3mb42;
+  inpVer=_verElMay2017;
   TString inpVerTag=versionName(inpVer);
 
   CrossSection_t eeCS("elCS",inpVerTag,_csPreFsrFullSp,inpVer);
@@ -24,7 +25,7 @@ void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
     return;
   }
 
-  if (inpVer==_verEl3) {
+  if ((inpVer==_verEl3) || (inpVer==_verElMay2017)) {
     eeCS.nItersDetRes(21);
     eeCS.nItersFSR(21);
     eeCS.calcCrossSection();

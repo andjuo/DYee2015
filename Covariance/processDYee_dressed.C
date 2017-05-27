@@ -26,6 +26,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
 
   TVersion_t inpVersion=_verEl2skim;
   const int testSC_postFSR=1;
+  int hEffNamingVersion=2;
 
   if ((DYtools::nMassBins!=DYtools::nMassBins43) &&
       (DYtools::nMassBins!=DYtools::nMassBins42) &&
@@ -42,9 +43,15 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   srcPath="/media/sf_Share2/DYee_76X_Calibrated/mySkim/";
 
   inpVersion=_verEl3;
-  inpVersion=_verEl3mb41;
-  inpVersion=_verEl3mb42;
+  //inpVersion=_verEl3mb41;
+  //inpVersion=_verEl3mb42;
   fnameEff="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/ROOTFile_Input5_TagProbeEfficiency.root";
+
+  inpVersion=_verElMay2017;
+  hEffNamingVersion=3;
+  srcPath="/media/sf_CMSData/DYAnalysis_76X_Calibrated/mySkim/";
+  fnameEff="/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/ROOTFile_Input5_TagProbeEfficiency.root";
+
 
   TString dataFName;
   TString fileFormat="DYEE_M%dto%d_v1.root ";
@@ -52,7 +59,8 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
       (inpVersion==_verEl2skim3) ||
       (inpVersion==_verEl3) ||
       (inpVersion==_verEl3mb41) ||
-      (inpVersion==_verEl3mb42)
+      (inpVersion==_verEl3mb42) ||
+      (inpVersion==_verElMay2017)
       ) fileFormat="DY_%dto%d_v2_orig.root ";
 
   if (includeOnlyRange.Length()>0) {
@@ -77,7 +85,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   }
   //std::cout << "dataFName=<" << dataFName << ">\n";
 
-  DYTnPEff_t tnpEff(2); // 0 - muon channel, 1,2 - electron channel
+  DYTnPEff_t tnpEff(hEffNamingVersion); // 0 - muon channel, 1,2,3 - electron channel
   TFile finEff(fnameEff);
   if (!finEff.IsOpen()) {
     std::cout << "failed to open the file <" << fnameEff << ">\n";
@@ -180,6 +188,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   EventSpace_t postFsrES("mainES",tnpEff.h2Eff_RecoID_Data);
   EventSpace_t postFsrES_trigOnly("mainES_trigOnly",tnpEff.h2Eff_RecoID_Data);
   EventSpace_t postFsrES_trigOnly_noPU("mainES_trigOnly_noPU",tnpEff.h2Eff_RecoID_Data);
+  EventSpace_t postFsrES_recoSel("mainES_recoSel",tnpEff.h2Eff_RecoID_Data);
   EventSpace_t recoES("recoES",tnpEff.h2Eff_RecoID_Data);
   EventSpace_t recoESinPostFsrAcc("recoESinPostFsrAcc",tnpEff.h2Eff_RecoID_Data);
 
@@ -362,6 +371,9 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
     //
     if (inAccPostFsr) {
       postFsrES.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU);
+      if (data.Flag_RecoEleSelection) {
+	postFsrES_recoSel.fill(data.Momentum_postFSR_Lead,data.Momentum_postFSR_Sub,wPU);
+      }
       int fi1= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Lead,1);
       int fi2= DYtools::FlatIndex(h2EffBinDef, data.Momentum_postFSR_Sub,1);
       if ((fi1<0) || (fi2<0)) {
@@ -410,6 +422,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   TH1D* h1rho= postFsrES.calculateScaleFactor(tnpEff,0,"h1rho","scale factor;M_{ee] [GeV];#rho");
   TH1D* h1rhoTrigOnly= postFsrES_trigOnly.calculateScaleFactor(tnpEff,0,"h1rho_trigOnly","scale factor (trigOnly)");
   TH1D* h1rhoTrigOnlyNoPU= postFsrES_trigOnly_noPU.calculateScaleFactor(tnpEff,0,"h1rho_trigOnly_noPU","scale factor (no PU)");
+  TH1D* h1rhoPostFSR_recoSel= postFsrES_recoSel.calculateScaleFactor(tnpEff,0,"h1rhoPostFSR_RecoSel","scale factor (postFSR space, reco Sel, in postFSR acc)");
   TH1D* h1rho_reco= recoES.calculateScaleFactor(tnpEff,0,"h1rho_reco","scale factor (reco space)");
   TH1D* h1rho_recoInPostFsrAcc= recoESinPostFsrAcc.calculateScaleFactor(tnpEff,0,"h1rho_recoInPostFsrAcc","scale factor (reco space, in postFSR acc)");
   histoStyle(h1rho,kBlack,24,1);
@@ -417,11 +430,14 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   histoStyle(h1rhoTrigOnlyNoPU,kBlue,7,1);
   histoStyle(h1rho_reco,kOrange,5,1);
   histoStyle(h1rho_recoInPostFsrAcc,kRed,7,1);
-  plotHisto(h1rho,"cRho",1,0,"LPE1","rho (postFSRES)");
-  plotHistoSame(h1rhoTrigOnly,"cRho","LPE1","rho (trigOnly)");
-  plotHistoSame(h1rhoTrigOnlyNoPU,"cRho","LPE1","rho (trigOnly_noPU)");
-  plotHistoSame(h1rho_reco,"cRho","LPE1","rho (reco)");
+  histoStyle(h1rhoPostFSR_recoSel,7,31,1);
+  TCanvas *cRho=plotHisto(h1rho,"cRho",1,0,"LPE1","rho (postFSRES)");
+  //plotHistoSame(h1rhoTrigOnly,"cRho","LPE1","rho (trigOnly)");
+  //plotHistoSame(h1rhoTrigOnlyNoPU,"cRho","LPE1","rho (trigOnly_noPU)");
+  plotHistoSame(h1rhoPostFSR_recoSel,"cRho","LPE1","rho (postFSRES_recoSel)");
+  plotHistoSame(h1rho_reco,"cRho","LPE1","rho (recoSpace)");
   plotHistoSame(h1rho_recoInPostFsrAcc,"cRho","LPE1","rho (reco inPostFsrAcc)");
+  HERE("passed");
 
   RooUnfoldBayes bayesDetRes( &detResResp, h1recoSel_MW, 4 );
   TH1D *h1Unf= (TH1D*) bayesDetRes.Hreco()->Clone("h1Unf");
@@ -539,6 +555,7 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   h1rho->Write();
   h1rhoTrigOnly->Write();
   h1rhoTrigOnlyNoPU->Write();
+  h1rhoPostFSR_recoSel->Write();
   h1rho_reco->Write();
   h1rho_recoInPostFsrAcc->Write();
   detResResp.Write();
@@ -589,11 +606,13 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   cEffCmp->Write();
   cFSRTest->Write();
   cScaleRecoSelToPreFsrTest->Write();
+  cRho->Write();
   recoES.save(foutH);
   recoESinPostFsrAcc.save(foutH);
   postFsrES.save(foutH);
   postFsrES_trigOnly.save(foutH);
   postFsrES_trigOnly_noPU.save(foutH);
+  postFsrES_recoSel.save(foutH);
   TObjString timeTag(DayAndTimeTag(0));
   timeTag.Write("timeTag");
 
