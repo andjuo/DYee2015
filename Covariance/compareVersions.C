@@ -89,6 +89,11 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
   addToVector(vecCmp1FName,"/mnt/sdc/andriusj/DY13TeV/EgammaWork-20160912/ElectronNtupler/work_76x/Unfolding/RespObj_detUnfolding.root");
   addToVector(vecCmp2FName,".");
 
+  // version 7
+  addToVector(vecMainFName,"dyee_test_dressed_ElMay2017.root");
+  addToVector(vecCmp1FName,"/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/ROOTFile_Input6_CrossCheck.root");
+  addToVector(vecCmp2FName,".");
+
 
   if (theCase==1) {
     std::cout << "compare DYee corrections\n";
@@ -176,6 +181,21 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
     histoNames[_fn_cmp1][_iSignal]="h1recoSel_MWPU";
   }
   else if (theCase==100) {
+    TString lumiScale_loc=Form(":scale%19.8e",1./2258.066);
+    std::cout << "lumiScale_loc=" << lumiScale_loc << "\n";
+    std::cout << "compare detRes objects\n";
+    mainFName=vecMainFName[version];
+    histoNames[_fn_main][_iSignal]="RRmeas+rooUnf_detResRespPU";
+    histoNames[_fn_main][_iUnf]="RRtrue+rooUnf_detResRespPU";
+    histoNames[_fn_main][_iDetResFakes]="RRfakes+rooUnf_detResRespPU";
+    histoNames[_fn_main][_ih2Mig]="RRmig+rooUnf_detResRespPU";
+    cmpFName1=vecCmp1FName[version];
+    histoNames[_fn_cmp1][_iSignal]="RRmeas+Unfold_DetectorRes"+lumiScale_loc;
+    histoNames[_fn_cmp1][_iUnf]="RRtrue+Unfold_DetectorRes"+lumiScale_loc;
+    histoNames[_fn_cmp1][_iDetResFakes]="RRfakes+Unfold_DetectorRes"+lumiScale_loc;
+    histoNames[_fn_cmp1][_ih2Mig]="RRmig+Unfold_DetectorRes"+lumiScale_loc;
+  }
+  else if (theCase==101) {
     std::cout << "compare detRes objects\n";
     mainFName=vecMainFName[version];
     histoNames[_fn_main][_iSignal]="RRmeas+detRes";
