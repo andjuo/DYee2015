@@ -10,12 +10,14 @@
 int adjustMMUnc(const finfomap_t &mmCovFNames, // needed for first value
 		std::vector<TMatrixD> &mmCovV,
 		CovStruct_t &covM, int showChangedCov,
-		int plotCmp, int noUncAdjustment=0);
+		int plotCmp, int noUncAdjustment=0,
+		TVersion_t inpVer=_verUndef);
 
 int adjustEEUnc(const finfomap_t &eeCovFNames, // needed for first value
 		std::vector<TMatrixD> &eeCovV,
 		CovStruct_t &eeCovM, int showChangedCov,
-		int plotCmp, int noUncAdjustment=0);
+		int plotCmp, int noUncAdjustment=0,
+		TVersion_t inpVer=_verUndef);
 
 // -------------------------------------------------------
 
@@ -39,11 +41,17 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   TVersion_t inpVer=_verMuApproved;
   inpVer=_verMuMay2017;
 
-  eeCSFName="cs_DYee_13TeV_El3.root";
   eeCSHisto1DName="h1PreFSRCS";
-  //mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
   mmCSHisto1DName="h1CS";
-  mmCSFName="cs_DYmm_13TeVMuMay2017_cs.root";
+
+  if (inpVer==_verMuApproved) {
+    eeCSFName="cs_DYee_13TeV_El3.root";
+    mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
+  }
+  if (inpVer==_verMuMay2017) {
+    eeCSFName="cs_DYee_13TeV_ElMay2017.root";
+    mmCSFName="cs_DYmm_13TeVMuMay2017_cs.root";
+  }
 
   std::string showCanvs;
   showCanvs+=" plotChannelInputCovOnFileAdj";
@@ -96,9 +104,9 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   }
   else if (changeNames && (inpVer==_verMuMay2017)) {
     eeOldFName.push_back("cov_ee_varYield_2000.root");
-    eeNewFName.push_back("cov_ee_varYield_5000.root");
-    eeOldFName.push_back("cov_ee_varRhoFile_2000.root");
-    eeNewFName.push_back("cov_ee_varRhoFile_5000.root");
+    eeNewFName.push_back("cov_ee_varYieldPoisson_2000.root");
+    //eeOldFName.push_back("cov_ee_varRhoFile_2000.root");
+    //eeNewFName.push_back("cov_ee_varRhoFile_5000.root");
     mmOldFName.push_back("cov_mumu_varYield_2000.root");
     mmNewFName.push_back("cov_mumu_varYieldPoisson_2000.root");
     //mmOldFName.push_back("cov_mumu_varRhoFile_2000.root");
@@ -173,8 +181,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   int plotCmpUnc= (hasValue("plotAdjUnc",showCanvs)) ? 1 : 0;
   if (hasValue("plotAdjCov",showCanvs)) plotCmpUnc=2;
 
-  if (!adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc,noUncAdjustment)) return;
-  if (!adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc,noUncAdjustment)) return;
+  if (!adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer)) return;
+  if (!adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer)) return;
 
   if (excludeSyst) {
     if (excludeSyst==1) {
@@ -326,7 +334,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 int adjustMMUnc(const finfomap_t &mmCovFNames,
 		std::vector<TMatrixD> &mmCovV,
 		CovStruct_t &mmCovS, int plotChangedCov,
-		int plotCmp, int noUncAdjustment)
+		int plotCmp, int noUncAdjustment, TVersion_t inpVer)
 {
   finfomap_t mmUncFiles, mmUncStat, mmUncSyst;
   fvarweightmap_t relUncW;
@@ -337,7 +345,9 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYmm_ROOTFile_Input-20170207.root";
-  inpFile=inpPath + "DYmm_ROOTFile_Input-20170504.root";
+  if (inpVer==_verMuMay2017) {
+    inpFile="./DYmm_ROOTFile_Input-20170504.root";
+  }
 
   TH1D *h1csMM= cloneHisto(h1csMM_loc,"h1csMM","h1csMM");
   if (0) {
@@ -419,7 +429,7 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 int adjustEEUnc(const finfomap_t &eeCovFNames,
 		std::vector<TMatrixD> &eeCovV,
 		CovStruct_t &eeCovS, int plotChangedCov,
-		int plotCmp, int noUncAdjustment)
+		int plotCmp, int noUncAdjustment, TVersion_t inpVer)
 {
   finfomap_t eeUncFiles, eeUncStat, eeUncSyst;
   fvarweightmap_t relUncW;
@@ -430,6 +440,9 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYee_ROOTFile_Input-20170208.root";
+  if (inpVer==_verMuMay2017) {
+    inpFile="./DYee_ROOTFile_Input_v2-20170526.root";
+  }
 
   TH1D *h1csEE= cloneHisto(h1csEE_loc,"h1csEE","h1csEE");
   if (0) {
