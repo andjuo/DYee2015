@@ -1184,9 +1184,11 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
   const TString mmNames[4]= { "h2Eff_RecoID", "h2Eff_Iso", "h2Eff_HLT4p2", "h2Eff_HLT4p3" };
   const TString eeNames[4] = { "h2Eff_Reco", "h2Eff_ID", "h2Eff_Trig", "h2Eff_TrigUnneeded" };
   const TString eeNamesV2[4]= { "h_2D_Eff_RECO", "h_2D_Eff_ID", "h_2D_Eff_Trig", "h_2D_Eff_TrigUnneeded" };
+  const TString eeNamesV3[4]= { "h_2D_Eff_RECO_StatUnc", "h_2D_Eff_ID_StatUnc", "h_2D_Eff_Trig_StatUnc", "h_2D_Eff_TrigUnneeded" };
   const TString *hnames = mmNames;
   if (fElChannel==1) hnames=eeNames;
   else if (fElChannel==2) hnames=eeNamesV2;
+  else if (fElChannel==3) hnames=eeNamesV3;
 
   std::cout << "load histo <" << (subdir+hnames[0]+"_Data"+tag) << ">\n";
   h2Eff_RecoID_Data= loadHisto(fin,subdir+hnames[0]+"_Data"+tag,hnames[0]+"_Data"+tag,1,h2dummy);
@@ -1900,6 +1902,9 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 	      std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "; ";
 	      std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "; ";
 	      std::cout << "got rho=" << rho << "\n";
+	      if (0) {
+		std::cout << "(eta,pt): " << fh2EffBinDef->GetXaxis()->GetBinCenter(ibin1) << "," << fh2EffBinDef->GetYaxis()->GetBinCenter(jbin1) << "; " << fh2EffBinDef->GetXaxis()->GetBinCenter(ibin2) << "," << fh2EffBinDef->GetYaxis()->GetBinCenter(jbin2) << "\n";
+	      }
 	    }
 	    sumRho += rho* h2sp->GetBinContent(fi1,fi2);
 	    sum += h2sp->GetBinContent(fi1,fi2);
@@ -2465,6 +2470,7 @@ void setAutoRanges(const std::vector<TH1D*> &h1V,
     yRange.push_back(ddpair_t(0.50, 1.05));
     yRange.push_back(ddpair_t(0.85, 1.10));
     yRange.push_back(ddpair_t(0.80, 1.10));
+    yRange.push_back(ddpair_t(0.00, 1.05));
   }
   else {
     yRange.push_back(ddpair_t(0.95,1.05));
