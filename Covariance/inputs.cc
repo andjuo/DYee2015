@@ -2181,22 +2181,29 @@ void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout)
     return;
   }
 
-  gSystem->mkdir(destDir,kTRUE);
-  gSystem->mkdir(destDir+TString("/png"),kTRUE);
-  gSystem->mkdir(destDir+TString("/pdf"),kTRUE);
-  gSystem->mkdir(destDir+TString("/root"),kTRUE);
+  if (destDir.Length()) {
+    gSystem->mkdir(destDir,kTRUE);
+    gSystem->mkdir(destDir+TString("/png"),kTRUE);
+    gSystem->mkdir(destDir+TString("/pdf"),kTRUE);
+    gSystem->mkdir(destDir+TString("/root"),kTRUE);
 
-  for (unsigned int i=0; i<cV.size(); i++) {
-    TCanvas *canv= cV[i];
-    TString saveName=destDir+TString("/png/");
-    saveName+=canv->GetName();
-    saveName+=".png";
-    canv->SaveAs(saveName);
-    saveName.ReplaceAll("png","pdf");
-    canv->SaveAs(saveName);
-    saveName.ReplaceAll("pdf","root");
-    canv->SaveAs(saveName);
-    if (fout) canv->Write();
+    for (unsigned int i=0; i<cV.size(); i++) {
+      TCanvas *canv= cV[i];
+      TString saveName=destDir+TString("/png/");
+      saveName+=canv->GetName();
+      saveName+=".png";
+      canv->SaveAs(saveName);
+      saveName.ReplaceAll("png","pdf");
+      canv->SaveAs(saveName);
+      saveName.ReplaceAll("pdf","root");
+      canv->SaveAs(saveName);
+    }
+  }
+
+  if (fout) {
+    for (unsigned int i=0; i<cV.size(); i++) {
+      cV[i]->Write();
+    }
   }
   return;
 }
@@ -2325,6 +2332,17 @@ int orderChanged(const std::vector<int> &idx) {
     if (idx[i-1]+1!=idx[i]) yes=1;
   }
   return yes;
+}
+
+// ---------------------------------------------------------
+// ---------------------------------------------------------
+
+TString makeNumberStr(int idx, int digits)
+{
+  TString number=Form("%d",idx);
+  int n=digits-number.Length();
+  if (n>0) number.Prepend(std::string(n,'0').c_str());
+  return number;
 }
 
 // ---------------------------------------------------------

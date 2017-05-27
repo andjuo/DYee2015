@@ -776,6 +776,10 @@ int setValue(T &var, const std::string &option, const std::string &key,
 
 // -----------------------------------
 
+TString makeNumberStr(int idx, int digits);
+
+// -----------------------------------
+
 inline
 void HERE(const char *msg)
 { std::cout << msg << std::endl; }
