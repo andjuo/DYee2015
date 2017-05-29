@@ -21,7 +21,7 @@ int adjustEEUnc(const finfomap_t &eeCovFNames, // needed for first value
 
 // -------------------------------------------------------
 
-const int useUncorrYieldUnc=1;
+const int useUncorrYieldUnc=0;
 //TString eeCSFName="cs_DYee_13TeV_El3.root";
 //TString eeCSH1Name="h1PreFSRCS";
 //TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
@@ -40,6 +40,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 
   TVersion_t inpVer=_verMuApproved;
   inpVer=_verMuMay2017;
+  //inpVer=_verElMay2017false;
 
   eeCSHisto1DName="h1PreFSRCS";
   mmCSHisto1DName="h1CS";
@@ -52,11 +53,15 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     eeCSFName="cs_DYee_13TeV_ElMay2017.root";
     mmCSFName="cs_DYmm_13TeVMuMay2017_cs.root";
   }
+  if (inpVer==_verElMay2017false) {
+    eeCSFName="cs_DYee_13TeV_ElMay2017false.root";
+    mmCSFName="cs_DYmm_13TeVMuMay2017_cs.root";
+  }
 
   std::string showCanvs;
   showCanvs+=" plotChannelInputCovOnFileAdj";
  // whether relative uncertainty in Acc in the channels is similar
-  //showCanvs+=" plotChannelRelSystAccUnc";
+  showCanvs+=" plotChannelRelSystAccUnc";
   // compare randomized vs provided uncertainties
   showCanvs+=" plotAdjUnc";
   //showCanvs+=" plotAdjCov";
@@ -79,13 +84,13 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   std::vector<int> eeCovIdx, mmCovIdx;
   std::vector<TString> eeOldFName, eeNewFName; // for file name changing
   std::vector<TString> mmOldFName, mmNewFName; // for file name changing
-  if (1) {
+  if (1) { // all factors
     addToVector(eeCovIdx,7, _varYield, _varBkg, _varDetRes, _varEff,
 		_varRhoFile, _varAcc, _varFSRRes);
     addToVector(mmCovIdx,7, _varYield, _varBkg, _varDetRes, _varEff,
 		_varRhoFile, _varAcc, _varFSRRes);
   }
-  else {
+  else { // all factors, but no _varYield
     addToVector(eeCovIdx,6,  _varBkg, _varDetRes, _varEff,
 		_varRhoFile, _varAcc, _varFSRRes);
     addToVector(mmCovIdx,6,  _varBkg, _varDetRes, _varEff,
@@ -103,8 +108,14 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     mmNewFName.push_back("cov_mumu_varRhoFile_5000.root");
   }
   else if (changeNames && (inpVer==_verMuMay2017)) {
+    eeOldFName.push_back("cov_ee_ElMay2017_varYield_2000.root");
+    eeNewFName.push_back("cov_ee_ElMay2017_varYieldPoisson_2000.root");
+    mmOldFName.push_back("cov_mumu_varYield_2000.root");
+    mmNewFName.push_back("cov_mumu_varYieldPoisson_2000.root");
+  }
+  else if (changeNames && (inpVer==_verElMay2017false)) {
     eeOldFName.push_back("cov_ee_varYield_2000.root");
-    eeNewFName.push_back("cov_ee_varYieldPoisson_2000.root");
+    eeNewFName.push_back("cov_ee_ElMay2017false_varYieldPoisson_2000.root");
     //eeOldFName.push_back("cov_ee_varRhoFile_2000.root");
     //eeNewFName.push_back("cov_ee_varRhoFile_5000.root");
     mmOldFName.push_back("cov_mumu_varYield_2000.root");
@@ -122,7 +133,14 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 
   for (unsigned int i=0; i<eeCovIdx.size(); i++) {
     TVaried_t var= TVaried_t(eeCovIdx[i]);
-    TString fname = "cov_ee_" + variedVarName(var) + TString("_2000.root");
+    TString fname = "cov_ee_";
+    if (inpVer==_verMuMay2017) {
+      fname.Append(versionName(_verElMay2017) + "_");
+    }
+    else if (inpVer==_verElMay2017false) {
+      fname.Append(versionName(inpVer) + "_");
+    }
+    fname+= variedVarName(var) + TString("_2000.root");
     if (eeOldFName.size()>0) {
       for (unsigned int i=0; i<eeOldFName.size(); i++) {
 	if (fname==eeOldFName[i]) fname=eeNewFName[i];
@@ -184,6 +202,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   if (!adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer)) return;
   if (!adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer)) return;
 
+  //return;
+
   if (excludeSyst) {
     if (excludeSyst==1) {
       mmCovS.editSystNonAcc().Zero();
@@ -232,9 +252,11 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 				  h1csMM_tmp,h1csMM_tmp,0);
     TH1D *h1eeAcc_rel= uncFromCov(eeCovS.covSyst_Acc,"h1eeAcc_rel",
 				  h1csEE_tmp,h1csEE_tmp,0);
+    setNiceMassAxisLabel(h1mmAcc_rel,2,0,"",3,"acc", 1+2);
+    setNiceMassAxisLabel(h1eeAcc_rel,2,0,"",3,"acc", 1+2);
     hsRed.SetStyle(h1eeAcc_rel);
-    plotHisto(h1mmAcc_rel,"cAccUnc",1,1,"LP","#mu#mu");
-    plotHistoSame(h1eeAcc_rel,"cAccUnc","LP","ee");
+    plotHistoAuto(h1eeAcc_rel,"cAccUnc",1,1,"LP","ee");
+    plotHistoAuto(h1mmAcc_rel,"cAccUnc",1,1,"LP","#mu#mu");
     //std::cout << "stopping\n"; return;
   }
 
@@ -265,16 +287,28 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   TMatrixD mmCovTot(mmCovS.Sum());
 
   double lumiUnc=0.026;
+  if ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)) {
+    lumiUnc=0.023;
+  }
+
   TString fileTagExtra,plotTagExtra;
+  TMatrixD lumiCov(2*eeCovTot.GetNrows(),2*eeCovTot.GetNcols());
+  lumiCov.Zero();
   if (includeLumiUnc) {
     fileTagExtra="_wLumi"; plotTagExtra=" (wLumi)";
     if (includeLumiUnc==2) {
       eeCovTot.Zero(); mmCovTot.Zero(); emCovTot.Zero();
-      lumiUnc=0.26;
       fileTagExtra="_wLumi10x"; plotTagExtra=" (wLumi10x)";
     }
+    lumiCov-= BLUEResult_t::measCovMatrix(eeCovTot,1);
+    lumiCov-= BLUEResult_t::measCovMatrix(mmCovTot,0);
+    lumiCov-= BLUEResult_t::measCovMatrix(emCovTot,2);
     if (!addLumiCov(eeCovTot,mmCovTot,emCovTot, lumiUnc, h1csEE_tmp,h1csMM_tmp))
       return;
+    lumiCov+= BLUEResult_t::measCovMatrix(eeCovTot,1);
+    lumiCov+= BLUEResult_t::measCovMatrix(mmCovTot,0);
+    lumiCov+= BLUEResult_t::measCovMatrix(emCovTot,2);
+    //lumiCov.Print();
   }
 
   if (corrCase==0) {
@@ -306,9 +340,25 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   if (includeLumiUnc) {
     TMatrixD totFinalCov(*blue->getCov());
     TH1D *h1csLL_test= convert2histo1D(*blue->getEst(),totFinalCov,
-				       "h1csLL_test","h1csLL test",NULL);
+				       "h1csLL_test","h1csLL test",h1csEE_tmp);
+    setNiceMassAxisLabel(h1csLL_test,2,0,"",1,"",1+0*2);
     if (!addLumiCov(totFinalCov,-lumiUnc,h1csLL_test)) return;
-    plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi",ccOpt);
+    plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi",
+		PlotCovCorrOpt_t(1,1,0));
+    TMatrixD lumiContrCov(blue->contributedCov(lumiCov));
+    TH2D *h2lumiContrCov=NULL;
+    plotCovCorr(lumiContrCov,h1csLL_test,"h2lumiContrCov","cLumiContrCov",
+		PlotCovCorrOpt_t(1,1,1),&h2lumiContrCov);
+    TH1D *h1uncLumi= uncFromCov(h2lumiContrCov);
+    setNiceMassAxisLabel(h1uncLumi,2,0,"",2,"",1+0*2);
+    h1uncLumi->GetYaxis()->SetNoExponent(false);
+    HistoStyle_t(6,2).SetStyle(h1uncLumi);
+    plotHistoAuto(h1uncLumi,"canvContrUnc",1,1,"LP","lumi");
+    if (0) {
+      TH1D *h1uncLumiRel= uncFromCov(h2lumiContrCov,h1csLL_test);
+      printHisto(h1uncLumiRel);
+      return;
+    }
   }
 
   // make analysing plots
@@ -323,6 +373,11 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     SaveCanvases("ALL","dyll-combi-"+fileTag,&fout);
     //h2cov_fromYield->Write();
     //h1_dCS_fromYield->Write();
+    if (1) {
+      if (!writeHistosFromCanvases("cCombiCS2Theory canvContrUnc",1,&fout)) {
+	std::cout << "failed to get histos from canvas\n";
+      }
+    }
     writeTimeTag(&fout);
     fout.Close();
     std::cout << "file <" << fout.GetName() << "> created\n";
@@ -345,8 +400,13 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYmm_ROOTFile_Input-20170207.root";
-  if (inpVer==_verMuMay2017) {
+  int muInputVer=1;
+  if ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)) {
     inpFile="./DYmm_ROOTFile_Input-20170504.root";
+    if (1) {
+      muInputVer=2;
+      inpFile="./DYmm_ROOTFile_Input-20170529.root";
+    }
   }
 
   TH1D *h1csMM= cloneHisto(h1csMM_loc,"h1csMM","h1csMM");
@@ -366,6 +426,13 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
   mmUncStat [_varBkg]= "h_RelUnc_Stat_BkgEst";
   mmUncSyst [_varBkg]= "h_RelUnc_Syst_BkgEst";
   relUncW   [_varBkg]= 1;
+  if (((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)) &&
+      (muInputVer==1)) {
+    mmUncFiles[_varBkg]= "DYmm_ROOTFile_RelUnc_Stat_Syst_Tot_BkgEst-20170519.root";
+    mmUncStat[_varBkg]= "h_RelUnc_Stat";
+    mmUncSyst[_varBkg]= "h_RelUnc_Syst";
+    relUncW  [_varBkg]= 0.01;
+  }
   mmUncFiles[_varDetRes]= inpFile;
   mmUncStat [_varDetRes]= "h_RelUnc_Stat_DetRes";
   mmUncSyst [_varDetRes]= "h_RelUnc_Syst_DetRes";
@@ -440,8 +507,10 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYee_ROOTFile_Input-20170208.root";
-  if (inpVer==_verMuMay2017) {
-    inpFile="./DYee_ROOTFile_Input_v2-20170526.root";
+  if ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)) {
+    //inpFile="DYee_ROOTFile_Input_v1-20170518.root";
+    //inpFile="./DYee_ROOTFile_Input_v2-20170526.root";
+    inpFile="./DYee_ROOTFile_Input_v3-20170529.root";
   }
 
   TH1D *h1csEE= cloneHisto(h1csEE_loc,"h1csEE","h1csEE");
@@ -481,6 +550,11 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
   eeUncStat [_varAcc]= "";
   eeUncSyst [_varAcc]= "h_RelUnc_Syst_Acc";
   relUncW   [_varAcc]= 0.01;
+  if (0 && ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false))) {
+    eeUncFiles[_varAcc]= "DYmm_ROOTFile_Input-20170504.root";
+    eeUncSyst [_varAcc]= "h_RelUnc_Syst_Acc";
+    relUncW   [_varAcc]= 1.;
+  }
 
   const TH1D *h1central= (1) ? h1csEE : NULL;
   int change_covV=(noUncAdjustment) ? 0:1;
