@@ -175,7 +175,7 @@ RooUnfoldResponse* randomizeWithinErr(const RooUnfoldResponse *R, TString tag,
     std::cout << "error in randomizeWithinErr(RooUnfoldResponse)\n";
     return NULL;
   }
-  int nonNegative=0;
+  int nonNegative=1;
   randomizeWithinErr((TH2D*)R->Hresponse(), h2MigRnd, nonNegative, poissonRnd);
 
   TH1D* h1measRnd= cloneHisto(R->Hmeasured(),"h1measRnd"+tag,"h1measRnd",h1dummy);
@@ -358,6 +358,7 @@ void CrossSection_t::setNIters_internal(TVersion_t)
   case _verEl2skim: fNItersDetRes=15; fNItersFSR=15; break;
   case _verEl3: fNItersDetRes=21; fNItersFSR=21; break;
   case _verElMay2017: fNItersDetRes=21; fNItersFSR=21; break;
+  case _verElMay2017false: fNItersDetRes=21; fNItersFSR=21; break;
   default: ; // nothing
   }
 }
