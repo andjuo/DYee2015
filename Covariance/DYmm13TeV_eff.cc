@@ -500,8 +500,10 @@ int DYTnPEff_t::randomize(const DYTnPEff_t &e, TString tag, int systematic)
   int nonNegative=0;
 
   for (unsigned int i=0; i<e.fullListSize(); i++) {
-    if (hasDoubleZero(e.h2fullList(i))) {
-      std::cout << "Warning: DYTnPEff_t::randomize(e): double zero detected\n";
+    const TH2D *h2=e.h2fullList(i);
+    if (hasDoubleZero(h2)) {
+      std::cout << "Warning: DYTnPEff_t::randomize(e): double zero detected"
+		<< " in " << h2->GetName() << "\n";
       break;
     }
   }
