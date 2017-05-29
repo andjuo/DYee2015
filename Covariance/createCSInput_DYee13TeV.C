@@ -18,6 +18,7 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
   inpVer=_verEl2;
   inpVer=_verEl3;
   inpVer=_verElMay2017;
+  inpVer=_verElMay2017false;
 
   if (inpVer==_verEl2) {
     srcPath="/mnt/sdb/andriusj/v2_08082016_CovarianceMatrixInputs/";
@@ -32,12 +33,13 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
     setNiters_FSR=21;
     forceOverflow=false;
   }
-  else if (inpVer==_verElMay2017) {
+  else if ((inpVer==_verElMay2017) || (inpVer==_verElMay2017false)) {
     srcPath="/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/";
     lumiTot=2258.066; // new value
     setNiters_detRes=21;
     setNiters_FSR=21;
     forceOverflow=true;
+    if (inpVer==_verElMay2017false) forceOverflow=false;
   }
 
   TString inpVerTag= versionName(inpVer);
@@ -78,7 +80,8 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
     h1WZ->Reset();
     h1ZZ->Reset();
   }
-  else if ((inpVer==_verEl2) || (inpVer==_verEl3) || (inpVer==_verElMay2017)) {
+  else if ((inpVer==_verEl2) || (inpVer==_verEl3) || (inpVer==_verElMay2017) ||
+	   (inpVer==_verElMay2017false)) {
     h1WZ= loadHisto(fname2, "h_WZ", "h1WZ", 1,h1dummy);
     h1ZZ= loadHisto(fname2, "h_ZZ", "h1ZZ", 1,h1dummy);
     if (!h1WZ || !h1ZZ) {
@@ -150,7 +153,8 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
     hNameMap[_varEffAcc]= "h_AccEff";
     hNameMap[_varLast]= "h_diffXsec_Meas";
   }
-  else if ((inpVer==_verEl3) || (inpVer==_verElMay2017)) {
+  else if ((inpVer==_verEl3) || (inpVer==_verElMay2017) ||
+	   (inpVer==_verElMay2017false)) {
     hNameMap[_varDetRes]= "Unfold_DetectorRes";
     hNameMap[_varFSRRes]= "Unfold_FSRCorr";
     hNameMap[_varEff]= "h_Eff";
@@ -186,7 +190,9 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
   //  rooUnfFSRRes->Scale(lumiTot);
   //}
 
-  if (0 && ((inpVer==_verEl3) || (inpVer==_verElMay2017))) {
+  if (0 &&
+      ((inpVer==_verEl3) || (inpVer==_verElMay2017) ||
+       (inpVer==_verElMay2017false))) {
     std::cout << "\n\nReplacing h1EffAcc with my version\n";
     TFile finAJ("dyee_test_dressed_" + versionName(inpVer) + TString(".root"));
     if (!finAJ.IsOpen()) {

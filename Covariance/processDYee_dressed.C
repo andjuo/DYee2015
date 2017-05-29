@@ -52,6 +52,8 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   srcPath="/media/sf_CMSData/DYAnalysis_76X_Calibrated/mySkim/";
   fnameEff="/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/ROOTFile_Input5_TagProbeEfficiency.root";
 
+  inpVersion=_verElMay2017false;
+
 
   TString dataFName;
   TString fileFormat="DYEE_M%dto%d_v1.root ";
@@ -60,7 +62,8 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
       (inpVersion==_verEl3) ||
       (inpVersion==_verEl3mb41) ||
       (inpVersion==_verEl3mb42) ||
-      (inpVersion==_verElMay2017)
+      (inpVersion==_verElMay2017) ||
+      (inpVersion==_verElMay2017false)
       ) fileFormat="DY_%dto%d_v2_orig.root ";
 
   if (includeOnlyRange.Length()>0) {

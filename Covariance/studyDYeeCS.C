@@ -14,9 +14,10 @@ void createSystFile(TVersion_t inpVer,
 void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
 {
   TVersion_t inpVer=_verEl3;
-  inpVer=_verEl3mb41;
-  inpVer=_verEl3mb42;
+  //inpVer=_verEl3mb41;
+  //inpVer=_verEl3mb42;
   inpVer=_verElMay2017;
+  inpVer=_verElMay2017false;
   TString inpVerTag=versionName(inpVer);
 
   CrossSection_t eeCS("elCS",inpVerTag,_csPreFsrFullSp,inpVer);
@@ -25,7 +26,8 @@ void studyDYeeCS(TVaried_t var= _varNone, int nSample=10, int doSave=0)
     return;
   }
 
-  if ((inpVer==_verEl3) || (inpVer==_verElMay2017)) {
+  if ((inpVer==_verEl3) || (inpVer==_verElMay2017) ||
+      (inpVer==_verElMay2017false)) {
     eeCS.nItersDetRes(21);
     eeCS.nItersFSR(21);
     eeCS.calcCrossSection();
@@ -111,7 +113,8 @@ void work(TVersion_t inpVer,
   }
 
   if (doSave) {
-    TString fname="cov_ee_" + variedVarName(var) + Form("_%d.root",nSample);
+    TString fname="cov_ee_" + versionName(inpVer) + "_" +
+      variedVarName(var) + Form("_%d.root",nSample);
     if ((inpVer==_verEl3mb41) || (inpVer==_verEl3mb42)) {
       fname.ReplaceAll("ee_",Form("ee%d_",DYtools::nMassBins));
     }

@@ -22,6 +22,7 @@ void calcRhoRndVec_ee(int nSamples=100)
 
   inpVersion=_verEl3;
   inpVersion=_verElMay2017;
+  //inpVersion=_verElMay2017false;
 
   if (DYtools::nMassBins!=DYtools::nMassBins43) {
     std::cout << "a potential DYbinning.h problem\n";
@@ -35,7 +36,7 @@ void calcRhoRndVec_ee(int nSamples=100)
     fnameChk="/mnt/sdb/andriusj/v3_09092016_CovarianceMatrixInputs/ROOTFile_Input6_CrossCheck.root";
     effSFNameOnFile="h_EffSF";
   }
-  else if (inpVersion==_verElMay2017) {
+  else if ((inpVersion==_verElMay2017) || (inpVersion==_verElMay2017false)) {
     elChannelEffVer=3;
     dyeeTestFNameBase="dyee_test_dressed_";
     fnameChk="/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/ROOTFile_Input6_CrossCheck.root";
