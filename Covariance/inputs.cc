@@ -33,6 +33,7 @@ TString versionName(TVersion_t ver)
   case _verEl3mb41: name="El3mb41"; break;
   case _verEl3mb42: name="El3mb42"; break;
   case _verElMay2017: name="ElMay2017"; break;
+  case _verElMay2017false: name="ElMay2017false"; break;
   default:
     std::cout << "versionName is not ready for this version type\n";
   }
@@ -52,7 +53,7 @@ int leptonIdx(TVersion_t v) {
   case _verEl1: case _verEl2: case _verEl2skim: case _verEl2skim2:
   case _verEl2skim3: case _verEl3:
   case _verEl3mb41: case _verEl3mb42:
-  case _verElMay2017:
+  case _verElMay2017: case _verElMay2017false:
     i=0;
     break;
   default:
@@ -873,9 +874,8 @@ int deriveRelSyst(const TH1D *h1ref_inp, const std::vector<TH1D*> &h1V,
 // ---------------------------------------------------------
 
 TH1D* errorAsCentral(const TH1D* h1, int relative) {
-  TH1D* h1err= cloneHisto(h1,
-			  h1->GetName() + TString("_err"),
-			  h1->GetTitle() + TString(" err"));
+  TString tag=(relative) ? "_relErr" : "_err";
+  TH1D* h1err= cloneHisto(h1,h1->GetName() + tag,h1->GetTitle() + tag);
   for (int ibin=1; ibin<=h1->GetNbinsX(); ibin++) {
     double err= h1->GetBinError(ibin);
     if (relative) {
@@ -896,9 +896,8 @@ TH1D* errorAsCentral(const TH1D* h1, int relative) {
 // ---------------------------------------------------------
 
 TH2D* errorAsCentral(const TH2D* h2, int relative) {
-  TH2D* h2err= cloneHisto(h2,
-			  h2->GetName() + TString("_err"),
-			  h2->GetTitle() + TString(" err"));
+  TString tag=(relative) ? "_relErr" : "_err";
+  TH2D* h2err= cloneHisto(h2, h2->GetName() + tag, h2->GetTitle() + tag);
   for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
     for (int jbin=1; jbin<=h2->GetNbinsY(); jbin++) {
       double err= h2->GetBinError(ibin,jbin);
@@ -916,6 +915,27 @@ TH2D* errorAsCentral(const TH2D* h2, int relative) {
     }
   }
   return h2err;
+}
+
+// ---------------------------------------------------------
+
+TH1D* diagAsTH1D(const TH2D* h2) {
+  if (h2->GetNbinsX()!=h2->GetNbinsY()) {
+    std::cout << "diagAsTH1D: the histogram is not square-shaped\n";
+    return NULL;
+  }
+  TString setName=h2->GetName() + TString("_diag");
+  const TArrayD* xb=h2->GetXaxis()->GetXbins();
+  const Double_t *x= xb->GetArray();
+  TH1D *h1= new TH1D(setName,setName,xb->GetSize()-1,x);
+  h1->SetDirectory(0);
+  h1->Sumw2();
+
+  for (int ibin=1; ibin<=h2->GetNbinsX(); ibin++) {
+    h1->SetBinContent(ibin, h2->GetBinContent(ibin,ibin));
+    h1->SetBinError(ibin, h2->GetBinError(ibin,ibin));
+  }
+  return h1;
 }
 
 // ---------------------------------------------------------
@@ -1433,6 +1453,21 @@ TCanvas *loadCanvas(TString fileName, TString nameOnFile, TString newName,
   TCanvas *c= loadCanvas(fin,nameOnFile,newName,warnIfMissing);
   fin.Close();
   return c;
+}
+
+// ---------------------------------------------------------
+// ---------------------------------------------------------
+
+void setNiceMassAxisLabel(TH1D *h1, int iLepton,
+			  int iLabelX, TString extraX,
+			  int iLabelY, TString extraY,
+			  int logAxisFlag)
+{
+  if (iLabelX!=-1)
+    h1->GetXaxis()->SetTitle(niceMassAxisLabel(iLepton,extraX,iLabelX));
+  if (iLabelY!=-1)
+    h1->GetYaxis()->SetTitle(niceMassAxisLabel(iLepton,extraY,iLabelY));
+  if (logAxisFlag!=0) logAxis(h1);
 }
 
 // ---------------------------------------------------------
@@ -2238,6 +2273,62 @@ int SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout)
   }
   if (cV.size()) SaveCanvases(cV,destDir,fout);
   return int(cV.size());
+}
+
+// ---------------------------------------------------------
+
+int writeHistos(std::vector<TH1D*> &h1V, TFile *fout)
+{
+  if (fout) fout->cd();
+  if (h1V.size()==0) {
+    std::cout << "writeHistos(h1V): provided an empty vector\n";
+    return 0;
+  }
+  for (unsigned int i=0; i<h1V.size(); i++) {
+    h1V[i]->Write();
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
+int writeHistos(std::vector<TH2D*> &h2V, TFile *fout)
+{
+  if (fout) fout->cd();
+  if (h2V.size()==0) {
+    std::cout << "writeHistos(h2V): provided an empty vector\n";
+    return 0;
+  }
+  for (unsigned int i=0; i<h2V.size(); i++) {
+    h2V[i]->Write();
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
+int writeHistosFromCanvases(TString canvNames, int isH1D, TFile *fout)
+{
+  if (fout) fout->cd();
+  std::stringstream ss(canvNames.Data());
+  TString cName;
+  int ok=1;
+  while (!ss.eof()) {
+    ss >> cName;
+    if (cName.Length()) {
+      std::vector<TH1D*> h1V;
+      std::vector<TH2D*> h2V;
+      if (getHistosFromCanvas(findCanvas(cName),&h1V,&h2V)) {
+	if (isH1D) writeHistos(h1V,NULL);
+	else writeHistos(h2V,NULL);
+      }
+      else {
+	std::cout << "failed to get histos from canvas=" << cName << "\n";
+	ok=0;
+      }
+    }
+  }
+  return ok;
 }
 
 // ---------------------------------------------------------

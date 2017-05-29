@@ -35,7 +35,7 @@ typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verMuApproved=102,
 	       _verEl2=201, _verEl2skim=202, _verEl2skim2=203,
 	       _verEl2skim3=204,
 	       _verEl3=301, _verEl3mb41=302, _verEl3mb42=303,
-	       _verElMay2017=304
+	       _verElMay2017=304, _verElMay2017false=305
 } TVersion_t;
 
 TString versionName(TVersion_t);
@@ -201,6 +201,7 @@ int deriveRelSyst(const TH1D *h1ref, const std::vector<TH1D*> &h1V,
 
 TH1D* errorAsCentral(const TH1D* h1, int relative=0);
 TH2D* errorAsCentral(const TH2D* h2, int relative=0);
+TH1D* diagAsTH1D(const TH2D *h2);
 TH1D* addUncertainty(const TString newName, const TH1D *h1_dest,
 		     const TH1D *h1err, const TH1D *h1central=NULL);
 int setError(TH1D *h1dest, const TH1D *h1src);
@@ -479,8 +480,23 @@ TString niceMassAxisLabel(int iLepton, TString extra, int iLabel=0)
   }
   TString start="M", units="[GeV]";
   if (iLabel==1) { start="\\sigma"; label.Prepend("\\!"); units="[pb/GeV]"; }
+  else if (iLabel==2) {
+    start="\\delta\\sigma"; label.Prepend("\\!");
+    units="[pb/GeV]";
+  }
+  else if (iLabel==3) {
+    start="(\\delta\\sigma/\\sigma)"; label.Prepend("\\!");
+    units="";
+  }
   return start + TString("_{") + label + TString("}\\text{ " + units + "}");
 }
+
+// -----------------------------------------------------------
+
+void setNiceMassAxisLabel(TH1D *h1, int iLepton,
+			  int iLabelX, TString extraX,
+			  int iLabelY, TString extraY,
+			  int logAxisFlag);
 
 // -----------------------------------------------------------
 
@@ -673,6 +689,9 @@ void SaveCanvas(TCanvas* canv, TString canvName, TString destDir,
 void SaveCanvases(std::vector<TCanvas*> &cV, TString destDir, TFile *fout=NULL);
 // if listOfCanvNames="ALL", saves all canvases
 int  SaveCanvases(TString listOfCanvNames, TString destDir, TFile *fout=NULL);
+int  writeHistos(std::vector<TH1D*> &h1V, TFile *fout=NULL);
+int  writeHistos(std::vector<TH2D*> &h2V, TFile *fout=NULL);
+int  writeHistosFromCanvases(TString canvNames, int isH1D, TFile *fout=NULL);
 void writeTimeTag(TFile *fout=NULL);
 void writeMsg(TString msg, TFile *fout=NULL);
 int getHistosFromCanvas(TCanvas *c, std::vector<TH1D*> *h1V=NULL,
