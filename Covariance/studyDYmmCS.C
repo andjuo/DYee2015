@@ -66,6 +66,7 @@ void work(TVersion_t inpVer,
 {
   std::vector<TH1D*> rndCSVec, rndCSaVec, rndCSbVec;
   int res=1;
+  int check_KLRndEffMap=(1 && (nSample==500) && (nMaxSamples==-500)) ? 1:0;
   int removeNegativeSignal=1;
   if (var!=_varRhoFile) {
     std::cout << "nSample=" << nSample << ", removeNegativeSignal=" << removeNegativeSignal << "\n";
@@ -77,6 +78,10 @@ void work(TVersion_t inpVer,
     TString loadFName=Form("dir-Rho%s/dymm_rhoRndVec_%s_%d.root",
 			   inpVerTag.Data(),inpVerTag.Data(),
 			   nSample);
+    // hack to verify KL rnd maps
+    if (check_KLRndEffMap) {
+      loadFName.ReplaceAll(".root","_KL.root");
+    }
     RndVecInfo_t info(loadFName,"h1rho_4p2_var","h1rho_4p3_var",nMaxSamples);
     if ((nMaxSamples>0) && (nMaxSamples<nSample)) nSample=nMaxSamples;
     res=muCS.sampleRndVec(var,nSample,info,removeNegativeSignal,
@@ -123,6 +128,7 @@ void work(TVersion_t inpVer,
     if (doSave==2) fname.ReplaceAll(".root","_slim.root");
     else if (doSave==3) fname.ReplaceAll(".root","_veryslim.root");
     if (var==_varFSRRes_Poisson) fname.ReplaceAll(".root","-Poisson.root");
+    if (check_KLRndEffMap) fname.ReplaceAll(".root","_KL.root");
     TFile fout(fname,"RECREATE");
     if (!fout.IsOpen()) {
       std::cout << "file <" << fname << "> could not be created\n";

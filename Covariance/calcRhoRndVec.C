@@ -8,7 +8,7 @@ void studyAvgValues(const EventSpace_t &es);
 
 // ------------------------------------------------------
 
-void calcRhoRndVec(int nSamples=100)
+void calcRhoRndVec(int nSamples=100, int checkKL=0)
 {
 
   //TH2D* h2PostrFsrEventSpace=NULL;
@@ -35,7 +35,7 @@ void calcRhoRndVec(int nSamples=100)
     fnameChk="/mnt/sdb/andriusj/v20160915_CovInput_ApprovedResults/ROOTFile_Input6_CrossCheck.root";
   }
   else if (inpVersion==_verMuMay2017) {
-    fnameChk="/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov/ROOTFile_Input6_CrossCheck.root";
+    fnameChk="/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov_mm/ROOTFile_Input6_CrossCheck.root";
   }
 
   // Load data
@@ -135,10 +135,21 @@ void calcRhoRndVec(int nSamples=100)
     studyAvgValues(esPostFsr);
   }
 
+
+  TFile *finKL=NULL;
+  if (checkKL) {
+    finKL= new TFile("/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov_mm/ROOTFile_Outputs_SysUncTool_EffCorr-20170602.root");
+    if (!finKL) {
+      std::cout << "failed to open the file <" << finKL->GetName() << ">\n";
+      return;
+    }
+  }
+
   TString outDir="dir-Rho" + versionName(inpVersion) + "/";
   gSystem->mkdir(outDir);
   TString foutName=outDir + "dymm_rhoRndVec_" + versionName(inpVersion) +
     Form("_%d.root",nSamples);
+  if (checkKL==1) foutName.ReplaceAll(".root","_KL.root");
   TFile fout(foutName,"recreate");
   if (!fout.IsOpen()) {
     std::cout << "failed to create the file <" << fout.GetName() << ">\n";
@@ -146,7 +157,8 @@ void calcRhoRndVec(int nSamples=100)
   }
 
   // randomize
-  DYTnPEff_t rndEff;
+  int histoNameConvention=(checkKL==0) ? 0 : 4;
+  DYTnPEff_t rndEff(histoNameConvention);
   TH1D* h1rho_4p2_avg= cloneHisto(h1rho_4p2,"h1rho_4p2_avg","h1rho_4p2_avg");
   TH1D* h1rho_4p3_avg= cloneHisto(h1rho_4p3,"h1rho_4p3_avg","h1rho_4p3_avg");
   h1rho_4p2_avg->Reset();
@@ -159,7 +171,20 @@ void calcRhoRndVec(int nSamples=100)
   const int displayRnd4p3=0;
   for (int i=0; i<nSamples; i++) {
     TString tag=Form("_var%d",i);
-    rndEff.randomize(tnpEff,tag);
+    if (!checkKL) {
+      rndEff.randomize(tnpEff,tag);
+    }
+    else {
+      if (!finKL) {
+	std::cout << "variable finKL is not ready\n";
+	return;
+      }
+      if (!rndEff.load(*finKL,"EffMap_PtEtaBin",Form("_Smeared_%d",i))) {
+	std::cout << "failed to load randomized map\n";
+	return;
+      }
+      fout.cd();
+    }
     if (nSamples<51) rndEff.save(fout);
     TH1D *h1rho_4p2_rnd= esPostFsr.calculateScaleFactor(rndEff,0,"h1rho_4p2"+tag, "scale factor 4p2" + tag);
     TH1D *h1rho_4p3_rnd= esPostFsr.calculateScaleFactor(rndEff,1,"h1rho_4p3"+tag, "scale factor 4p3" + tag);
@@ -186,6 +211,8 @@ void calcRhoRndVec(int nSamples=100)
   h1rho_4p2_sqrAvg->SetDirectory(0);
   h1rho_4p3_sqrAvg->SetDirectory(0);
   fout.Close();
+
+  if (finKL) { finKL->Close(); delete finKL; }
 
   for (int ibin=1; ibin<=h1rho_4p2_avg->GetNbinsX(); ibin++) {
     for (int jbin=1; jbin<=h1rho_4p2_avg->GetNbinsY(); jbin++) {
