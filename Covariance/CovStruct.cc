@@ -278,12 +278,64 @@ int adjustUnc(TString lepTag,
     std::cout << "idx(_varDetRes)=" << idx << "\n";
     //printHisto(h1uncStatV[idx]);
     //printHisto(h1uncSystV[idx]);
-    if (!addInQuadrature(h1uncSystV[idx],h1uncStatV[idx],1)) {
+    if (!addInQuadrature(h1uncSystV[idx],h1uncStatV[idx],1,1.)) {
       return 0;
     }
     h1uncStatV[idx]->Reset();
     std::cout << "cleared h1detRes_ee statistical error from RC\n";
     //return 0;
+  }
+
+  // Special correction for acceptance uncertainty
+  if (hasValue("dy13TeV_acc_correction",specialArgs)) {
+    int idxAcc= findVaried(covFNames,_varAcc);
+    int idxTh= findVaried(covFNames,_varTheory);
+    if ((idxAcc==-1) || (idxTh==-1)) {
+      std::cout << "failed to find _varAcc or _varTheory the channel "
+		<< lepTag << ": " << idxAcc << ", " << idxTh << "\n";
+      return 0;
+    }
+    std::cout << "idxAcc, idxTh=" << idxAcc << ", " << idxTh << "\n";
+
+    TH1D *h1th= loadHisto("DYmm_ROOTFile_Input-20170504.root",
+			  "h_RelUnc_Syst_Acc","h1acc_th"+lepTag,1,h1dummy);
+    TH1D *h1ee= loadHisto("DYee_ROOTFile_Input-20170208.root",
+			  "h_RelUnc_Syst_Acc","h1acc_ee"+lepTag,1,h1dummy);
+
+    if (1) {
+      std::cout << "lepTag=" << lepTag << "loaded unc\n";
+      printHisto(h1th);
+      printHisto(h1ee);
+    }
+
+    h1th->Scale(0.5);
+    h1th->Add(h1ee,0.5*0.01);
+    if (h1central) h1th->Multiply(h1central);
+
+    if (1) {
+      std::cout << "lepTag=" << lepTag << "  before change\n";
+      printHisto(h1th);
+      printHisto(h1uncSystV[idxTh]);
+      printHisto(h1uncSystV[idxAcc]);
+    }
+
+    h1uncSystV[idxTh]->Add(h1uncSystV[idxAcc]);
+    int resTmp= addInQuadrature(h1uncSystV[idxTh],h1th,1,-1.) ? 1:0;
+    copyContents(h1uncSystV[idxAcc],h1th);
+
+    delete h1th;
+    delete h1ee;
+
+    if (1) {
+      std::cout << "lepTag=" << lepTag << "  after change\n";
+      printHisto(h1uncSystV[idxTh]);
+      printHisto(h1uncSystV[idxAcc]);
+    }
+    if (!resTmp) {
+      std::cout << "  removing negative entries\n";
+      removeNegatives(h1uncSystV[idxTh]);
+    }
+    //if (lepTag=="ee") return 0;
   }
 
   // eliminate eff syst. uncertainty
