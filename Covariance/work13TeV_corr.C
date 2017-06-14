@@ -26,6 +26,7 @@ const int useUncorrYieldUnc=0;
 //TString eeCSH1Name="h1PreFSRCS";
 //TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
 //TString mmCSH1Name="h1CS";
+const int modifyAccUnc=1;
 
 // -------------------------------------------------------
 
@@ -84,11 +85,19 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   std::vector<int> eeCovIdx, mmCovIdx;
   std::vector<TString> eeOldFName, eeNewFName; // for file name changing
   std::vector<TString> mmOldFName, mmNewFName; // for file name changing
-  if (1) { // all factors
-    addToVector(eeCovIdx,7, _varYield, _varBkg, _varDetRes, _varEff,
-		_varRhoFile, _varAcc, _varFSRRes);
-    addToVector(mmCovIdx,7, _varYield, _varBkg, _varDetRes, _varEff,
-		_varRhoFile, _varAcc, _varFSRRes);
+  if (1) {
+    if (!modifyAccUnc) { // all factors
+      addToVector(eeCovIdx,7, _varYield, _varBkg, _varDetRes, _varEff,
+		  _varRhoFile, _varAcc, _varFSRRes);
+      addToVector(mmCovIdx,7, _varYield, _varBkg, _varDetRes, _varEff,
+		  _varRhoFile, _varAcc, _varFSRRes);
+    }
+    else { // all factors and _varTheory
+      addToVector(eeCovIdx,8, _varYield, _varBkg, _varDetRes, _varEff,
+		  _varRhoFile, _varAcc, _varFSRRes, _varTheory);
+      addToVector(mmCovIdx,8, _varYield, _varBkg, _varDetRes, _varEff,
+		  _varRhoFile, _varAcc, _varFSRRes, _varTheory);
+    }
   }
   else { // all factors, but no _varYield
     addToVector(eeCovIdx,6,  _varBkg, _varDetRes, _varEff,
@@ -122,6 +131,13 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     mmNewFName.push_back("cov_mumu_varYieldPoisson_2000.root");
     //mmOldFName.push_back("cov_mumu_varRhoFile_2000.root");
     //mmNewFName.push_back("cov_mumu_varRhoFile_5000.root");
+  }
+
+  if (modifyAccUnc) {
+    eeOldFName.push_back("cov_ee_ElMay2017_varTheory_2000.root");
+    eeNewFName.push_back("");
+    mmOldFName.push_back("cov_mumu_varTheory_2000.root");
+    mmNewFName.push_back("");
   }
 
   TString fileTag="_corr";
@@ -453,10 +469,18 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
   mmUncStat [_varAcc]= "";
   mmUncSyst [_varAcc]= "h_RelUnc_Syst_Acc";
   relUncW   [_varAcc]= 1;
+  if (modifyAccUnc) {
+    mmUncFiles[_varTheory]= "";  // place holder
+    mmUncStat [_varTheory]= "";
+    mmUncSyst [_varTheory]= "";
+    relUncW   [_varTheory]= 0;
+  }
 
   const TH1D *h1central= (1) ? h1csMM : NULL;
   int change_covV=(noUncAdjustment) ? 0:1;
   if(change_covV && plotChangedCov) change_covV++;
+  std::string specFlags="";
+  if (modifyAccUnc==1) specFlags+=" dy13TeV_acc_correction";
   int res=adjustUnc( "mm",
 		     mmCovFNames, mmCovV,
 		     mmUncFiles,mmUncStat,mmUncSyst,relUncW,
@@ -464,7 +488,7 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 		     plotCmp,change_covV,
 		     "_mm",
 		     mmCovS,
-		     "");
+		     specFlags);
   if (!res) {
     std::cout << "error in adjustMMUnc\n";
     return 0;
@@ -550,6 +574,13 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
   eeUncStat [_varAcc]= "";
   eeUncSyst [_varAcc]= "h_RelUnc_Syst_Acc";
   relUncW   [_varAcc]= 0.01;
+  if (modifyAccUnc) {
+    eeUncFiles[_varTheory]= ""; // place holder
+    eeUncStat [_varTheory]= "";
+    eeUncSyst [_varTheory]= "";
+    relUncW   [_varTheory]= 0;
+  }
+
   if (0 && ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false))) {
     eeUncFiles[_varAcc]= "DYmm_ROOTFile_Input-20170504.root";
     eeUncSyst [_varAcc]= "h_RelUnc_Syst_Acc";
@@ -559,6 +590,9 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
   const TH1D *h1central= (1) ? h1csEE : NULL;
   int change_covV=(noUncAdjustment) ? 0:1;
   if(change_covV && plotChangedCov) change_covV++;
+  std::string specFlags;
+  specFlags="dyee13TeV_detRes_correction";
+  if (modifyAccUnc==1) specFlags+=" dy13TeV_acc_correction";
   int res=adjustUnc( "ee",
 		     eeCovFNames, eeCovV,
 		     eeUncFiles,eeUncStat,eeUncSyst,relUncW,
@@ -566,7 +600,7 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
 		     plotCmp,change_covV,
 		     "_ee",
 		     eeCovS,
-		     "dyee13TeV_detRes_correction");
+		     specFlags);
 
   if (!res) {
     std::cout << "error in adjustEEUnc\n";
