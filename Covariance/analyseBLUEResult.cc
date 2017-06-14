@@ -79,7 +79,15 @@ int loadCovData(TString lepTag,
        it!=covFNames.end(); it++) {
     TString fname= it->second;
     TString h2newName = "h2Cov_" + lepTag + "_" + variedVarName(it->first);
-    TH2D *h2= loadHisto(fname,"h2Cov",h2newName,h2dummy);
+    TH2D *h2=NULL;
+    std::cout << "loadCovData: lepTag=" << lepTag << ", fname=" << fname << "\n";
+    if (fname.Length()==0) {
+      h2= cloneHisto(covAsH2D[0], h2newName,h2newName);
+      h2->Reset();
+      std::cout << "  empty file name for " << h2newName
+		<< " cloning emtpy histo\n";
+    }
+    else h2= loadHisto(fname,"h2Cov",h2newName,h2dummy);
     if (!h2) return 0;
     std::cout << "got " << h2newName << "\n";
     covAsH2D.push_back(h2);
