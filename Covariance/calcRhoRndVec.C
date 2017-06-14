@@ -137,7 +137,7 @@ void calcRhoRndVec(int nSamples=100, int checkKL=0)
 
 
   TFile *finKL=NULL;
-  if (checkKL) {
+  if (checkKL==1) {
     finKL= new TFile("/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov_mm/ROOTFile_Outputs_SysUncTool_EffCorr-20170602.root");
     if (!finKL) {
       std::cout << "failed to open the file <" << finKL->GetName() << ">\n";
@@ -150,6 +150,7 @@ void calcRhoRndVec(int nSamples=100, int checkKL=0)
   TString foutName=outDir + "dymm_rhoRndVec_" + versionName(inpVersion) +
     Form("_%d.root",nSamples);
   if (checkKL==1) foutName.ReplaceAll(".root","_KL.root");
+  else if (checkKL==2) foutName.ReplaceAll(".root","_syst.root");
   TFile fout(foutName,"recreate");
   if (!fout.IsOpen()) {
     std::cout << "failed to create the file <" << fout.GetName() << ">\n";
@@ -157,7 +158,7 @@ void calcRhoRndVec(int nSamples=100, int checkKL=0)
   }
 
   // randomize
-  int histoNameConvention=(checkKL==0) ? 0 : 4;
+  int histoNameConvention=(checkKL==1) ? 4 : 0;
   DYTnPEff_t rndEff(histoNameConvention);
   TH1D* h1rho_4p2_avg= cloneHisto(h1rho_4p2,"h1rho_4p2_avg","h1rho_4p2_avg");
   TH1D* h1rho_4p3_avg= cloneHisto(h1rho_4p3,"h1rho_4p3_avg","h1rho_4p3_avg");
@@ -175,15 +176,20 @@ void calcRhoRndVec(int nSamples=100, int checkKL=0)
       rndEff.randomize(tnpEff,tag);
     }
     else {
-      if (!finKL) {
-	std::cout << "variable finKL is not ready\n";
-	return;
+      if (checkKL==2) {
+	rndEff.randomize(tnpEff,tag,1); // systematic variation
       }
-      if (!rndEff.load(*finKL,"EffMap_PtEtaBin",Form("_Smeared_%d",i))) {
-	std::cout << "failed to load randomized map\n";
-	return;
+      else {
+	if (!finKL) {
+	  std::cout << "variable finKL is not ready\n";
+	  return;
+	}
+	if (!rndEff.load(*finKL,"EffMap_PtEtaBin",Form("_Smeared_%d",i))) {
+	  std::cout << "failed to load randomized map\n";
+	  return;
+	}
+	fout.cd();
       }
-      fout.cd();
     }
     if (nSamples<51) rndEff.save(fout);
     TH1D *h1rho_4p2_rnd= esPostFsr.calculateScaleFactor(rndEff,0,"h1rho_4p2"+tag, "scale factor 4p2" + tag);
