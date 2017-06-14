@@ -1054,17 +1054,42 @@ int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
 
 // ---------------------------------------------------------
 
-int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr)
+int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr,
+		    double factor)
 {
   if (!compareRanges(h1target,h1addTerm,1)) {
     std::cout << "error in addInQuadrature\n";
     return 0;
   }
-  for (int ibin=1; ibin<=h1target->GetNbinsX(); ibin++) {
-    double a= h1target->GetBinContent(ibin);
-    const double b= h1addTerm->GetBinContent(ibin);
-    h1target->SetBinContent(ibin, sqrt(a*a + b*b));
-    if (nullifyErr) h1target->SetBinError  (ibin, 0.);
+  if (factor>=0) {
+    for (int ibin=1; ibin<=h1target->GetNbinsX(); ibin++) {
+      double a= h1target->GetBinContent(ibin);
+      const double b= h1addTerm->GetBinContent(ibin);
+      h1target->SetBinContent(ibin, sqrt(a*a + factor*factor*b*b));
+      if (nullifyErr) h1target->SetBinError  (ibin, 0.);
+    }
+  }
+  else {
+    int negSqr=0;
+    for (int ibin=1; ibin<=h1target->GetNbinsX(); ibin++) {
+      double a= h1target->GetBinContent(ibin);
+      const double b= h1addTerm->GetBinContent(ibin);
+      double valSqr= a*a - factor*factor*b*b;
+      if (valSqr<0) {
+	valSqr=-sqrt(-valSqr);
+	negSqr=1;
+      }
+      else valSqr=sqrt(valSqr);
+      h1target->SetBinContent(ibin, valSqr);
+      if (nullifyErr) h1target->SetBinError  (ibin, 0.);
+    }
+    if (negSqr) {
+      std::cout << "addInQuadrature: h1target=" << h1target->GetName()
+		<< ", h1addTerm=" << h1addTerm->GetName() << ", factor="
+		<< factor << " encountered negative (a^2-b^2)\n";
+      std::cout << "   returning 0\n";
+      return 0;
+    }
   }
   return 1;
 }

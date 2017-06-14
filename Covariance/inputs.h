@@ -211,7 +211,8 @@ int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative,
 		    int listRangesOnError=0);
 int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
 		  int listRangesOnError=0);
-int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr=1);
+int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr=1,
+		    double factor=1.);
 int hasValueAbove(const TH2D *h2, double limit);
 int hasValueBelow(const TH2D *h2, double limit);
 void removeNegatives(TH1D* h1);
