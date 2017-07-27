@@ -195,6 +195,16 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   EventSpace_t recoES("recoES",tnpEff.h2Eff_RecoID_Data);
   EventSpace_t recoESinPostFsrAcc("recoESinPostFsrAcc",tnpEff.h2Eff_RecoID_Data);
 
+  const int n_dR=100;
+  const double dR_max=5.;
+  TH2D *h2elDR= new TH2D("h2elDR","electron relative distance;m_{RECO,ee} [GeV];#DeltaR",DYtools::nMassBins,DYtools::massBinEdges,n_dR,0.,dR_max);
+  h2elDR->SetDirectory(0);
+  h2elDR->SetStats(0);
+  h2elDR->Sumw2();
+  TH2D  *h2elDR_all= cloneHisto(h2elDR,"h2elDR_all","helDR_all");
+  TH2D  *h2elDR_notSel= cloneHisto(h2elDR,"h2elDR_notSel","helDR_notSel");
+
+
   UInt_t nEvents= data.GetEntries();
   UInt_t nProcessed=0, nSelected=0;
 
@@ -226,6 +236,15 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
     double mReco= (*data.Momentum_Reco_Lead + *data.Momentum_Reco_Sub).M();
     double mPostFsr= (*data.Momentum_postFSR_Lead + *data.Momentum_postFSR_Sub).M();
     double mPreFsr= (*data.Momentum_preFSR_Lead + *data.Momentum_preFSR_Sub).M();
+
+    double dR=data.Momentum_Reco_Lead->DeltaR(*data.Momentum_Reco_Sub);
+    if (dR>dR_max*(n_dR-1.0)/double(n_dR)) dR=dR_max*(n_dR-0.5)/double(n_dR);
+    h2elDR_all->Fill(mReco, dR, wPU);
+    if (data.Flag_EventSelection) h2elDR->Fill(mReco, dR, wPU);
+    else {
+      //std::cout << "h2elDR_notSel fill mReco=" << mReco << ", dR=" << dR << "\n";
+      h2elDR_notSel->Fill(mReco, dR, wPU);
+    }
 
     if (0) if (iEntry<1000) {
       std::cout << "w=" << w << ": weight_norm=" << data.Weight_Norm << ", gen=" << data.Weight_Gen << "\n";
@@ -603,6 +622,9 @@ void processDYee_dressed(Int_t maxEntries=100, TString includeOnlyRange="")
   h1DetResEffAccFsrUnf->Write();
   //h2detResEffAccFsrMig->Write();
   //if (cPreFSR_WG) cPreFSR_WG->Write();
+  h2elDR->Write();
+  h2elDR_all->Write();
+  h2elDR_notSel->Write();
   if (cPreFSR_WGN) cPreFSR_WGN->Write();
   cDetResTest->Write();
   cDetResTestPU->Write();
