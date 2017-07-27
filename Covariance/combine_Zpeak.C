@@ -134,6 +134,36 @@ void combine_Zpeak(int theCase=1, int subVer=0)
       addToVector(labelV,"lumi");
     }
   }
+  else if ((subVer==2) && valueEquals(theCase,"13 1313 131313 130 -13")) {
+    // DY 13TeV
+    // ee: 1949 +- 2 (stat) +- 28 (exp.syst) +- 32 (theo) +- 45 (lumi) pb
+    // mm: 1907 +- 1 (Stat) +- 25 (exp.syst) +- 30 (theo) +- 44 (lumi) pb
+    dLumiRel=0.023;
+    sigmaZee= 1949.0;
+    addToVector(dSigmaEE,2, 2.,28.);
+    sigmaZmm= 1907.0;
+    addToVector(dSigmaMM,2, 1.,25.);
+    addToVector(dSigmaEM,2, 0.,0.);
+    addToVector(labelV,"stat expSyst");
+    if (theCase==-13) {
+      dSigmaEE.clear(); addToVector(dSigmaEE,1, 2.);
+      dSigmaMM.clear(); addToVector(dSigmaMM,1, 1.);
+      dSigmaEM.clear(); addToVector(dSigmaEM,1, 0.);
+      labelV.clear(); addToVector(labelV,"stat");
+    }
+    if ((theCase==130) || (theCase==131313)) {
+      addToVector(dSigmaEE,1, 32.);
+      addToVector(dSigmaMM,1, 30.);
+      addToVector(dSigmaEM,1, sqrt(32.*30.));
+      addToVector(labelV,"th.syst");
+    }
+    if ((theCase==1313) || (theCase==131313)) {
+      addToVector(dSigmaEE,1,round(sigmaZee*dLumiRel));
+      addToVector(dSigmaMM,1,round(sigmaZmm*dLumiRel));
+      addToVector(dSigmaEM,1,sqrt(dSigmaEE.back()*dSigmaMM.back()));
+      addToVector(labelV,"lumi");
+    }
+  }
   else {
     std::cout << "not ready for case " << theCase << "\n";
     return;
@@ -181,6 +211,10 @@ void combine_Zpeak(int theCase=1, int subVer=0)
 	      << "\n";
   }
 
+  std::stringstream ssNiceEE, ssNiceMM, ssNiceLL;
+  ssNiceEE << "sigmaEE = " << measEE(0,0);
+  ssNiceMM << "sigmaMM = " << measMM(0,0);
+  ssNiceLL << "sigmaLL = " << measLL(0,0);
   for (unsigned int i=0; i<dSigmaEE.size(); i++) {
     TMatrixD covTotSrc(2,2);
     covTotSrc(0,0) = pow(dSigmaEE[i],2);
@@ -192,7 +226,13 @@ void combine_Zpeak(int theCase=1, int subVer=0)
     std::cout << "source " << labelV[i] << " :\n";
     //covFinSrc.Print();
     std::cout << " sqrt( @(0,0) ) = " << sqrt(covFinSrc(0,0)) << "\n";
+    ssNiceEE << " +- " << dSigmaEE[i] << " (" << labelV[i] << ")";
+    ssNiceMM << " +- " << dSigmaMM[i] << " (" << labelV[i] << ")";
+    ssNiceLL << " +- " << sqrt(covFinSrc(0,0)) << " (" << labelV[i] << ")";
   }
+  std::cout << ssNiceEE.str() << "\n";
+  std::cout << ssNiceMM.str() << "\n";
+  std::cout << ssNiceLL.str() << "\n";
 
 
 }
