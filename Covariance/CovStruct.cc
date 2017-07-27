@@ -1,4 +1,5 @@
 #include "CovStruct.h"
+#include <TPaveText.h>
 
 // -------------------------------------------------------
 // -------------------------------------------------------
@@ -111,6 +112,10 @@ CovStruct_t* detailedCovPlots(const BLUEResult_t *blue,
   }
   */
 
+  if (hasValue("plotFinalCov",showCanvs)) {
+    plotCovCorr(*blue->getCov(),h1csLL_tmp,"h2covFin","cCovFin",optCC);
+  }
+
   //TMatrixD sumContributedCov(TMatrixD::kZero,eeCovS.getStatYield());
   int res=1;
   CovStruct_t llCovS= constructCombCov(eeCovS,mmCovS,blue,corrCase,res);
@@ -140,10 +145,21 @@ CovStruct_t* detailedCovPlots(const BLUEResult_t *blue,
   }
 
   if (1) {
-    if (!eeCovS.PrintZRangeUnc("ee",h1csEE,0) ||
-	!mmCovS.PrintZRangeUnc("mm",h1csMM,0) ||
-	!llCovS.PrintZRangeUnc("ll",h1csLL_tmp,0)) {
+    TString eeStr,mmStr,llStr;
+    if (!eeCovS.PrintZRangeUnc("ee",h1csEE,0,&eeStr) ||
+	!mmCovS.PrintZRangeUnc("mm",h1csMM,0,&mmStr) ||
+	!llCovS.PrintZRangeUnc("ll",h1csLL_tmp,0,&llStr)) {
       std::cout << "error\n";
+    }
+    if (1) {
+      TCanvas *cx= new TCanvas("cIntCS","cIntCS",800,300);
+      if (!cx) return 0;
+      TPaveText *pt= new TPaveText(0.05,0.1,0.95,0.8);
+      pt->AddText("Integrated cross section (60-120 GeV)");
+      pt->AddText(eeStr);
+      pt->AddText(mmStr);
+      pt->AddText(llStr);
+      pt->Draw();
     }
 
     if (0) {

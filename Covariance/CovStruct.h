@@ -135,7 +135,8 @@ public:
   int PrintZRangeUnc(TString label,
 		     int idxMin, int idxMax_p1,
 		     const TH1D *h1cs_perMBW,
-		     int printNumbers=0) const
+		     int printNumbers=0,
+		     TString *outStr=NULL) const
   {
     std::cout << "ZmassRange: " << idxMin << " .. " << idxMax_p1 << "\n";
     std::vector<double> zCov;
@@ -153,18 +154,21 @@ public:
 		  << "\n";
       }
     }
-    std::cout << "  - " << label << ": "
-	      << h1cs_abs->Integral(idxMin+1,idxMax_p1) << " ";
+    std::stringstream ssOut;
+    ssOut << "  - " << label << ": "
+	  << h1cs_abs->Integral(idxMin+1,idxMax_p1) << " ";
     for (int ii=0; ii<4; ii++) {
-      std::cout << "+- " << sqrt(zCov[ii]) << " (" << this->GetPartName(ii+1) << ")";
+      ssOut << "+- " << sqrt(zCov[ii]) << " (" << this->GetPartName(ii+1) << ")";
     }
-    std::cout << "\n";
+    std::cout << ssOut.str() << "\n";
+    if (outStr) outStr->Append(ssOut.str().c_str());
     return 1;
   }
 
   // automatic determination
   int PrintZRangeUnc(TString label, const TH1D *h1cs_perMBW,
-		     int printNumbers=0) const
+		     int printNumbers=0,
+		     TString *outStr=NULL) const
   {
     int idxMin=-1, idxMax_p1=-1;
     // index value will be for the array, not for histogram bin
@@ -181,12 +185,14 @@ public:
     }
     std::cout << "integrated uncertainties:\n";
     //printHisto(h1cs_abs);
-    std::cout << "  - " << label << ": "
-	      << h1cs_abs->Integral(idxMin+1,idxMax_p1) << " ";
+    std::stringstream ssOut;
+    ssOut << "  - " << label << ": "
+	  << h1cs_abs->Integral(idxMin+1,idxMax_p1) << " ";
     for (int ii=0; ii<4; ii++) {
-      std::cout << "+- " << sqrt(zCov[ii]) << " (" << this->GetPartName(ii+1) << ")";
+      ssOut << "+- " << sqrt(zCov[ii]) << " (" << this->GetPartName(ii+1) << ")";
     }
-    std::cout << "\n";
+    std::cout << ssOut.str() << "\n";
+    if (outStr) outStr->Append(ssOut.str().c_str());
     return 1;
   }
 
