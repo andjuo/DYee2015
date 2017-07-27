@@ -14,7 +14,14 @@ typedef enum { _iEff, _iRho, _iAcc, _iEffAcc,
 	       _iEffPass, _iEffTot, _iAccPass, _iAccTot,
 	       _iDetResFakes, _iFSRResFakes,
 	       _iCmp1, _iCmp2,
-	       _ih2Mig, _ih2FsrMig
+	       _ih2Mig, _ih2MigUnc, _ih2MigRelUnc,
+	       _ih2FsrMig,
+	       _ih1Unc,
+	       _ih1BkgStatUnc, _ih1BkgSystUnc,
+	       _ih1DetResStatUnc, _ih1DetResSystUnc,
+	       _ih1EffSFStatUnc, _ih1EffSFSystUnc,
+	       _ih1FSRStatUnc, _ih1FSRSystUnc,
+	       _ih1AccStatUnc, _ih1AccSystUnc
 	       //_iRRmeas, _iRRtrue
 } THisto_t;
 
@@ -49,7 +56,8 @@ int drawComparison(const InfoBundle_t &main,
 		   const InfoBundle_t &c1,
 		   const InfoBundle_t &c2,
 		   int noH2Ratios,
-		   TString showOnly);
+		   TString showOnly,
+		   int logLog2D=1);
 
 TString lumiScale=":scale2316.969";
 TString lumiInvScale=":scale4.31598164844603134e-04";
@@ -92,6 +100,22 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
   // version 7
   addToVector(vecMainFName,"dyee_test_dressed_ElMay2017.root");
   addToVector(vecCmp1FName,"/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/ROOTFile_Input6_CrossCheck.root");
+  addToVector(vecCmp2FName,".");
+
+  // version 8
+  addToVector(vecMainFName,"cs_DYee_13TeV_El3.root");
+  addToVector(vecCmp1FName,"cs_DYee_13TeV_ElMay2017false.root");
+  if (0) addToVector(vecCmp2FName,".");
+  else addToVector(vecCmp2FName,"cs_DYee_13TeV_ElMay2017.root");
+
+  // version 9
+  addToVector(vecMainFName,"cov_mumu_varRhoFile_2000.root");
+  addToVector(vecCmp1FName,"/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov_mm/ROOTFile_SysUnc_EffSF_TagProbe_UnbinnedFit-20170602.root");
+  addToVector(vecCmp2FName,".");
+
+  // version 10
+  addToVector(vecMainFName,"DYmm_ROOTFile_Input_Cov_v2-20170529.root");
+  addToVector(vecCmp1FName,"DYmm_ROOTFile_Input_Cov_v3-20170614.root");
   addToVector(vecCmp2FName,".");
 
 
@@ -208,6 +232,40 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
     histoNames[_fn_cmp1][_iDetResFakes]="RRfakes+Unfold_DetectorRes1";
     histoNames[_fn_cmp1][_ih2Mig]="RRmig+Unfold_DetectorRes1";
   }
+  else if ((theCase==102) || (theCase==103)) {
+    std::cout << "compare detRes objects\n";
+    mainFName=vecMainFName[version];
+    histoNames[_fn_main][_iSignal]="RRmeas+detRes";
+    histoNames[_fn_main][_iUnf]="RRtrue+detRes";
+    histoNames[_fn_main][_iDetResFakes]="RRfakes+detRes";
+    histoNames[_fn_main][_ih2Mig]="RRmig+detRes";
+    histoNames[_fn_main][_ih2MigUnc]="RRmigUnc+detRes";
+    histoNames[_fn_main][_ih2MigRelUnc]="RRmigRelUnc+detRes";
+    cmpFName1=vecCmp1FName[version];
+    histoNames[_fn_cmp1][_iSignal]="RRmeas+detRes";
+    histoNames[_fn_cmp1][_iUnf]="RRtrue+detRes";
+    histoNames[_fn_cmp1][_iDetResFakes]="RRfakes+detRes";
+    histoNames[_fn_cmp1][_ih2Mig]="RRmig+detRes";
+    histoNames[_fn_cmp1][_ih2MigUnc]="RRmigUnc+detRes";
+    histoNames[_fn_cmp1][_ih2MigRelUnc]="RRmigRelUnc+detRes";
+    if (vecCmp2FName[version].Length()) {
+      cmpFName2=vecCmp2FName[version];
+      histoNames[_fn_cmp2][_iSignal]="RRmeas+detRes";
+      histoNames[_fn_cmp2][_iUnf]="RRtrue+detRes";
+      histoNames[_fn_cmp2][_iDetResFakes]="RRfakes+detRes";
+      histoNames[_fn_cmp2][_ih2Mig]="RRmig+detRes";
+      histoNames[_fn_cmp2][_ih2MigUnc]="RRmigUnc+detRes";
+    }
+    if (theCase==103) {
+      const THisto_t ihIdx[5]= { _iSignal, _iUnf, _iDetResFakes,
+				 _ih2Mig, _ih2MigUnc };
+      for (int idx=0; idx<4; idx++) {
+	histoNames[_fn_main][ihIdx[idx]].ReplaceAll("detRes","FSRRes");
+	histoNames[_fn_cmp1][ihIdx[idx]].ReplaceAll("detRes","FSRRes");
+	histoNames[_fn_cmp2][ihIdx[idx]].ReplaceAll("detRes","FSRRes");
+      }
+    }
+  }
   else if (theCase==200) {
     std::cout << "compare DYmm preFSR 4pi theory\n";
     mainFName="theory13TeVmm.root";
@@ -237,6 +295,35 @@ void compareVersions(int theCase=1, int version=2, int noH2Ratios_user=0, TStrin
     //histoNames[_fn_cmp1][_iEff]="h1EffPU";
     histoNames[_fn_cmp1][_iUnf]="RRtrue+rooUnf_detResRespPU";
   }
+  else if (theCase==300) {
+    std::cout << "compare uncertainties\n";
+    mainFName= vecMainFName[version];
+    histoNames[_fn_main][_iRho]= "h1xsecAvg";
+    histoNames[_fn_main][_ih1Unc]="h1uncFromCov";
+    cmpFName1= vecCmp1FName[version];
+    histoNames[_fn_cmp1][_iRho]= "h_mean";
+    histoNames[_fn_cmp1][_ih1Unc]= "h_RMS";
+  }
+  else if (theCase==400) {
+    gROOT->ForceStyle();
+    std::cout << "compare Kyeongpil uncertainties\n";
+    mainFName=vecMainFName[version];
+    cmpFName1=vecCmp1FName[version];
+    for (int iterSrc=int(_fn_main); iterSrc<int(_fn_cmp2); iterSrc++) {
+      TSource_t iSrc=TSource_t(iterSrc);
+      histoNames[iSrc][_iPreFsr]="h_DiffXSec";
+      histoNames[iSrc][_ih1Unc]="h_RelStatUnc";
+      histoNames[iSrc][_ih1BkgStatUnc]="h_RelUnc_Stat_BkgEst";
+      histoNames[iSrc][_ih1BkgSystUnc]="h_RelUnc_Syst_BkgEst";
+      histoNames[iSrc][_ih1DetResStatUnc]="h_RelUnc_Stat_DetRes";
+      histoNames[iSrc][_ih1DetResSystUnc]="h_RelUnc_Syst_DetRes";
+      histoNames[iSrc][_ih1EffSFStatUnc]="h_RelUnc_Stat_EffSF";
+      histoNames[iSrc][_ih1EffSFSystUnc]="h_RelUnc_Syst_EffSF";
+      histoNames[iSrc][_ih1FSRStatUnc]="h_RelUnc_Stat_FSR";
+      histoNames[iSrc][_ih1FSRSystUnc]="h_RelUnc_Syst_FSR";
+      histoNames[iSrc][_ih1AccSystUnc]="h_RelUnc_Syst_Acc";
+    }
+  }
   //else if (theCase==4)
   else {
     std::cout << "not ready for theCase=" << theCase << "\n";
@@ -262,7 +349,8 @@ int drawComparison(const InfoBundle_t &m,
 		   const InfoBundle_t &c1,
 		   const InfoBundle_t &c2,
 		   int noH2Ratios,
-		   TString showOnly)
+		   TString showOnly,
+		   int logLog2D)
 {
   for (std::map<THisto_t,TString>::const_iterator it= m.histoNames->begin();
        it!=m.histoNames->end(); it++) {
@@ -308,6 +396,11 @@ int drawComparison(const InfoBundle_t &m,
       TString cName="c" + h1nameBase + diffTag;
       TCanvas *cx= new TCanvas(cName,cName,900,300);
       cx->Divide(3,1);
+      for (int ipad=1; ipad<=3; ipad++) {
+	cx->cd(ipad);
+	gPad->SetLogx(logLog2D);
+	gPad->SetLogy(logLog2D);
+      }
       cx->cd(1);
       h2main->Draw("COLZ");
       if (idx!=0) {
@@ -356,7 +449,20 @@ TString THistoName(THisto_t ih)
   case _iCmp1: name="cmp1"; break;
   case _iCmp2: name="cmp2"; break;
   case _ih2Mig: name="h2Mig"; break;
+  case _ih2MigUnc: name="h2MigUnc"; break;
+  case _ih2MigRelUnc: name="h2MigRelUnc"; break;
   case _ih2FsrMig: name="h2FsrMig"; break;
+  case _ih1Unc: name="h1Unc"; break;
+  case _ih1BkgStatUnc: name="h1BkgStatUnc"; break;
+  case _ih1BkgSystUnc: name="h1BkgSystUnc"; break;
+  case _ih1DetResStatUnc: name="h1DetResStatUnc"; break;
+  case _ih1DetResSystUnc: name="h1DetResSystUnc"; break;
+  case _ih1EffSFStatUnc: name="h1EffSFStatUnc"; break;
+  case _ih1EffSFSystUnc: name="h1EffSFSystUnc"; break;
+  case _ih1FSRStatUnc: name="h1FSRStatUnc"; break;
+  case _ih1FSRSystUnc: name="h1FSRSystUnc"; break;
+  case _ih1AccStatUnc: name="h1AccStatUnc"; break;
+  case _ih1AccSystUnc: name="h1AccSystUnc"; break;
   default:
     name="UNKNOWN";
   }
@@ -429,6 +535,8 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
       else if ((hNameDisk.Index("RRmeas+")!=-1) ||
 	       (hNameDisk.Index("RRtrue+")!=-1) ||
 	       (hNameDisk.Index("RRmig+")!=-1) ||
+	       (hNameDisk.Index("RRmigUnc+")!=-1) ||
+	       (hNameDisk.Index("RRmigRelUnc+")!=-1) ||
 	       (hNameDisk.Index("RRfakes+")!=-1)) {
 	TString respName=hNameDisk;
 	respName.Remove(0,respName.Index("+")+1);
@@ -450,6 +558,22 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
 	    if (!h2ptr) { std::cout << "cannot receive RRmig\n"; }
 	    else *h2ptr=cloneHisto((TH2D*)r->Hresponse(),newHistoName,newHistoName);
 	  }
+	  else if ((hNameDisk.Index("RRmigUnc+")!=-1) ||
+		   (hNameDisk.Index("RRmigRelUnc+")!=-1)) {
+	    is2D=1;
+	    if (!h2ptr) { std::cout << "cannot receive RRmigUnc\n"; }
+	    else {
+	      int relative=(hNameDisk.Index("RRmigRelUnc+")!=-1) ? 1:0;
+	      TH2D *h2=cloneHisto((TH2D*)r->Hresponse(),newHistoName,newHistoName);
+	      if (!h2) *h2ptr=NULL;
+	      else {
+		*h2ptr=errorAsCentral(h2,relative);
+		if (1 && relative) {
+		  (*h2ptr)->GetZaxis()->SetRangeUser(-2050, 550 );
+		}
+	      }
+	    }
+	  }
 	  delete r;
 	}
       }
@@ -462,6 +586,10 @@ TH1D* loadHisto(const std::map<THisto_t,TString> &histoNames,
       }
       break;
     }
+  }
+
+  if (h2ptr && (*h2ptr)) {
+    (*h2ptr)->SetStats(0);
   }
   return h1;
 }
