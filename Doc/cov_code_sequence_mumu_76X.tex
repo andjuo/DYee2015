@@ -306,11 +306,14 @@ h2Cov.
 
 % ----------------------------------
 \section{Dielectron covariance calculation}
+\label{sect-DielectronCov}
 
 The code sequence for the dielectrons:
-(1)~\myund{createCSInput_DYee13TeV.C},
-(2)~\myund{processDYee_dressed.C}, (3)~\myund{calcRhoRndVec_ee.C},
-(4)~\myund{studyDYeeCS.C}.
+(1)~\myund{processDYee_dressed.C},
+(2)~\myund{createCSInput_DYee13TeV.C},
+(3)~\myund{calcRhoRndVec_ee.C},
+(4)~\myund{studyDYeeCS.C} (note: the script
+\myund{run_studyDYmmCS.sh}\ was updated to call also studyDYeeCS.C macro).
 
 (Added Jan 19, 2017)\\\noindent The code
 \myund{calcRhoRndVec_ee_syst.C}\ is used to produce several kinds of
@@ -392,6 +395,23 @@ thus the uncertainties can be evaluated properly. The systematic
 uncertainty on the acceptance is correlated between the electron and
 the muon channel. Finally, the systematic uncertainty on other
 quantities is sometimes adjusted by hand.
+
+% --------------------------------------------------------------
+\subsection{Calculation of the efficiency scale factor systematic covariance}
+
+\textit{Started July 27, 2017.}
+
+I would like to be able to calculate the separate covariance matrices
+of the event efficiency scale factor systematic uncertainties for each
+source of the systematic uncertainty. Earlier, I had created a
+cumbersome class \myund{DYTnPEff_t}\ that was able to keep each
+source of the uncertainty separately. I would like to check that the
+separate covariance matrices are calculable. If it is not implemented,
+I should do this.
+
+I notice that I have already a macro \myund{calcRhoRndVec_ee_syst.C},
+so I look it up in this document and see its description in section
+\ref{sect-DielectronCov}, dated from Jan 19, 2017.
 
 
 \end{document}

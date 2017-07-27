@@ -1,0 +1,59 @@
+\documentclass[11pt]{article}
+
+\usepackage{hyperref}
+\usepackage{xstring} % StrSubstitute
+
+
+%\newcommand{\cosh}{\mathrm{cosh}}
+
+\def\myund#1{%
+  \saveexpandmode\expandarg
+  \IfSubStr{#1}{_}{%
+   \StrSubstitute{#1}{_}{\_}}{#1}%
+  \restoreexpandmode
+}
+
+
+%opening
+\title{Electron energy calibration in CMSSW 76X}
+\author{A.~Juodagalvis}
+\date{started May 17, 2017}
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+Description of electron n-tuples produced by Arun.
+\end{abstract}
+
+\section{Introduction}
+
+The package DYee2015 already had a branch DYee-cov-input-skim with
+macros to simplify Arun's n-tuples with the signal samples. The macro
+treeRead1.C placed in SkimEE directory is using the structure defined
+in \myund{dyee_tree_v2.h}. (A more detailed check revealed that this
+structure is probably related to the ``compressed'' n-tuple that I
+asked Ridhi to provide me last year, since the signal n-tuples contain
+a slightly different structure.}
+
+I took data samples from\\
+\myund{/store/group/phys_higgs/cmshww/arun/DYAnalysis_76X_Calibrated/Data}. The
+files are named \myund{SE_2015.root}, \myund{Photon_2015.root}, and
+\myund{MuEG_2015.root}. Using supposedly SingleElectron data file
+\myund{SE_2015.root}, I created a class \myund{dyee_data_t.h}.
+
+Having created a script createTreeClass.C, I have verified that the
+same tree structure is available in simulated samples.
+
+Modifications to the created class. (1) Preparation actions. I renamed
+\myund{dyee_data_t.C}\ to \myund{dyee_data_t.cc}. The header file
+contained unneeded includes of $<$vector$>$ and ``vector.dll''. The
+method Cut contained unused parameter 'entry', so I added one 'if'
+statement that should be optimized out by the compiler, but would
+create no warning. (2)
+
+
+
+\end{document}
