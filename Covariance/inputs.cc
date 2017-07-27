@@ -62,6 +62,28 @@ int leptonIdx(TVersion_t v) {
   return i;
 }
 
+// --------------------------------------------------------------
+
+TString subVersionName(TSubVersion_t subver, int ignoreUndef)
+{
+  TString name="subVersionNameUNKNOWN";
+  switch(subver) {
+  case _subverUndef:
+    name="UndefSubVer";
+    if (ignoreUndef) name="";
+    break;
+  case _subver1: name="_sv1"; break;
+  case _subver2: name="_sv2"; break;
+  case _subver3: name="_sv3"; break;
+  case _subver4: name="_sv4"; break;
+  case _subver5: name="_sv5"; break;
+  case _subver6: name="_sv6"; break;
+  default:
+    std::cout << "subVersionName is not ready for this subVersion type\n";
+  }
+  return name;
+}
+
 // -----------------------------------------------------------
 // -----------------------------------------------------------
 

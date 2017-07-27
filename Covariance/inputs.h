@@ -38,8 +38,13 @@ typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verMuApproved=102,
 	       _verElMay2017=304, _verElMay2017false=305
 } TVersion_t;
 
+typedef enum { _subverUndef=0, _subver1=1, _subver2=2, _subver3=3,
+	       _subver4=4, _subver5=5, _subver6=6
+} TSubVersion_t;
+
 TString versionName(TVersion_t);
 int leptonIdx(TVersion_t); // 0 - electron, 1 - muon, 2 - lepton
+TString subVersionName(TSubVersion_t, int ignoreUndef=0);
 
 // -----------------------------------------------------------
 
@@ -137,7 +142,7 @@ TCanvas* plotHistoErrorSame(const TH1D *h1, TString canvName, TString drawOpt,
 
 TCanvas* plotGraphSame(TGraphErrors *h1, TString canvName, TString drawOpt, TString explain="");
 TCanvas* plotRatio(TH1D* h1, TString cName, int logX=0, int logY=0,
-		   TString drawOpt="LPE", TString explain="", int gridLines=3,
+		   TString drawOpt="LPE", TString explain="", int gridLines=1,
 		   int lineAtOne=1);
 
 int moveLegend(TCanvas *c, double dxNDC, double dyNDC);
