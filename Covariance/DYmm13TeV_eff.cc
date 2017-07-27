@@ -26,7 +26,7 @@ DYTnPEff_t::DYTnPEff_t(const DYTnPEff_t &e, TString tag) :
 	     h2VReco(), h2VIso(), h2VHLT(),
 	     //fDefVal(e.fDefVal), fDefErr(e.fDefErr),
 	     fEffReco(0.), fEffIso(0.), fEffHlt1(0.), fEffHlt2(0.),
-	     fElChannel(0)
+	     fElChannel(e.fElChannel)
 {
   if (!this->assign(e,tag)) {
     std::cout << "error in clone constructor\n";
@@ -413,22 +413,31 @@ double DYTnPEff_t::scaleFactorIdx_misc(int ibin1, int jbin1,
 
 int DYTnPEff_t::assign(const DYTnPEff_t &e, TString tag)
 {
-  h2Eff_RecoID_Data= cloneHisto(e.h2Eff_RecoID_Data, "h2Eff_RecoID_Data"+tag,
-				"h2Eff_RecoID_Data"+tag);
-  h2Eff_Iso_Data= cloneHisto(e.h2Eff_Iso_Data, "h2Eff_Iso_Data"+tag,
-			     "h2Eff_Iso_Data"+tag);
-  h2Eff_HLT4p2_Data= cloneHisto(e.h2Eff_HLT4p2_Data, "h2Eff_HLT4p2_Data"+tag,
-				"h2Eff_HLT4p2_Data"+tag);
-  h2Eff_HLT4p3_Data= cloneHisto(e.h2Eff_HLT4p3_Data, "h2Eff_HLT4p3_Data"+tag,
-				"h2Eff_HLT4p3_Data"+tag);
-  h2Eff_RecoID_MC= cloneHisto(e.h2Eff_RecoID_MC, "h2Eff_RecoID_MC"+tag,
-			      "h2Eff_RecoID_MC"+tag);
-  h2Eff_Iso_MC= cloneHisto(e.h2Eff_Iso_MC, "h2Eff_Iso_MC"+tag,
-			   "h2Eff_Iso_MC"+tag);
-  h2Eff_HLT4p2_MC= cloneHisto(e.h2Eff_HLT4p2_MC, "h2Eff_HLT4p2_MC"+tag,
-			      "h2Eff_HLT4p2_MC"+tag);
-  h2Eff_HLT4p3_MC= cloneHisto(e.h2Eff_HLT4p3_MC, "h2Eff_HLT4p3_MC"+tag,
-			      "h2Eff_HLT4p3_MC"+tag);
+  const TString newNamesMM[4]= { "h2Eff_RecoID", "h2Eff_Iso",
+				 "h2Eff_HLT4p2", "h2Eff_HLT4p3" };
+  const TString newNamesEE[4]= { "h2Eff_Reco", "h2Eff_ID",
+				 "h2Eff_Trig", "h2Eff_TrigUnneeded" };
+  const TString *newNames=
+    ((fElChannel==0) || (fElChannel==4)) ? newNamesMM : newNamesEE;
+
+  TString dataTag="_Data"+tag;
+  TString mcTag="_MC"+tag;
+  h2Eff_RecoID_Data= cloneHisto(e.h2Eff_RecoID_Data,
+				newNames[0]+dataTag, newNames[0]+dataTag);
+  h2Eff_Iso_Data= cloneHisto(e.h2Eff_Iso_Data,
+			     newNames[1]+dataTag, newNames[1]+dataTag);
+  h2Eff_HLT4p2_Data= cloneHisto(e.h2Eff_HLT4p2_Data,
+				newNames[2]+dataTag, newNames[2]+dataTag);
+  h2Eff_HLT4p3_Data= cloneHisto(e.h2Eff_HLT4p3_Data,
+				newNames[3]+dataTag, newNames[3]+dataTag);
+  h2Eff_RecoID_MC= cloneHisto(e.h2Eff_RecoID_MC,
+			      newNames[0]+mcTag, newNames[0]+mcTag);
+  h2Eff_Iso_MC= cloneHisto(e.h2Eff_Iso_MC,
+			   newNames[1]+mcTag, newNames[1]+mcTag);
+  h2Eff_HLT4p2_MC= cloneHisto(e.h2Eff_HLT4p2_MC,
+			      newNames[2]+mcTag, newNames[2]+mcTag);
+  h2Eff_HLT4p3_MC= cloneHisto(e.h2Eff_HLT4p3_MC,
+			      newNames[3]+mcTag, newNames[3]+mcTag);
   fElChannel= e.fElChannel;
   return updateVectors();
 }
@@ -585,7 +594,19 @@ int DYTnPEff_t::multiply(const DYTnPEff_t &e)
 
 int DYTnPEff_t::add(const DYTnPEff_t &e)
 {
+  const int debug=0;
+  if (debug) {
+    std::cout << "add!\n" << h2Eff_RecoID_Data->GetBinContent(1,1) << " +- "
+	      << h2Eff_RecoID_Data->GetBinError(1,1) << "   +    "
+	      << e.h2Eff_RecoID_Data->GetBinContent(1,1) << " +- "
+	      << e.h2Eff_RecoID_Data->GetBinError(1,1) << "\n";
+  }
+
   h2Eff_RecoID_Data->Add(e.h2Eff_RecoID_Data);
+  if (debug) {
+    std::cout << " = " << h2Eff_RecoID_Data->GetBinContent(1,1) << " +- "
+	      << h2Eff_RecoID_Data->GetBinError(1,1) << "\n";
+  }
   h2Eff_Iso_Data->Add(e.h2Eff_Iso_Data);
   h2Eff_HLT4p2_Data->Add(e.h2Eff_HLT4p2_Data);
   h2Eff_HLT4p3_Data->Add(e.h2Eff_HLT4p3_Data);
@@ -1190,6 +1211,7 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
   const TString eeNamesV3[4]= { "h_2D_Eff_RECO_StatUnc", "h_2D_Eff_ID_StatUnc", "h_2D_Eff_Trig_StatUnc", "h_2D_Eff_TrigUnneeded" };
   const TString *hnames = mmNames;
   int loadHLT4p3=1;
+  std::cout << "DYTnPEff_t::load. fElChannel=" << fElChannel << "\n";
   if (fElChannel==1) { hnames=eeNames; loadHLT4p3=0; }
   else if (fElChannel==2) { hnames=eeNamesV2; loadHLT4p3=0; }
   else if (fElChannel==3) { hnames=eeNamesV3; loadHLT4p3=0; }
@@ -1449,6 +1471,18 @@ DYTnPEff_t* DYTnPEffColl_t::getTnPShiftByUnc(TString tag, int srcIdx,
 
 // -------------------------------------------------------------
 
+void DYTnPEffColl_t::setElChannel(int setVal)
+{
+  fElChannel=setVal;
+  fTnPEff.setElChannel(setVal);
+  for (unsigned int i=0; i<fTnPEffSrcV.size(); i++)
+    fTnPEffSrcV[i]->setElChannel(setVal);
+  for (unsigned int i=0; i<fTnPEffSystV.size(); i++)
+    fTnPEffSystV[i]->setElChannel(setVal);
+}
+
+// -------------------------------------------------------------
+
 int DYTnPEffColl_t::ptrsOk() const
 {
   int ok= (fTnPEff.ptrsOk() && (fTnPEffSrcV.size()==fTnPEffSystV.size())) ? 1:0;
@@ -1585,18 +1619,34 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 	    TH2D **h2chk, unsigned int ihChk, unsigned int iSrcChk) const
 {
   DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,tag);
-  if (h2chk) (*h2chk)->Reset();
+  if (h2chk) {
+    if (!(*h2chk)) {
+      std::cout << "DYTnPEffColl_t::randomizeByKind detected code error: "
+		<< "**h2chk is not NULL, but *h2chk is NULL\n";
+      return NULL;
+    }
+    (*h2chk)->Reset();
+  }
+  const int debug=0;
 
   for (unsigned int ih=0; ih<e->fullListSize(); ih++) {
     TH2D *h2dest= e->h2fullList(ih);
-    std::cout << "initial h2dest: "; printHistoWLimit(h2dest,1,5);
+    if (1 && debug) {
+      std::cout << "\nih=" << ih << " initial h2dest: ";
+      printHistoWLimit(h2dest,1,5);
+      std::cout << "fTnPEffSrcV.size=" << fTnPEffSrcV.size() << "\n";
+      std::cout << "iSrcOnly=" << iSrcOnly << "\n";
+    }
     for (unsigned int iSrc=0; iSrc<fTnPEffSrcV.size(); iSrc++) {
-      if ((iSrcOnly!=-1) && (iSrcOnly!=int(iSrc))) continue;
-      HERE("\n\tiSrc=%d",iSrc);
+      //if ((iSrcOnly!=-1) && (iSrcOnly!=int(iSrc))) continue;
+      if (debug) HERE("\tiSrc=%d",iSrc);
       const DYTnPEff_t *eff= fTnPEffSrcV[iSrc];
       const TH2D *h2src= eff->h2fullList(ih);
       const TH2D *h2nominal= fTnPEff.h2fullList(ih);
-      if (h2src->Integral()==0) continue;
+      if (h2src->Integral()==0) {
+	if (debug) std::cout << "no contribution\n";
+	continue;
+      }
       if ( hlt4p3 && (TString(h2src->GetName()).Index("HLT4p2")!=-1)) continue;
       if (!hlt4p3 && (TString(h2src->GetName()).Index("HLT4p3")!=-1)) continue;
       if (0) {
@@ -1606,7 +1656,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
       }
       TH2D *h2diff= cloneHisto(h2src,"h2diff","h2diff");
       h2diff->Add(h2nominal,-1);
-      if (ih==0) {
+      if (1 && debug && (ih==0)) {
 	std::cout << "h2src: "; printHistoWLimit(h2src,1,5);
 	std::cout << "h2nominal: "; printHistoWLimit(h2nominal,1,5);
 	std::cout << "h2diff: "; printHistoWLimit(h2diff,1,5);
@@ -1618,7 +1668,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 	else if ((ih%2==1) && (maxSigmaMC!=0)) r=double(maxSigmaMC);
 	//std::cout << "r=" << r << "\n";
 	h2dest->Add(h2diff,r);
-	std::cout << "h2dest: "; printHistoWLimit(h2dest,1,5);
+	if (debug) std::cout << "h2dest: "; printHistoWLimit(h2dest,1,5);
 	if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
 	  (*h2chk)->Add(h2diff,r);
 	}
@@ -1725,7 +1775,7 @@ int DYTnPEffColl_t::save(TFile &fout, TString subdirTag) const
 
 // -------------------------------------------------------------
 
-int DYTnPEffColl_t::save(TString fname, TString subdirTag) const
+int DYTnPEffColl_t::save(TString fname, TString subdirTag, TString msg) const
 {
   TFile fout(fname,"recreate");
   if (!fout.IsOpen()) {
@@ -1738,6 +1788,8 @@ int DYTnPEffColl_t::save(TString fname, TString subdirTag) const
     fout.Close();
     return 0;
   }
+  if (msg.Length()) writeMsg(msg,&fout);
+  writeTimeTag(&fout);
   fout.Close();
   std::cout << "collection saved to file <" << fout.GetName() << ">\n";
   return 1;
@@ -1752,13 +1804,16 @@ int DYTnPEffColl_t::load(TFile &fin, TString subdirTag, TString tagList)
   TString tag;
   ss >> tag;
   if (tag==".") tag="";
+  std::cout << "load from subdirTag with tag=<" << tag << ">\n";
   int res=fTnPEff.load(fin,subdirTag,tag);
+  std::cout << "result=" << res << "\n";
   std::vector<TString> tagV;
   while (!ss.eof()) {
     ss >> tag;
     tagV.push_back(tag);
     std::cout << "tag=" << tag << "\n";
   }
+  std::cout << "load systSrc\n";
   for (unsigned int i=0; (res==1) && (i<tagV.size()); i++) {
     DYTnPEff_t *eff= new DYTnPEff_t(fTnPEff,tagV[i]);
     res= eff->load(fin,subdirTag + "_systSrc",tagV[i]);
@@ -1791,6 +1846,182 @@ int DYTnPEffColl_t::load(TString fname, TString subdirTag, TString tagList)
   std::cout << "collection loaded from a file <" << fin.GetName() << ">\n";
   return 1;
 }
+
+// -------------------------------------------------------------
+// -------------------------------------------------------------
+
+int createEffCollection(TString effFileNameBase,
+			const TString inpEffFileNameTags,
+			const TString includeEffKinds,
+			const TString includeEffSystSrc,
+			int nEta, const double *eta,
+			int nPt, const double *pt,
+			DYTnPEffColl_t &effColl,
+			TString saveFileName,
+			int specialHandling)
+{
+  std::cout << "entered createEffCollection\n";
+
+  // create basic holder for the efficiencies
+  TH2D *h2bin=new TH2D("h2bin","h2bin;#eta;p_{T} [GeV]",
+		       nEta,eta,nPt,pt);
+  h2bin->SetStats(0);
+  h2bin->SetDirectory(0);
+  h2bin->Sumw2();
+  for (int ibin=1; ibin<=h2bin->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2bin->GetNbinsY(); jbin++) {
+      h2bin->SetBinContent(ibin,jbin, 1.);
+      h2bin->SetBinError  (ibin,jbin, 0.);
+    }
+  }
+  TH2D *h2binZero= cloneHisto(h2bin,"h2binZero","h2binZero");
+  h2binZero->Reset();
+
+  std::vector<TString> kinds,sources;
+  addToVector(kinds,inpEffFileNameTags);
+  addToVector(sources,includeEffSystSrc);
+
+  int addHLT4v3=0;
+  if (specialHandling==1) addHLT4v3=1;
+
+  //int nKinds=int(kinds.size());
+  //int nSrc=int(sources.size());
+  if (1) {
+    for (unsigned int i=0; i<kinds.size(); i++) {
+      std::cout << "kind i=" << i << " " << kinds[i] << "\n";
+    }
+    for (unsigned int i=0; i<sources.size(); i++) {
+      std::cout << "src i=" << i << " " << sources[i] << "\n";
+    }
+    //return 0;
+  }
+
+  // the vector will contain alternative efficiencies
+  // the first will be statistical uncertainty only
+  std::vector<DYTnPEff_t*> tnpEffV; // contains histograms from files
+  tnpEffV.reserve(sources.size());
+
+  // create histos
+  for (int iSrc=-1; iSrc<static_cast<int>(sources.size()); iSrc++) {
+    tnpEffV.push_back(new DYTnPEff_t(effColl.isElChannel()));
+    for (unsigned int iKind=0; iKind<kinds.size()+addHLT4v3; iKind++) {
+      for (int isMC=0; isMC<2; isMC++) {
+	TString src=(iSrc==-1) ? "Stat" : sources[iSrc];
+	TString kind=(iKind<kinds.size()) ? kinds[iKind] : "HLT4v3";
+	TString hName= Form("h2Eff_kind%s_isMC%d_iSrc%s",
+			    kind.Data(),isMC,src.Data());
+	tnpEffV.back()->setHisto(iKind,isMC,
+				 cloneHisto(h2bin,hName,hName));
+      }
+    }
+  }
+
+  // load efficiencies
+  for (unsigned int iKind=0; iKind<kinds.size(); iKind++) {
+    TString fname= effFileNameBase + kinds[iKind] + ".root";
+    TFile fin(fname);
+    if (!fin.IsOpen()) {
+      std::cout << "failed to open the file <" << fin.GetName() << ">\n";
+      return 0;
+    }
+    for (int isMC=0; isMC<2; isMC++) {
+      // first load the statistical uncertainty
+      TString histoNameBase=(isMC) ? "h2effMC" : "h2effData";
+      TString histoNameMem= histoNameBase + "_" + kinds[iKind];
+      TString histoNameFile= histoNameBase;
+      if (specialHandling==1) {
+	// special handling for names
+	if (kinds[iKind]=="ID") {
+	  histoNameFile += "_inEta";
+	}
+      }
+      TH2D *h2stat= loadHisto(fin, histoNameFile, histoNameMem + "_stat",
+			      1,h2dummy);
+      if (h2stat) {
+	std::cout << "++ loaded histo " << h2stat->GetName() << "\n";
+      }
+      else return 0;
+      tnpEffV[0]->setHisto(iKind,isMC,h2stat);
+
+      // copy nominal values to the histograms
+      for (unsigned int iSrc=0; iSrc<sources.size(); iSrc++) {
+	tnpEffV[iSrc+1]->copyHisto(iKind,isMC,h2stat);
+	// also include HLTv4p3
+	if (addHLT4v3 && (iKind==kinds.size()-1)) {
+	  tnpEffV[iSrc+1]->copyHisto(iKind+1,isMC,h2stat);
+	}
+      }
+
+      // load systematic errors
+      if (includeEffKinds.Index(kinds[iKind])==-1) {
+	std::cout << "systematic uncertainties for " << kinds[iKind]
+		  << " are not loaded\n";
+	continue;
+      }
+
+      for (unsigned int iSrc=0; iSrc<sources.size(); iSrc++) {
+	histoNameFile= histoNameBase + "_" + sources[iSrc];
+	if ((specialHandling==1) && (kinds[iKind]=="ID")) {
+	  histoNameFile += "_inEta";
+	}
+	TString histoNameSyst= histoNameMem + "_syst_" + sources[iSrc];
+	TH2D *h2syst= loadHisto(fin, histoNameFile, histoNameSyst, 0,h2dummy);
+	if (h2syst) {
+	  std::cout << "+ loaded " << histoNameSyst << "\n";
+	  tnpEffV[iSrc+1]->setHisto(iKind,isMC,h2syst);
+	}
+	else {
+	  std::cout << "- " << histoNameFile << " not found on file\n";
+	  tnpEffV[iSrc+1]->setHisto(iKind,isMC,h2binZero);
+	}
+      }
+    }
+    fin.Close();
+    std::cout << "file <" << fin.GetName() << "> loaded\n";
+  }
+
+  //std::cout << "calling assignStatErr\n";
+  if (!tnpEffV[0]) {
+    std::cout << "tnpEffV[0] is NULL\n";
+    return 0;
+  }
+  // test numbers
+  if (0) {
+    std::cout << "\nList loaded numbers\n";
+    for (unsigned int i=0; i<tnpEffV.size(); i++) {
+      tnpEffV[i]->listNumbers();
+    }
+    std::cout << "\n -- listing done\n";
+  }
+
+  // collection
+  if (!effColl.assignStatErr(*tnpEffV[0],"")) {
+    std::cout << "failed to assign stat err\n";
+    return 0;
+  }
+
+  std::cout << "adding systErrSources " << sources.size() << "\n";
+  for (unsigned int iSrc=0; iSrc<sources.size(); iSrc++) {
+    //HERE("iSrc=%d",iSrc);
+    if (!effColl.addSystErrSource(*tnpEffV[iSrc+1],"_"+sources[iSrc])) {
+      std::cout << "failed to assign syst err for iSrc=" << iSrc
+		<< " (source name=" << sources[iSrc] << ")\n";
+      return 0;
+    }
+  }
+
+  if (saveFileName.Length()) {
+    HERE("saving the collection\n");
+    if (!effColl.save(saveFileName,"")) {
+      std::cout << "failed to save the collection\n";
+      return 0;
+    }
+    std::cout << "collection saved to file <" << saveFileName << ">\n";
+  }
+
+ return 1;
+}
+
 
 // -------------------------------------------------------------
 // -------------------------------------------------------------

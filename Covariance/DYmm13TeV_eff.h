@@ -156,6 +156,7 @@ public:
   ~DYTnPEff_t();
 
   int isElChannel() const { return fElChannel; }
+  void setElChannel(int setVal) { fElChannel=setVal; }
 
   std::vector<TH2D*>* h2vecPtr(int isrc) {
     if (isrc==0) return &h2VReco;
@@ -371,6 +372,7 @@ public:
 };
 
 // -------------------------------------------------------------
+// -------------------------------------------------------------
 
 class DYTnPEffColl_t {
 public:
@@ -388,6 +390,9 @@ public:
   DYTnPEffColl_t(const DYTnPEffColl_t &e, TString tag, int iSrc=-1);
 
   const DYTnPEff_t& getTnPWithStatUnc() const { return fTnPEff; }
+  DYTnPEff_t* getTnPWithStatUncPtr() { return &fTnPEff; }
+  unsigned int getSrcSize() const { return fTnPEffSystV.size(); }
+  int getSrcCount() const { return static_cast<int>(fTnPEffSystV.size()); }
   DYTnPEff_t* getTnPWithSystUnc(int idx) const;
   DYTnPEff_t* getTnPWithTotUnc(TString tag="_totUnc") const;
   template<class idx_t>
@@ -399,6 +404,7 @@ public:
 			       double nSigmas_data, double nSigmas_mc) const;
 
   int isElChannel() const { return fElChannel; }
+  void setElChannel(int setVal);
   int ptrsOk() const;
   int assign(const DYTnPEffColl_t &coll, TString tag, int iSrc=-1);
   int excludeGap();
@@ -433,13 +439,39 @@ public:
   void listNumbers(int includeSrc=0) const;
 
   int save(TFile &fout, TString subdirTag="") const;
-  int save(TString fname, TString subdirTag="") const;
+  int save(TString fname, TString subdirTag="", TString msg="") const;
   int load(TFile &fin, TString subdir="DYTnPEffColl", TString tagList="");
   int load(TString fname, TString subdir="DYTnPEffColl", TString tagList="");
 };
 
 // -------------------------------------------------------------
 // -------------------------------------------------------------
+
+namespace DYtools {
+
+const int nEffKinds=4;
+const TString effKinds[nEffKinds] = { "RECO", "ID", "HLT", "HLTv3" };
+const int nEffSystSrc=4;
+const TString effSystSrc[nEffSystSrc]= { "bkgPdf", "sigPdf", "NLOvsLO", "tag" };
+
+};
+
+// -------------------------------------------------------------
+// -------------------------------------------------------------
+
+int createEffCollection(TString effFileNameBase,
+			const TString inpEffFileNameTags,
+			const TString includeEffKinds,
+			const TString includeEffSystSrc,
+			int nEta, const double *eta,
+			int nPt, const double *pt,
+			DYTnPEffColl_t &effColl, // create effColl
+			TString saveFileName="",
+			int specialHandling=0); // tune special cases
+
+// -------------------------------------------------------------
+// -------------------------------------------------------------
+
 
 // EventSpace_t contains (eta1,pt1)x(eta2,pt2) information for each mass bin
 
