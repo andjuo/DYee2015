@@ -117,7 +117,7 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0,
 
       for (int iSrc=0; iSrc<nSrc; iSrc++) {
 	tnpEffV[iSrc+1]->copyHisto(iKind,isMC,h2stat);
-	tnpEffReadyV[0]->copyHisto(iKind,isMC,h2stat);
+	tnpEffReadyV[iSrc+1]->copyHisto(iKind,isMC,h2stat);
 	// also include HLTv4p3
 	if (iKind==nKinds-1) {
 	  tnpEffV[iSrc+1]->copyHisto(iKind+1,isMC,h2stat);
@@ -200,6 +200,7 @@ void calcRhoRndVec_ee_syst(int nToys=100, int testCase=0, int uncorrFlag=0,
   EventSpace_t esPostFsr;
   TString esMainDirName="mainES";
   TVersion_t inpVersion= _verEl3;
+  inpVersion=_verElMay2017false;
   TString dyeeTestFNameBase="dyee_test_dressed_";
   TString fname= dyeeTestFNameBase + versionName(inpVersion) + TString(".root");
 
