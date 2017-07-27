@@ -14,6 +14,8 @@
 \newcommand{\textgreen}[1]{{\color{green!50!black}#1}}
 \newcommand{\textblue}[1]{{\color{blue!90!black}#1}}
 \newcommand{\lumi}[1]{{\cal L}_{\mathrm{#1}}}
+\newcommand{\avgrho}{\langle\rho\rangle}
+\newcommand{\tab}{$\phantom{.\hspace{1cm}.}$}
 
 \def\myund#1{%
   \saveexpandmode\expandarg
@@ -324,6 +326,10 @@ is \myund{calcRhoRndVec_ee_syst.C+(1,0,1,1111)}.  This produces the
 files needed for systematic evaluations by code
 \myund{studyDYeeCS.C+(_varRhoSyst,0,0)}.
 
+The study of event efficiency scale factor systematic uncertainty
+covariance is continued in Section \ref{sect-effSFsyst} from July 27,
+2017.
+
 % ----------------------------------
 \section{Calculation of the statistical uncertainty covariance matrix}
 
@@ -369,7 +375,9 @@ The
 combination is defined in the macro analyseBLUEResult.C that contains
 only one function,\\
 \indent
-\myund{combineData(covEE_inp,covMM_inp,covEM_inp,outputFileTag,plotTag,flagPrintCanvases)}\\
+\myund{combineData(covEE_inp,covMM_inp,covEM_inp,outputFileTag,plotTag,
+  $\backslash\backslash$\\
+  \tab flagPrintCanvases)}\\
 \noindent
  The function reads the central values
 from embeded files, while the uncertainties are provided via input.
@@ -397,7 +405,8 @@ the muon channel. Finally, the systematic uncertainty on other
 quantities is sometimes adjusted by hand.
 
 % --------------------------------------------------------------
-\subsection{Calculation of the efficiency scale factor systematic covariance}
+\section{Calculation of the efficiency scale factor systematic covariance}
+\label{sect-effSFsyst}
 
 \textit{Started July 27, 2017.}
 
@@ -409,10 +418,102 @@ source of the uncertainty separately. I would like to check that the
 separate covariance matrices are calculable. If it is not implemented,
 I should do this.
 
-I notice that I have already a macro \myund{calcRhoRndVec_ee_syst.C},
-so I look it up in this document and see its description in section
-\ref{sect-DielectronCov}, dated from Jan 19, 2017.
+% -----------------------------------
+\subsection{Studying previous codes}
 
+\textit{The conclusion from this study} is that the macro
+\myund{plotDYeeESF_coll.C}\ was used to produce the needed plots, and
+the macros \myund{calcRhoRndVec_ee_syst.C}\ and
+\myund{studyDYeeCS.C}\ were only partially developed towards the final
+implementation. A full story is below.
+
+I notice that I have already a
+\textbf{macro \myund{calcRhoRndVec_ee_syst.C}}, so I look it up in
+this document and see its description in section
+\ref{sect-DielectronCov},
+dated from Jan 19, 2017.
+
+To check the macro, I ran \myund{calcRhoRndVec_ee_syst.C}\ with the
+recommended flags (1,0,1,1111), standing for nToys=1, testCase=0,
+uncorrFlag=1,\linebreak limitToSrc=1111. Compiling the code, I noticed that
+there are several parameters that are not connected. They belong to
+the commented out body of a function randomizeSF. Probably, I intended
+to implement the covariance calculation, but either did not finish the
+task, or decided to use just the diagonal uncertainties.
+
+To be able to run the code, I needed input files with efficiency
+systematics \myund{dyee_effSyst_TYPE}\ (where TYPE is RECO, ID, or
+HLT). I took them from an earlier instance of the package in the
+directory DYee2015-20161129-effSyst on ``supercomp'' SL6b-local. This
+was the latest version and, most likely, the one that was used in my
+reported evaluation of the systematic uncertainty. The flag ``1111''
+just short-cuts to a restricted block of instructions.
+
+The run also needs \myund{dyee_test_dressed_El3.root}. I noticed that
+my latest instance of the DYee2015, DYee2015-20170527-combi-false used
+the version named \myund{dyee_test_dressed_ElMay2017.root}\ and also
+``May2017false''. Those files are produced by my own macro,
+\myund{processDYee_dressed.C}, and here is no difference between those
+two versions. The two files are produced only for the convenience of
+identifying variations of other inputs, most notably, of the DYee
+cross section file \myund{cs_DYee_13TeV_ElXX.root}.
+The version ``May2017'' has RooUnfoldResponse
+objects as Ridhi has set them up (with the flag
+UseOverflow=true). While the version ``May2017false'' has this flag
+set to false (this should be the correct behavior). I copy the needed
+files, namely,
+\myund{dyee_test_dressed_ElMay2017*.root}\
+and\linebreak
+\myund{cs_DYee_13TeV_ElMay2017*.root},
+and change the variable inpVersion in the code from
+\myund{_verEl3}\ to \myund{_verElMay2017false}.
+
+The flag limitToSrc=1111 makes the macro
+\myund{calcRhoRndVec_ee_syst.C}\ to plot the alternative event
+efficiency scale factors produced with the alternative tables obtained
+by applying $+1\sigma$ variation on both data and simulation. I tried
+to understand the reason for it. My presentation dated from
+20161207-Juodagalvis-effSyst.pdf shows distributions with
+$(\pm\sigma_\mathrm{data},\pm\sigma_\mathrm{MC})$.  The macro
+\myund{calcRhoRndVec_ee_syst.C}\ saves only one file, when run with
+the flag limitToSrc=1000, namely, dyee-rho-syst.root. This file
+contains only 1 instance of the calculated average event efficiency
+scale factor. Since I found this file in the directory
+DYee2015-20161129-effSyst, it must the other mentioned macro
+studyDYeeCS.C that was use to produce the plots for the presentation.
+
+The \textbf{macro \myund{studyDYeeCS.C+(_varRhoSyst,0,0)}}\
+required\linebreak
+\myund{cs_DYee_13TeV_ElMay2017false.root} (so I updated what I copied
+earlier). The flag \myund{_varRhoSyst}\ calls a function
+createSystFile. However, it produces one-case plot.
+
+I checked the presentation source file and the previous instance
+DYee2015-20161129-effSyst, and finally identified that the plots were
+produced by a \textbf{macro \myund{plotDYeeESF_coll.C}}. The plots
+contain only $\avgrho$ distributions and not the cross sections or the
+covariance matrices. I was reminded that each source of the systematic
+uncertainty either affects data or simulation, as a result, variation
+only of the relevant sigma is important.
+
+\textit{Conclusion:} other macros were used in search for the final
+implementation and the algorithm, but not for the presentation. That
+is why they are not complete. The plots were produced by
+\myund{plotDYeeESF_coll.C}.
+
+% -----------------------------------
+\subsection{Updating the macros}
+
+It is clear now what I would like to achieve. I would like that
+\myund{calcRhoRndVec_ee_syst.C}\ produces a set of randomized
+distributions for each source of the uncertainty. Although each kind
+of efficiency has to be randomized separately, the systematic
+deviation should be applied at a random scale.
+
+I started to work on \myund{calcRhoRndVec_ee_syst2.C}\ to fix bugs and
+making sure the ideas are implemented correctly. In particular, I
+moved efficiency-loading lines to \myund{DYmm13TeV_eff} and created a
+function createEffCollection.
 
 \end{document}
 
