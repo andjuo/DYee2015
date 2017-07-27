@@ -11,22 +11,24 @@ int adjustMMUnc(const finfomap_t &mmCovFNames, // needed for first value
 		std::vector<TMatrixD> &mmCovV,
 		CovStruct_t &covM, int showChangedCov,
 		int plotCmp, int noUncAdjustment=0,
-		TVersion_t inpVer=_verUndef);
+		TVersion_t inpVer=_verUndef,
+		TSubVersion_t inpSubVer=_subverUndef);
 
 int adjustEEUnc(const finfomap_t &eeCovFNames, // needed for first value
 		std::vector<TMatrixD> &eeCovV,
 		CovStruct_t &eeCovM, int showChangedCov,
 		int plotCmp, int noUncAdjustment=0,
-		TVersion_t inpVer=_verUndef);
+		TVersion_t inpVer=_verUndef,
+		TSubVersion_t inpSubVer=_subverUndef);
 
 // -------------------------------------------------------
 
-const int useUncorrYieldUnc=0;
+const int useInputYieldUnc=1;
 //TString eeCSFName="cs_DYee_13TeV_El3.root";
 //TString eeCSH1Name="h1PreFSRCS";
 //TString mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
 //TString mmCSH1Name="h1CS";
-const int modifyAccUnc=1;
+const int modifyAccUnc=0;
 
 // -------------------------------------------------------
 
@@ -40,7 +42,11 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   const int changeNames=1;
 
   TVersion_t inpVer=_verMuApproved;
-  inpVer=_verMuMay2017;
+  TSubVersion_t inpSubVer=_subverUndef;
+  inpVer=_verMuMay2017; inpSubVer=_subverUndef;
+  inpVer=_verMuMay2017; inpSubVer=_subver1;
+  inpVer=_verMuMay2017; inpSubVer=_subver2;
+  inpVer=_verMuMay2017; inpSubVer=_subver3;
   //inpVer=_verElMay2017false;
 
   eeCSHisto1DName="h1PreFSRCS";
@@ -67,6 +73,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   showCanvs+=" plotAdjUnc";
   //showCanvs+=" plotAdjCov";
   //showCanvs+=" plotInputContributedCovs"; // 4 canvases in each channel
+  showCanvs+=" plotFinalCov";
   showCanvs+= " plotFinalCovByType"; // 4 canvases in the combined channel
 
   std::cout << "eeCSFName=" << eeCSFName << ", eeCSHisto1DName=" << eeCSHisto1DName << "\n";
@@ -78,6 +85,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     showCombinationCanvases="ALL";
   }
   else {
+    showCombinationCanvases+= " showCombiCS";
     showCombinationCanvases+= " showCombiCSCheck";
     showCombinationCanvases+= " showCombiCSUnc";
   }
@@ -215,8 +223,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   int plotCmpUnc= (hasValue("plotAdjUnc",showCanvs)) ? 1 : 0;
   if (hasValue("plotAdjCov",showCanvs)) plotCmpUnc=2;
 
-  if (!adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer)) return;
-  if (!adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer)) return;
+  if (!adjustMMUnc(mmCovFNames,mmCovV,mmCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer,inpSubVer)) return;
+  if (!adjustEEUnc(eeCovFNames,eeCovV,eeCovS,plotChangedCov,plotCmpUnc,noUncAdjustment,inpVer,inpSubVer)) return;
 
   //return;
 
@@ -340,7 +348,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   if (plotChangedCov) fileTag.Append("_plotChCov");
 
   if (!changeNames) fileTag.Append("_noChangeNames");
-  if (useUncorrYieldUnc) fileTag.Append("_uncorrYieldUnc");
+  if (useInputYieldUnc) fileTag.Append("_inpYieldUnc");
   if (excludeSyst) fileTag.Append(Form("_excludeSyst%d",excludeSyst));
   if (saveTag.Length()) fileTag.Append(saveTag);
 
@@ -405,7 +413,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 int adjustMMUnc(const finfomap_t &mmCovFNames,
 		std::vector<TMatrixD> &mmCovV,
 		CovStruct_t &mmCovS, int plotChangedCov,
-		int plotCmp, int noUncAdjustment, TVersion_t inpVer)
+		int plotCmp, int noUncAdjustment,
+		TVersion_t inpVer, TSubVersion_t inpSubVer)
 {
   finfomap_t mmUncFiles, mmUncStat, mmUncSyst;
   fvarweightmap_t relUncW;
@@ -416,12 +425,14 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 
   TString inpPath="./";
   TString inpFile=inpPath + "DYmm_ROOTFile_Input-20170207.root";
-  int muInputVer=1;
   if ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)) {
     inpFile="./DYmm_ROOTFile_Input-20170504.root";
-    if (1) {
-      muInputVer=2;
-      inpFile="./DYmm_ROOTFile_Input-20170529.root";
+    if (inpSubVer==_subver2) {
+      inpFile="./DYmm_ROOTFile_Input_Cov_v2-20170529.root";
+    }
+    else if (inpSubVer==_subver3) {
+      inpFile="./DYmm_ROOTFile_Input_Cov_v3-20170614.root";
+      std::cout << "version3\n";
     }
   }
 
@@ -437,13 +448,13 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
   mmUncFiles[_varYield]= inpFile;
   mmUncStat [_varYield]= "h_RelStatUnc";
   mmUncSyst [_varYield]= "";
-  relUncW   [_varYield]= (useUncorrYieldUnc) ? 1. : 0.;
+  relUncW   [_varYield]= (useInputYieldUnc) ? 1. : 0.;
   mmUncFiles[_varBkg]= inpFile;
   mmUncStat [_varBkg]= "h_RelUnc_Stat_BkgEst";
   mmUncSyst [_varBkg]= "h_RelUnc_Syst_BkgEst";
   relUncW   [_varBkg]= 1;
   if (((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)) &&
-      (muInputVer==1)) {
+      valueEquals(int(inpSubVer),Form("%d",_subver1))) {
     mmUncFiles[_varBkg]= "DYmm_ROOTFile_RelUnc_Stat_Syst_Tot_BkgEst-20170519.root";
     mmUncStat[_varBkg]= "h_RelUnc_Stat";
     mmUncSyst[_varBkg]= "h_RelUnc_Syst";
@@ -520,7 +531,8 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
 int adjustEEUnc(const finfomap_t &eeCovFNames,
 		std::vector<TMatrixD> &eeCovV,
 		CovStruct_t &eeCovS, int plotChangedCov,
-		int plotCmp, int noUncAdjustment, TVersion_t inpVer)
+		int plotCmp, int noUncAdjustment,
+		TVersion_t inpVer, TSubVersion_t inpSubVer)
 {
   finfomap_t eeUncFiles, eeUncStat, eeUncSyst;
   fvarweightmap_t relUncW;
@@ -536,6 +548,7 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
     //inpFile="./DYee_ROOTFile_Input_v2-20170526.root";
     inpFile="./DYee_ROOTFile_Input_v3-20170529.root";
   }
+  if (inpSubVer==_subverUndef) { ; } // subver has no effect
 
   TH1D *h1csEE= cloneHisto(h1csEE_loc,"h1csEE","h1csEE");
   if (0) {
@@ -549,7 +562,7 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
   eeUncFiles[_varYield]= inpFile;
   eeUncStat [_varYield]= "h_RelStatUnc";
   eeUncSyst [_varYield]= "";
-  relUncW   [_varYield]= (useUncorrYieldUnc) ? 0.01 : 0.;
+  relUncW   [_varYield]= (useInputYieldUnc) ? 0.01 : 0.;
   eeUncFiles[_varBkg]= inpFile;
   eeUncStat [_varBkg]= "h_RelUnc_Stat_BkgEst";
   eeUncSyst [_varBkg]= "h_RelUnc_Syst_BkgEst";
