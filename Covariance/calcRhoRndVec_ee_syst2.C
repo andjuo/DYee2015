@@ -18,22 +18,12 @@ std::vector<HistoStyle_t*> hsV;
 
 // ---------------------------------------------------------------------
 
-std::vector<TH1D*>* randomizeSF(const DYTnPEff_t &tnpEff,
-				const EventSpace_t &es,
-				int nToys, TString nameBase);
-std::vector<TH1D*>* randomizeSF_Uncorr(const DYTnPEffColl_t &eff,
-				       int rndSrcIdx,
-				       const EventSpace_t &es,
-				       int nToys, TString nameBase);
-
 void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
 		 int nToys, int testCase);
-void deriveSFUnc_Uncorr(const DYTnPEffColl_t &coll, const EventSpace_t &es,
-			int nToys, int testCase);
 
 // ---------------------------------------------------------------------
 
-void calcRhoRndVec_ee_syst2(int nToys=100, int testCase=0, int uncorrFlag=0,
+void calcRhoRndVec_ee_syst2(int nToys=100, int testCase=0,
 			    int limitToSrc=-1,
 			    int recreateCollection=0)
 {
@@ -220,126 +210,13 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int testCase=0, int uncorrFlag=0,
     //return;
   }
 
-  if (uncorrFlag) deriveSFUnc_Uncorr(coll,esPostFsr,nToys,testCase);
-  else deriveSFUnc(coll,esPostFsr,nToys,testCase);
+  deriveSFUnc(coll,esPostFsr,nToys,testCase);
 
   return;
 }
 
 // ----------------------------------------------------------
 // ----------------------------------------------------------
-
-// ----------------------------------------------------------
-
-std::vector<TH1D*>* randomizeSF_Uncorr(const DYTnPEffColl_t &coll,
-				       int rndSrcIdx,
-				       const EventSpace_t &es,
-				       int nToys, TString nameBase)
-{
-  std::vector<TH1D*> *h1V= new std::vector<TH1D*>();
-  h1V->reserve(nToys);
-  int fibin1=1, fibin2=1;
-  TH1D *h1follow= new TH1D("h1follow",Form("h1follow_%d_%d",fibin1,fibin2),
-			   100,-1.,3.);
-  h1follow->SetDirectory(0);
-  const int debugMode=0; //_locdef_debugMode;
-  for (int iToy=0; iToy<nToys; iToy++) {
-    TString tag=Form("_srcIdx%d_rnd%d",rndSrcIdx,iToy);
-    DYTnPEff_t *rndEff= coll.randomize(rndSrcIdx,tag);
-    TH1D *h1toy= NULL;
-    if (debugMode) { // debug mode
-      h1toy=es.calculateScaleFactor_misc(*rndEff,
-					 DYTnPEff_t::_misc_hlt4p2_leadLep,
-					 "h1"+tag,"h1"+tag,
-					 fibin1,fibin2,h1follow);
-    }
-    else { // realistic mode
-      h1toy= es.calculateScaleFactor(*rndEff,0,
-				     "h1"+tag,"h1"+tag);
-    }
-    h1V->push_back(h1toy);
-  }
-  if (h1follow && (h1follow->Integral()!=0))
-    plotHisto(h1follow,"cFollowedBin",0,1,"LPE");
-  return h1V;
-}
-
-// ----------------------------------------------------------
-
-void deriveSFUnc_Uncorr(const DYTnPEffColl_t &coll, const EventSpace_t &es,
-		 int nToys, int testCase)
-{
-  int rndSrcIdx=testCase;
-  //if (testCase==-1111) rndSrcIdx=-1111;
-  TString nameBase="_rnd";
-  std::vector<TH1D*> *h1V = randomizeSF_Uncorr(coll,rndSrcIdx,es,nToys,nameBase);
-  DYTnPEff_t *baseEff= coll.getTnPSource(rndSrcIdx);
-  std::cout << "baseEff "; baseEff->listNumbers();
-  std::cout << "calculateSF from baseEff\n";
-
-  TH1D *h1sf= NULL;
-  const int debugMode= 0; //_locdef_debugMode;
-  if (debugMode) { // debug mode
-    h1sf=es.calculateScaleFactor_misc(*baseEff,DYTnPEff_t::_misc_hlt4p2_leadLep,"h1sf_misc","h1sf_misc");
-  }
-  else {
-    h1sf=es.calculateScaleFactor(*baseEff,0,"h1sf","h1sf");
-  }
-  TH1D *h1avgSF=NULL;
-  TH2D *h2cov=NULL;
-  if (!deriveCovariance(*h1V,"h1sf_avg",Form("sf from src=%d",rndSrcIdx),
-			&h1avgSF,&h2cov)) {
-    std::cout << "failed to derive the covariance\n";
-    return;
-  }
-  printHisto(h1sf);
-  printHisto(h1avgSF);
-  plotHisto(h1avgSF,"cAvgSF_unCorr",1,0,"LPE1","avg");
-  HistoStyle_t(kRed,24).SetStyle(h1sf);
-  plotHistoSame(h1sf,"cAvgSF_unCorr","LPE1","sf");
-  return;
-  printHisto(h2cov);
-  TH2D* h2corr=NULL;
-  plotCovCorr(h2cov,"cSFCov",PlotCovCorrOpt_t(1,1,0),&h2corr);
-  printHisto(h2corr);
-}
-
-// ----------------------------------------------------------
-
-// ---------------------------------------------------------------------
-
-std::vector<TH1D*>* randomizeSF(const DYTnPEff_t &tnpEff,
-				const EventSpace_t &es,
-				int nToys, TString nameBase)
-{
-  /*
-  std::vector<TH1D*> *h1V= new std::vector<TH1D*>();
-  h1V->reserve(nToys);
-  const int debugMode=0; //_locdef_debugMode;
-  for (int iToy=0; iToy<nToys; iToy++) {
-    TString tag=Form("_srcIdx%d_rnd%d",rndSrcIdx,iToy);
-    DYTnPEff_t *rndEff= coll.randomize(rndSrcIdx,tag);
-    TH1D *h1toy= NULL;
-    if (debugMode) { // debug mode
-      h1toy=es.calculateScaleFactor_misc(*rndEff,
-					 DYTnPEff_t::_misc_hlt4p2_leadLep,
-					 "h1"+tag,"h1"+tag,
-					 fibin1,fibin2,h1follow);
-    }
-    else { // realistic mode
-      h1toy= es.calculateScaleFactor(*rndEff,0,
-				     "h1"+tag,"h1"+tag);
-    }
-    h1V->push_back(h1toy);
-  }
-  if (h1follow && (h1follow->Integral()!=0))
-    plotHisto(h1follow,"cFollowedBin",0,1,"LPE");
-  return h1V;
-  */
-  return NULL;
-}
-
-// ---------------------------------------------------------------------
 
 void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
 		 int nToys, int testCase)
