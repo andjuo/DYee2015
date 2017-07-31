@@ -20,6 +20,7 @@ TString variedVarName(TVaried_t v)
   case _varEff: name="varEff"; break;
   case _varRho: name="varRho"; break;
   case _varRhoFile: name="varRhoFile"; break;
+  case _varRhoSystFile: name="varRhoSystFile"; break;
   case _varAcc: name="varAcc"; break;
   case _varEffAcc: name="varEffAcc"; break;
   case _varLast: name="varLast"; break;
@@ -395,6 +396,7 @@ TH1D* CrossSection_t::getVariedHisto(TVaried_t new_var)
   case _varEff: h1=fh1Eff; break;
   case _varRho: h1=fh1Rho; break;
   case _varRhoFile: h1=fh1Rho; break;
+  case _varRhoSystFile: h1=fh1Rho; break;
   case _varAcc: h1=fh1Acc; break;
   case _varEffAcc: h1=fh1EffAcc; break;
   case _varRhoSyst: // no break
@@ -698,7 +700,8 @@ TH1D* CrossSection_t::calcCrossSection(TVaried_t new_var, int idx,
       fh1PreFsrCS= perMassBinWidth(h1PreFsrCS_raw);
     }
   }
-  else if ((new_var == _varRho) || (new_var == _varRhoFile)) {
+  else if ((new_var == _varRho) || (new_var == _varRhoFile) ||
+	   (new_var == _varRhoSystFile)) {
     fh1UnfRhoCorr= copy(fh1Unf,"h1UnfRho",useTag);
     fh1UnfRhoCorr->Divide(fh1Varied);
     if (!fh1EffAcc) {
