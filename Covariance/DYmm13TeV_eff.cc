@@ -1618,6 +1618,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 					    int maxSigmaData, int maxSigmaMC,
 	    TH2D **h2chk, unsigned int ihChk, unsigned int iSrcChk) const
 {
+  //HERE("entered randomizeByKind");
   DYTnPEff_t *e= new DYTnPEff_t(fTnPEff,tag);
   if (h2chk) {
     if (!(*h2chk)) {
@@ -1639,7 +1640,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
     }
     for (unsigned int iSrc=0; iSrc<fTnPEffSrcV.size(); iSrc++) {
       //if ((iSrcOnly!=-1) && (iSrcOnly!=int(iSrc))) continue;
-      if (debug) HERE("\tiSrc=%d",iSrc);
+      if (debug) HERE("\tih=%d,iSrc=%d",ih,iSrc);
       const DYTnPEff_t *eff= fTnPEffSrcV[iSrc];
       const TH2D *h2src= eff->h2fullList(ih);
       const TH2D *h2nominal= fTnPEff.h2fullList(ih);
@@ -1668,7 +1669,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 	else if ((ih%2==1) && (maxSigmaMC!=0)) r=double(maxSigmaMC);
 	//std::cout << "r=" << r << "\n";
 	h2dest->Add(h2diff,r);
-	if (debug) std::cout << "h2dest: "; printHistoWLimit(h2dest,1,5);
+	if (debug) { std::cout << "h2dest: "; printHistoWLimit(h2dest,1,5); }
 	if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
 	  (*h2chk)->Add(h2diff,r);
 	}
@@ -1720,6 +1721,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
       delete h2diff;
     }
   }
+  //HERE("leaving randomizeByKind");
   return e;
 }
 
