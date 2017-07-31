@@ -19,14 +19,15 @@ std::vector<HistoStyle_t*> hsV;
 // ---------------------------------------------------------------------
 
 void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
-		 int nToys, int testCase);
+		 int nToys, int rndProfile, int MConly=0, TString foutName="");
 
 // ---------------------------------------------------------------------
 
-void calcRhoRndVec_ee_syst2(int nToys=100, int testCase=0,
-			    int limitToSrc=-1,
+void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
+			    int limitToSrc=-1, int saveRndRhoVec=0,
 			    int recreateCollection=0)
 {
+  closeCanvases(10);
 
   // prepare histo styles
   hsV.push_back(&hsMC);
@@ -46,11 +47,13 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int testCase=0,
   TString includeEffKinds= inputEffKinds;
   TString includeEffSystSrc="bkgPdf sigPdf NLOvsLO tag";
   std::vector<TString> sources;
+  int MConly=0;
   addToVector(sources,includeEffSystSrc);
   if ((limitToSrc!=-1) && (limitToSrc!=1111)) {
     collFileName.ReplaceAll(".root",
 			    "-" + DYtools::effSystSrc[limitToSrc] + ".root");
     includeEffSystSrc=DYtools::effSystSrc[limitToSrc];
+    if (includeEffSystSrc.Index("NLOvsLO")!=-1) MConly=1;
   }
 
   if (recreateCollection) {
@@ -210,7 +213,18 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int testCase=0,
     //return;
   }
 
-  deriveSFUnc(coll,esPostFsr,nToys,testCase);
+  TString foutName;
+  if (saveRndRhoVec) {
+    foutName="dir-RhoSyst" + versionName(inpVersion) + "/";
+    gSystem->mkdir(foutName);
+    foutName += "dyee_rhoRndSystVec_" + versionName(inpVersion);
+    if ((limitToSrc!=-1) && (limitToSrc!=1111)) {
+      foutName+="_" + DYtools::effSystSrc[limitToSrc];
+    }
+    foutName += Form("_%d.root",nToys);
+  }
+
+  deriveSFUnc(coll,esPostFsr,nToys,rndProfileKind,MConly,foutName);
 
   return;
 }
@@ -219,25 +233,29 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int testCase=0,
 // ----------------------------------------------------------
 
 void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
-		 int nToys, int testCase)
+		 int nToys, int rndKind, int MConly, TString foutName)
 {
-  int ihChk=0;
+  int ihChk=(MConly) ? 1 : 0; // ihChk=0 - data, 1 - MC (eg NLOvsLO)
   int iSrcChk=0;
   TH2D *h2chk=NULL;
   int doCheck=0;
   std::vector<TH1D*> h1V;
   h1V.reserve(nToys);
 
+  TH1D* h1sf=es.calculateScaleFactor(*coll.getTnPWithTotUnc(),0,"h1sf_totUnc","h1sf_totUnc;M_{ee} [GeV];#rho");
+  hsColor6.SetStyle(h1sf);
+  plotHistoAuto(h1sf,"cRho_totUnc_incorrect",1,0,"LPE1","h1sf_totUnc");
+
   for (int itoy=0; itoy<nToys; itoy++) {
     TString tag=Form("_rnd%d",itoy);
 
     if (doCheck) h2chk= cloneHisto(coll.getTnPWithStatUnc().h2fullList(0),
 				   "h2chk"+tag,"h2chk"+tag);
-    DYTnPEff_t *effRnd= coll.randomizeByKind(testCase,0,tag,-1,0,0,
+    DYTnPEff_t *effRnd= coll.randomizeByKind(rndKind,0,tag,-1,0,0,
 				     (doCheck) ? &h2chk : NULL,ihChk,iSrcChk);
 
     if (h2chk) {
-      if ((testCase==0) || (testCase==2)) {
+      if ((rndKind==0) || (rndKind==2)) {
 	int iEta=0;
 	TH1D *h1effSlice=
 	  h2chk->ProjectionY(h2chk->GetName()+tag+Form("_iEta%d",iEta),
@@ -250,7 +268,7 @@ void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
 	//printHisto(h1effSlice);
 	plotHistoAuto(h1effSlice,"cChk",1,0,"L");
       }
-      if ((testCase==0) || (testCase==1)) {
+      if ((rndKind==0) || (rndKind==1)) {
 	int iPt=0;
 	TH1D *h1effSlice=
 	  h2chk->ProjectionX(h2chk->GetName()+tag+Form("_iPt%d",iPt),
@@ -286,18 +304,42 @@ void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
   TH1D *h1avgSF=NULL;
   TH2D *h2cov=NULL;
   if (!deriveCovariance(h1V,
-			"h1sf_avg_corr",Form("sf from corr iKind=%d",testCase),
+			"h1sf_avg_corr",Form("sf from corr iKind=%d",rndKind),
 			&h1avgSF,&h2cov)) {
     std::cout << "failed to derive the covariance\n";
     return;
   }
+
+  TCanvas *cCov=NULL;
   if (h2cov) {
-    plotCovCorr(h2cov,"cCov");
+    cCov=plotCovCorr(h2cov,"cCov");
   }
 
-  TH1D* h1sf=es.calculateScaleFactor(*coll.getTnPWithTotUnc(),0,"h1sf_totUnc","h1sf_totUnc;M_{ee} [GeV];#rho");
-  plotHistoAuto(h1avgSF,"cAvgSF",1,0,"LPE1",Form("from toy model %d",testCase));
+  TH1D* h1sf_last=es.calculateScaleFactor(*coll.getTnPWithTotUnc(),0,"h1sf_totUnc_last","h1sf_totUnc_last;M_{ee} [GeV];#rho");
+  hsColor46.SetStyle(h1sf_last);
+  plotHistoAuto(h1avgSF,"cAvgSF",1,0,"LPE1",Form("from toy model %d",rndKind));
   plotHistoAuto(h1sf,"cAvgSF",1,0,"LPE1","with tot unc");
+  plotHistoAuto(h1sf_last,"cAvgSF",1,0,"LPE1","with tot unc (last)");
+
+  if (foutName.Length()) {
+    TFile fout(foutName,"recreate");
+    if (!fout.IsOpen()) {
+      std::cout << "failed to create a file <" << fout.GetName() << ">\n";
+      return;
+    }
+    h1sf->Write(); h1sf->SetDirectory(0);
+    h1avgSF->Write(); h1avgSF->SetDirectory(0);
+    if (h2cov) h2cov->Write();
+    fout.mkdir("rhoRndSyst");
+    fout.cd("rhoRndSyst");
+    writeHistos(h1V,NULL); // do not provide file ptr
+    fout.cd();
+    if (cCov) cCov->Write();
+    writeTimeTag(&fout);
+    fout.Close();
+    std::cout << "file <" << fout.GetName() << "> saved\n";
+  }
+
 }
 
 // ---------------------------------------------------------------------
