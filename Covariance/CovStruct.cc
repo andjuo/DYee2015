@@ -205,6 +205,12 @@ int aggregateUnc(const finfomap_t &fnames,
   for (finfomap_t::const_iterator it=fnames.begin(); it!=fnames.end();
        it++, idx++) {
     if (it->first == _varYield) continue;
+    if (it->first == _varRhoSystFile) {
+      covS.covSyst_nonAcc += covStatV[idx];
+      std::cout << "intercept " << variedVarName(it->first)
+		<< " contribution from covStat_nonYield\n";
+      continue;
+    }
     covS.covStat_nonYield += covStatV[idx];
   }
 
@@ -220,6 +226,10 @@ int aggregateUnc(const finfomap_t &fnames,
     if (h1SystV[idx]->Integral()==0) {
       std::cout << "aggregate systematic error: skipping "
 		<< variedVarName(it->first) << " (no input)\n";
+      if (it->first==_varRhoSystFile) {
+	std::cout << "-- no error if the contribution is covMatrix "
+		  << "(intercepted)\n";
+      }
       continue;
     }
     if (it->first == _varAcc) {
@@ -352,7 +362,7 @@ int adjustUnc(TString lepTag,
       removeNegatives(h1uncSystV[idxTh]);
     }
     //if (lepTag=="ee") return 0;
-  }
+  } // dy13TeV_acc_correction
 
   // eliminate eff syst. uncertainty
   if (1 && change_covV) {
