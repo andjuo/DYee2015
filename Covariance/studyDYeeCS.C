@@ -58,15 +58,27 @@ void work(TVersion_t inpVer,
   std::vector<TH1D*> rndCSVec;
   int res=1;
   int removeNegativeSignal=1;
-  if (var!=_varRhoFile)
+  if ((var!=_varRhoFile) && (var!=_varRhoSystFile))
     res=eeCS.sampleRndVec(var,nSample,removeNegativeSignal,rndCSVec);
-  else {
+  else if (var==_varRhoFile) {
     TString inpVerTag=versionName(inpVer);
     TString loadFName=Form("dir-Rho%s/dyee_rhoRndVec_%s_%d.root",
 			   inpVerTag.Data(),inpVerTag.Data(),
 			   nSample);
     RndVecInfo_t info(loadFName,"h1rho_var");
     res=eeCS.sampleRndVec(var,nSample,info,removeNegativeSignal, rndCSVec);
+  }
+  else if (var==_varRhoSystFile) {
+    TString inpVerTag=versionName(inpVer);
+    TString loadFName=Form("dir-RhoSyst%s/dyee_rhoRndSystVec_%s_%d.root",
+			   inpVerTag.Data(),inpVerTag.Data(),
+			   nSample);
+    RndVecInfo_t info(loadFName,"rhoRndSyst/h1rho_rnd");
+    res=eeCS.sampleRndVec(var,nSample,info,removeNegativeSignal, rndCSVec);
+  }
+  else {
+    std::cout << "code error: this branch should not be reached\n";
+    res=0;
   }
   if (!res) return;
   TH1D* h1Avg=NULL;
