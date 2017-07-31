@@ -515,5 +515,29 @@ making sure the ideas are implemented correctly. In particular, I
 moved efficiency-loading lines to \myund{DYmm13TeV_eff} and created a
 function createEffCollection.
 
+The final version of the macro \myund{calcRhoRndVec_ee_syst2.C}\ has
+several integer arguments (nToys, rndProfileKind, limitToSrc,
+saveRndRhoVec, recreateCollection), where nToys specified the number
+of random samples to produce. rndProfileKind=0 for a real calculation
+(the values are related to
+\myund{DYTnPEffColl_t::TRandomizationKind_t}\, with 0 corresponding to
+\myund{_rnd_ampl}). limitToSrc can be -1 (all sources), 1111 (plot
+only), or from 0 to 3, corresponding to built-in sources of systematic
+uncertainty (bkgPdf, sigPdf, NLOvsLO, and tag). saveRndRhoVec
+indicates whether the randomized values of $\rho$ should be saved to a
+file. recreateCollection should be 0 to produce the needed ROOT file
+from sources of systematic uncertainties. Curently it is adjusted for
+the electron channel only.
+
+I have also introduced a new kind of \myund{TVaried_t}, namely,
+\myund{_varRhoSystFile}, updated \myund{CrossSection_t}, and adjusted
+\myund{studyDYeeCS.C}\ to work with the provided distributions of
+$\rho$. The new variable works in the same way as \myund{_varRhoFile}.
+
+
+I have everything implemented, however, the comparison with Ridhi
+result is not very good. My evaluation is greater than hers. I will
+test the muon case before drawing the conclusions.
+
 \end{document}
 
