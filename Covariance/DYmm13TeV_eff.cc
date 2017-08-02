@@ -1613,7 +1613,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomize(int srcIdx, TString tag) const
 
 // -------------------------------------------------------------
 
-DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
+DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, TString tag,
 					    int iSrcOnly,
 					    int maxSigmaData, int maxSigmaMC,
 	    TH2D **h2chk, unsigned int ihChk, unsigned int iSrcChk) const
@@ -1648,8 +1648,6 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
 	if (debug) std::cout << "no contribution\n";
 	continue;
       }
-      if ( hlt4p3 && (TString(h2src->GetName()).Index("HLT4p2")!=-1)) continue;
-      if (!hlt4p3 && (TString(h2src->GetName()).Index("HLT4p3")!=-1)) continue;
       if (0) {
 	TH2D* h2srcClone= cloneHisto(h2src,h2src->GetName()+TString("_clone"),
 				     h2src->GetTitle());

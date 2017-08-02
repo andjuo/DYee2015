@@ -428,7 +428,7 @@ public:
   DYTnPEff_t* randomize(int srcIdx, TString tag) const;
 
   // rndKind from TRandomizationKind_t
-  DYTnPEff_t* randomizeByKind(int rndKind, int hlt4p3, TString tag,
+  DYTnPEff_t* randomizeByKind(int rndKind, TString tag,
 			      int iSrcOnly=-1,
 			      int maxSigmaData=0, int maxSigmaMC=0,
       TH2D **h2chk=NULL, unsigned int ihChk=0, unsigned int iSrcChk=0) const;
