@@ -1639,7 +1639,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, int hlt4p3, TString tag,
       std::cout << "iSrcOnly=" << iSrcOnly << "\n";
     }
     for (unsigned int iSrc=0; iSrc<fTnPEffSrcV.size(); iSrc++) {
-      //if ((iSrcOnly!=-1) && (iSrcOnly!=int(iSrc))) continue;
+      if ((iSrcOnly!=-1) && (iSrcOnly!=int(iSrc))) continue;
       if (debug) HERE("\tih=%d,iSrc=%d",ih,iSrc);
       const DYTnPEff_t *eff= fTnPEffSrcV[iSrc];
       const TH2D *h2src= eff->h2fullList(ih);
