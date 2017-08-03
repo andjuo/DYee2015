@@ -68,12 +68,12 @@ void work(TVersion_t inpVer,
   int res=1;
   int check_KLRndEffMap=(1 && (nSample==500) && (nMaxSamples==-500)) ? 1:0;
   int removeNegativeSignal=1;
-  if (var!=_varRhoFile) {
+  if ((var!=_varRhoFile) && (var!=_varRhoSystFile)) {
     std::cout << "nSample=" << nSample << ", removeNegativeSignal=" << removeNegativeSignal << "\n";
     res=muCS.sampleRndVec(var,nSample,removeNegativeSignal,
 			  rndCSVec,&rndCSaVec,&rndCSbVec);
   }
-  else {
+  else if (var==_varRhoFile) {
     TString inpVerTag=versionName(inpVer);
     TString loadFName=Form("dir-Rho%s/dymm_rhoRndVec_%s_%d.root",
 			   inpVerTag.Data(),inpVerTag.Data(),
@@ -86,6 +86,22 @@ void work(TVersion_t inpVer,
     if ((nMaxSamples>0) && (nMaxSamples<nSample)) nSample=nMaxSamples;
     res=muCS.sampleRndVec(var,nSample,info,removeNegativeSignal,
 			  rndCSVec,&rndCSaVec,&rndCSbVec);
+  }
+  else if (var==_varRhoSystFile) {
+    TString inpVerTag=versionName(inpVer);
+    TString loadFName=Form("dir-RhoSyst%s/dymm_rhoRndSystVec_%s_%d.root",
+			   inpVerTag.Data(),inpVerTag.Data(),
+			   nSample);
+    RndVecInfo_t info(loadFName,
+		      "rhoRndSyst/h1rho4p2_rnd", "rhoRndSyst/h1rho4p3_rnd",
+		      nMaxSamples);
+    if ((nMaxSamples>0) && (nMaxSamples<nSample)) nSample=nMaxSamples;
+    res=muCS.sampleRndVec(var,nSample,info,removeNegativeSignal,
+			  rndCSVec,&rndCSaVec,&rndCSbVec);
+  }
+  else {
+    std::cout << "code error: this branch should not be reached\n";
+    res=0;
   }
   if (!res) return;
   TH1D* h1Avg=NULL;
