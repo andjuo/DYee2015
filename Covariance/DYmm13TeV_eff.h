@@ -215,6 +215,7 @@ public:
   void setError(const DYTnPEff_t &e);
   void resetAll();
   int excludeGap();
+  int appendTag(TString tag);
 
   int ptrsOk() const {
     int ok= (
@@ -454,6 +455,12 @@ const TString effKinds[nEffKinds] = { "RECO", "ID", "HLT", "HLTv3" };
 const int nEffSystSrc=4;
 const TString effSystSrc[nEffSystSrc]= { "bkgPdf", "sigPdf", "NLOvsLO", "tag" };
 
+const int nEffKinds_mm=4;
+const TString effKinds_mm[nEffKinds_mm] = { "RecoID", "Iso",
+						 "HLTv4p2", "HLTv4p3" };
+const int nEffSystSrc_mm=8;
+const TString effSystSrc_mm[nEffSystSrc_mm]={ "sgnChange", "bkgChange",
+      "M60to130", "M70to120", "nBin30", "nBin50", "TagPt20", "TagPt24" };
 };
 
 // -------------------------------------------------------------

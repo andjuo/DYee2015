@@ -292,6 +292,27 @@ int DYTnPEff_t::excludeGap()
 
 // -------------------------------------------------------------
 
+int DYTnPEff_t::appendTag(TString tag)
+{
+  if (tag.Length()==0) {
+    std::cout << "DYTnPEff_t::appendTag: tag is empty\n";
+    return 0;
+  }
+
+  if (!ptrsOk()) {
+    std::cout << "DYTnPEff_t::appendTag(tag=" << tag << ") object not ready\n";
+    return 0;
+  }
+
+  for (unsigned int i=0; i<this->fullListSize(); i++) {
+    TH2D *h2=this->h2fullList(i);
+    h2->SetName(h2->GetName() + tag);
+  }
+  return 1;
+}
+
+// -------------------------------------------------------------
+
 double DYTnPEff_t::totalEffIdx_misc(int ibin1, int jbin1,
 				    int ibin2, int jbin2,
 				    int mc, int miscFlag) const
@@ -418,7 +439,8 @@ int DYTnPEff_t::assign(const DYTnPEff_t &e, TString tag)
   const TString newNamesEE[4]= { "h2Eff_Reco", "h2Eff_ID",
 				 "h2Eff_Trig", "h2Eff_TrigUnneeded" };
   const TString *newNames=
-    ((fElChannel==0) || (fElChannel==4)) ? newNamesMM : newNamesEE;
+    ((fElChannel==0) || (fElChannel==4) ||
+     (fElChannel==5)) ? newNamesMM : newNamesEE;
 
   TString dataTag="_Data"+tag;
   TString mcTag="_MC"+tag;
@@ -1206,6 +1228,7 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
 
   const TString mmNames[4]= { "h2Eff_RecoID", "h2Eff_Iso", "h2Eff_HLT4p2", "h2Eff_HLT4p3" };
   const TString mmNamesV2[4]= { "h_2D_Eff_RecoID", "h_2D_Eff_Iso", "h_2D_Eff_HLTv4p2", "h_2D_Eff_HLTv4p3" };
+  const TString mmNamesV3[4]= { "h_2D_EffDiff_RecoID", "h_2D_EffDiff_Iso", "h_2D_EffDiff_HLTv4p2", "h_2D_EffDiff_HLTv4p3" };
   const TString eeNames[4] = { "h2Eff_Reco", "h2Eff_ID", "h2Eff_Trig", "h2Eff_TrigUnneeded" };
   const TString eeNamesV2[4]= { "h_2D_Eff_RECO", "h_2D_Eff_ID", "h_2D_Eff_Trig", "h_2D_Eff_TrigUnneeded" };
   const TString eeNamesV3[4]= { "h_2D_Eff_RECO_StatUnc", "h_2D_Eff_ID_StatUnc", "h_2D_Eff_Trig_StatUnc", "h_2D_Eff_TrigUnneeded" };
@@ -1216,6 +1239,7 @@ int DYTnPEff_t::load(TFile &fin, TString subdir, TString tag)
   else if (fElChannel==2) { hnames=eeNamesV2; loadHLT4p3=0; }
   else if (fElChannel==3) { hnames=eeNamesV3; loadHLT4p3=0; }
   else if (fElChannel==4) hnames=mmNamesV2;
+  else if (fElChannel==5) hnames=mmNamesV3;
 
   std::cout << "load histo <" << (subdir+hnames[0]+"_Data"+tag) << ">\n";
   h2Eff_RecoID_Data= loadHisto(fin,subdir+hnames[0]+"_Data"+tag,hnames[0]+"_Data"+tag,1,h2dummy);
@@ -1665,7 +1689,7 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, TString tag,
 	double r= gRandom->Gaus(0,1);
 	if ((ih%2==0) && (maxSigmaData!=0)) r=double(maxSigmaData);
 	else if ((ih%2==1) && (maxSigmaMC!=0)) r=double(maxSigmaMC);
-	//std::cout << "r=" << r << "\n";
+	if (debug) std::cout << "r=" << r << "\n";
 	h2dest->Add(h2diff,r);
 	if (debug) { std::cout << "h2dest: "; printHistoWLimit(h2dest,1,5); }
 	if (h2chk && (ih==ihChk) && (iSrc==iSrcChk)) {
