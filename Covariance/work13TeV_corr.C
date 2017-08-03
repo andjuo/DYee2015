@@ -138,8 +138,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     if (includeRhoSyst) {
       eeOldFName.push_back("cov_ee_ElMay2017_varRhoSystFile_2000.root");
       eeNewFName.push_back("cov_ee_ElMay2017false_varRhoSystFile_2000.root");
-      mmOldFName.push_back("cov_mumu_varRhoSystFile_2000.root");
-      mmNewFName.push_back("");
+      //mmOldFName.push_back("cov_mumu_varRhoSystFile_2000.root");
+      //mmNewFName.push_back("");
     }
   }
   else if (changeNames && (inpVer==_verElMay2017false)) {
@@ -504,10 +504,11 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
   }
 
   if (findVaried(mmCovFNames,_varRhoSystFile,0)!=-1) {
-    mmUncFiles[_varRhoSystFile]= "";
-    mmUncStat [_varRhoSystFile]= "";
+    mmUncSyst [_varRhoFile]= "";
+    mmUncFiles[_varRhoSystFile]= inpFile;
+    mmUncStat [_varRhoSystFile]= (1) ? "h_RelUnc_Syst_EffSF" : "";
     mmUncSyst [_varRhoSystFile]= "";
-    relUncW   [_varRhoSystFile]= 0;
+    relUncW   [_varRhoSystFile]= 1;
   }
 
   const TH1D *h1central= (1) ? h1csMM : NULL;
