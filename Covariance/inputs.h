@@ -246,6 +246,14 @@ TH1D* flattenHisto(const TH2D *h2, TString setName);
 TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
 	      int plotIt=0, int posNegErrs=0);
 
+TH1D* loadAsymmGraphAsTH1D(TFile &fin, TString graphNameOnFile,
+			   TString histoName, TString histoTitle,
+			   int absenceIsError);
+
+TH1D* loadAsymmGraphAsTH1D(TString fileName, TString graphNameOnFile,
+			   TString histoName, TString histoTitle,
+			   int absenceIsError);
+
 // -----------------------------------------------------------
 
 void printObjStringField(TFile &f, TString keyName);

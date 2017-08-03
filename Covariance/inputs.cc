@@ -1458,6 +1458,50 @@ TH1D* convert(TGraphAsymmErrors *gr, TString hName, TString hTitle,
 }
 
 // ---------------------------------------------------------
+
+TH1D* loadAsymmGraphAsTH1D(TFile &fin, TString graphNameOnFile,
+		      TString histoName,TString histoTitle, int absenceIsError)
+{
+  TGraphAsymmErrors *gr= (TGraphAsymmErrors*)fin.Get(graphNameOnFile);
+  if (!gr) {
+    if (absenceIsError) {
+      std::cout << "loadAsymmGraphAsTH1D failed to find graph "
+		<< graphNameOnFile << " in file <" << fin.GetName() << ">\n";
+    }
+    return NULL;
+  }
+  TH1D *h1=convert(gr,histoName,histoTitle);
+  if (!h1) {
+    std::cout << "convert() failed in loadAsymmGraphAsTH1D\n";
+    return NULL;
+  }
+  h1->SetDirectory(0);
+  return h1;
+}
+
+
+// ---------------------------------------------------------
+
+TH1D* loadAsymmGraphAsTH1D(TString fileName, TString graphNameOnFile,
+			   TString histoName, TString histoTitle,
+			   int absenceIsError)
+{
+  TFile fin(fileName);
+  if (!fin.IsOpen()) {
+    std::cout << "loadAsymmGraphAsTH1D error: failed to open the file <"
+	      << fin.GetName() << ">\n";
+    return NULL;
+  }
+  TH1D *h1=loadAsymmGraphAsTH1D(fin,graphNameOnFile,histoName,histoTitle,
+				absenceIsError);
+  fin.Close();
+  if (!h1 && absenceIsError) {
+    std::cout << "error in loadGraphAsTH1D(fileName=" << fileName << std::endl;
+  }
+  return h1;
+}
+
+// ---------------------------------------------------------
 // ---------------------------------------------------------
 
 void printObjStringField(TFile &f, TString keyName) {
