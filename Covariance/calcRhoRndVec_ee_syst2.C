@@ -108,7 +108,7 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
     for (int iSrc=-1; iSrc<coll.getSrcCount(); iSrc++) {
       TString tag=(iSrc==-1) ? "stat" : sources[iSrc];
       DYTnPEff_t *effSrc= (iSrc==-1) ? coll.getTnPWithStatUncPtr() :
-	coll.randomizeByKind(int(DYTnPEffColl_t::_rnd_ampl),0,tag,iSrc,1,1);
+	coll.randomizeByKind(int(DYTnPEffColl_t::_rnd_ampl),tag,iSrc,1,1);
       if (!effSrc) {
 	std::cout << "null effSrc for iSrc=" << iSrc << "\n";
 	return;
@@ -251,7 +251,7 @@ void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
 
     if (doCheck) h2chk= cloneHisto(coll.getTnPWithStatUnc().h2fullList(0),
 				   "h2chk"+tag,"h2chk"+tag);
-    DYTnPEff_t *effRnd= coll.randomizeByKind(rndKind,0,tag,-1,0,0,
+    DYTnPEff_t *effRnd= coll.randomizeByKind(rndKind,tag,-1,0,0,
 				     (doCheck) ? &h2chk : NULL,ihChk,iSrcChk);
 
     if (h2chk) {
