@@ -543,27 +543,49 @@ TCanvas *createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
 			 int yRangeSet,
 			 TString *canvName_out, TH2D **h2frame_out)
 {
-  const int nDivs=5;
-  const double divX[nDivs][2] = { { 15., 60.},
-				  { 60., 102.},
-				  { 100., 200.},
-				  { 200., 600.},
-				  { 500., 3000.} };
+  const int nDivs=6;
+  const double divX_def[nDivs][2] = { { 15., 60.},
+				      { 60., 102.},
+				      { 100., 200.},
+				      { 200., 600.},
+				      { 500., 3000.},
+				      { 0., 0.}};
   const double divY_cs[nDivs][2] = { { 3., 300. }, // 10-60
 				     { 3., 300. }, // 60-100
 				     { 2e-2, 10.}, // 100-200
 				     { 1e-4, 0.1}, // 200-600
-				     { 1e-9,1e-3} }; // >600
+				     { 1e-9,1e-3}, // >600
+				     {0.,0.} };
 
   const double divY_yield[nDivs][2] = { { 0.1, 10. }, // 10-60
 					{ 1., 400. }, // 60-100
 					{ 0.1, 30.}, // 100-200
 					{ 0.01, 1.}, // 200-600
-					{ 1e-5,0.1} }; // >600
+					{ 1e-5,0.1}, // >600
+					{ 0., 0. } };
 
-  double divY[nDivs][2];
+  const double divX_cs_2D_132[nDivs][2] = { {0.0, 24},
+					    {24, 48 },
+					    {48, 72},
+					    {72, 96},
+					    {96,120},
+					    {120,132} };
+
+  const double divY_cs_2D_132[nDivs][2] = { {0., 6.2},
+					    {0., 21.5},
+					    {0., 19.0},
+					    {0., 640.},
+					    {0., 7.},
+					    {0., 1.2} };
+
+  double divX[nDivs][2], divY[nDivs][2];
   if (yRangeSet==_massFrameCS) memcpy(divY,divY_cs,nDivs*2*sizeof(double));
+  if (yRangeSet==_massFrameCS_2D_132) memcpy(divY,divY_cs_2D_132,
+					     nDivs*2*sizeof(double));
   else memcpy(divY,divY_yield,nDivs*2*sizeof(double));
+  if (yRangeSet==_massFrameCS_2D_132) memcpy(divX,divX_cs_2D_132,
+					     nDivs*2*sizeof(double));
+  else memcpy(divX,divX_def,nDivs*2*sizeof(double));
   int iD=iFrame;
   TString rangeStr=Form("%d_%d",int(divX[iD][0]),int(divX[iD][1]));
   if (titleStr.Index(";")!=-1) {

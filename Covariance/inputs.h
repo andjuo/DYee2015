@@ -152,7 +152,8 @@ void setLeftMargin(TCanvas *c, double xMargin);
 void setRightMargin(TCanvas *c, double xMargin);
 void setLeftRightMargins(TCanvas *c, double lMargin, double rMargin);
 
-typedef enum { _massFrameCS=1, _massFrameYield } TMassFrameKind_t;
+typedef enum { _massFrameCS=1, _massFrameYield,
+	       _massFrameCS_2D_132 } TMassFrameKind_t;
 TCanvas* createMassFrame(int iFrame, TString canvNameBase, TString titleStr,
 			 int yRangeSet=_massFrameCS,
 			 TString *canvName_out=NULL, TH2D **h2frame_out=NULL);
