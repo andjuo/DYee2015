@@ -36,7 +36,9 @@ TMatrixD reduceCorrelations(const TMatrixD &cov, double by_fraction);
 
 TMatrixD removeNaNs(const TMatrixD &m);
 
-TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift);
+// if shiftVal=0, auto shift value is used
+TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift,
+			  double shiftVal=0.);
 
 TGraphErrors* createGraph(TString setTitle,
 			  const TMatrixD &meas, const TMatrixD &cov,

@@ -159,7 +159,8 @@ TMatrixD removeNaNs(const TMatrixD &m)
 
 // -------------------------------------------------------------------
 
-TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift)
+TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift,
+			  double shiftVal)
 {
   int nXbins= h1->GetNbinsX();
   double *xc= new double[nXbins];
@@ -186,6 +187,7 @@ TGraphErrors* createGraph(const TH1D *h1, TString setTitle, int shift)
       dx=0.25;
     }
     dx*=shift;
+    if (shiftVal!=double(0.)) dx= shiftVal*shift;
     int i=ibin-1;
     xc[i]= 0.5*(xlow+xhigh) + dx;
     yc[i]= h1->GetBinContent(ibin);
