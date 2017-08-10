@@ -424,6 +424,26 @@ BLUEResult_t* combineData(const TMatrixD *covEE_inp,
       }
     }
 
+    if (hasValue("showCombiCSInRanges2D132",showCanvases)) {
+      TGraphErrors *grCSEE025= createGraph(h1csEE,"grEE05", -1, 0.25);
+      TGraphErrors *grCSMM025= createGraph(h1csMM,"grMM05",  1, 0.25);
+      hsEE.SetStyle(grCSEE025);
+      hsMM.SetStyle(grCSMM025);
+
+      for (int i=0; i<6; i++) {
+	TString canvName="";
+	TH2D *h2frame=NULL;
+	TString axisStr_loc=";idx";
+	TCanvas *cx= createMassFrame(i,"cCombiRange_",
+				     "cross section " + plotTag + axisStr_loc,
+				     _massFrameCS_2D_132,&canvName,&h2frame);
+	canvasCombiCSV.push_back(cx);
+	plotGraphSame(grCSEE025,canvName,"PE1", DYeeStr);
+	plotGraphSame(grCSMM025,canvName,"PE1", DYmmStr);
+	plotHistoSame(h1comb,canvName,"LPE1", DYllStr);
+      }
+    }
+
     // compare combination to theory
     if (hasValue("showCombiCSCheck",showCanvases)) {
       h1csTheoryRed->GetYaxis()->SetRangeUser(1e-7,1e3);
