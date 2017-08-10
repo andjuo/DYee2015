@@ -17,7 +17,8 @@ void work8TeV_2D(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 		 int plotChangedCov=0,
 		 int excludeSyst=0, // 1 - all, 2 - Acc only
 		 TString saveTag="",
-		 double use_scale_user=-1)
+		 double use_scale_user=-1,
+		 int specSave=0)
 {
   closeCanvases(5);
   const int showOnlyCovStatYield=1;
@@ -30,6 +31,96 @@ void work8TeV_2D(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   mmCSHisto1DName="h1mm_orig";
   theoryCSHisto1DName="h1ll_orig";
   theoryCSHisto1D_perMBW=1;
+  TString covEE_H2NameOnFile="h2eeCov_orig";
+  TString covMM_H2NameOnFile="h2mmCov_orig";
+  TString h1combiOrig_FileName=inpFName;
+  TString h1combiOrig_HNameOnFile="h1ll_orig";
+  TString covCombiOrig_H2NameOnFile="h2llCov_orig";
+  int scaleCov=0;
+  int correctEEcov=0;
+  TString specSaveTag="";
+
+  if (1) {
+    // this file contains Alexeys inputs
+    h1combiOrig_FileName="dy8TeV-check-20170810.root";
+    h1combiOrig_HNameOnFile="h1combiFlat";
+    covCombiOrig_H2NameOnFile="h2covHepData";
+  }
+
+  if (0) {
+    inpFName="dy8TeV-check-20170810.root";
+    eeCSFName=inpFName;
+    mmCSFName=inpFName;
+    theoryCSFName=inpFName;
+    eeCSHisto1DName="h1eeFlat";
+    mmCSHisto1DName="h1mmFlat";
+    theoryCSHisto1DName="h1combiFlat";
+    theoryCSHisto1D_perMBW=1;
+    h1combiOrig_FileName=inpFName;
+    h1combiOrig_HNameOnFile="h1combiFlat";
+    covEE_H2NameOnFile="h2covEE_materials";
+    covMM_H2NameOnFile="h2covMM_materials";
+    covCombiOrig_H2NameOnFile="h2covHepData";
+    scaleCov=1;
+    correctEEcov=0; // is not right
+    specSaveTag="-materials";
+  }
+  else if (1) {
+    if (0) {
+      inpFName="resultCombiner2D_bug.root";
+      specSaveTag="-bugVersion";
+    }
+    else {
+      inpFName="resultCombiner2D_aj.root";
+      specSaveTag="-ajVersion";
+    }
+    eeCSFName=inpFName;
+    mmCSFName=inpFName;
+    theoryCSFName=inpFName;
+    eeCSHisto1DName="h1ee_blueInp";
+    mmCSHisto1DName="h1mm_blueInp";
+    theoryCSHisto1DName="h1ll_blueRes";
+    theoryCSHisto1D_perMBW=1;
+    covEE_H2NameOnFile="h2eeCov_blueInp";
+    covMM_H2NameOnFile="h2mmCov_blueInp";
+    if (0) {
+      h1combiOrig_FileName=inpFName;
+      h1combiOrig_HNameOnFile="h1ll_blueRes";
+      covCombiOrig_H2NameOnFile="h2llCov_blueRes";
+    }
+    scaleCov=0;
+    correctEEcov=0;
+  }
+  else if (0) {
+    inpFName="resultCombiner2D_aj.root";
+    specSaveTag="-ajVersion";
+    eeCSFName=inpFName;
+    mmCSFName=inpFName;
+    theoryCSFName=inpFName;
+    eeCSHisto1DName="h1ee_blueInp";
+    mmCSHisto1DName="h1mm_blueInp";
+    theoryCSHisto1DName="h1ll_blueRes";
+    theoryCSHisto1D_perMBW=1;
+    covEE_H2NameOnFile="h2eeCov_blueInp";
+    covMM_H2NameOnFile="h2mmCov_blueInp";
+    if (0) {
+      eeCSHisto1DName=mmCSHisto1DName;
+      covEE_H2NameOnFile=covMM_H2NameOnFile;
+      specSaveTag+="-mmOnly";
+    }
+    else {
+      mmCSHisto1DName=eeCSHisto1DName;
+      covMM_H2NameOnFile=covEE_H2NameOnFile;
+      specSaveTag+="-eeOnly";
+    }
+    if (0) {
+      h1combiOrig_FileName=inpFName;
+      h1combiOrig_HNameOnFile="h1ll_blueRes";
+      covCombiOrig_H2NameOnFile="h2llCov_blueRes";
+    }
+    scaleCov=0;
+    correctEEcov=0;
+  }
 
   std::string showCanvs;
   showCanvs+=" plotChannelInputCovOnFile";
@@ -37,13 +128,15 @@ void work8TeV_2D(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   //showCanvs+=" plotChannelRelSystAccUnc";
   // compare randomized vs provided uncertainties
   //showCanvs+=" plotAdjUnc";
-  //showCanvs+=" plotAdjCov";
+  showCanvs+=" plotAdjCov";
   showCanvs+=" plotInputContributedCovs"; // 4 canvases in each channel
   showCanvs+= " plotFinalCovByType"; // 4 canvases in the combined channel
 
   std::string showCombinationCanvases;
   //showCombinationCanvases="ALL";
   //
+  //showCombinationCanvases+= " showCombiCS";
+  showCombinationCanvases+= " showCombiCSInRanges2D132";
   showCombinationCanvases+= " showCombiCSCheck";
   showCombinationCanvases+= " showCombiCSUnc";
 
@@ -56,18 +149,70 @@ void work8TeV_2D(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   TMatrixD mmCovStat(eeCovStat);
   TMatrixD mmCovSyst(eeCovStat);
 
+  TH1D *h1csLL_orig=NULL;
+  TH2D *h2covLL_orig=NULL;
   
   TFile fin(inpFName);
   TH1D* h1csEE_tmp=loadHisto(fin, eeCSHisto1DName, "h1csEE_tmp", 1,h1dummy);
   TH1D* h1csMM_tmp=loadHisto(fin, mmCSHisto1DName, "h1csMM_tmp", 1,h1dummy);
-  TH1D* h1csLL_orig=loadHisto(fin,"h1ll_orig","h1csLL_orig",1,h1dummy);
-  TH2D *h2covEE= loadHisto(fin,"h2eeCov_orig","h2eeCov_orig",1,h2dummy);
-  TH2D *h2covMM= loadHisto(fin,"h2mmCov_orig","h2mmCov_orig",1,h2dummy);
-  TH2D *h2covLL_orig=loadHisto(fin,"h2llCov_orig","h2llCov_orig",1,h2dummy);
+  TH2D *h2covEE= loadHisto(fin,covEE_H2NameOnFile,"h2eeCov_orig",1,h2dummy);
+  TH2D *h2covMM= loadHisto(fin,covMM_H2NameOnFile,"h2mmCov_orig",1,h2dummy);
+
+  if (0) {
+    //const int nPairs=3;
+    //const int fix[nPairs][2] = { {94,118}, {95,119}, {96,120} };
+    const int nPairs=1;
+    const int fix[nPairs][2] = { { 96,120} };
+
+    for (int ip=0; ip<nPairs; ip++) {
+      int ibin=fix[ip][0];
+      int jbin=fix[ip][1];
+      double v= h2covMM->GetBinContent(ibin,jbin);
+      double newV= 0.5*v;
+      h2covMM->SetBinContent(ibin,jbin, newV);
+      h2covMM->SetBinContent(jbin,ibin, newV);
+    }
+    specSaveTag+="-mdfCovMM";
+
+    for (int ibin=1; ibin<=h2covMM->GetNbinsX(); ibin++) {
+      for (int jbin=ibin; jbin<=h2covMM->GetNbinsY(); jbin++) {
+	if ((h2covMM->GetBinContent(ibin,jbin)<0) &&
+	    (fabs(h2covMM->GetBinContent(ibin,jbin))>1e-3)) {
+	  std::cout << "ibin,jbin=" << ibin << "," << jbin << ", "
+		    << h2covMM->GetBinContent(ibin,jbin) << "\n";
+	}
+      }
+    }
+    std::cout << "specSaveTag="<< specSaveTag << "\n";
+    //return;
+  }
+
+  if (inpFName==h1combiOrig_FileName) {
+    h1csLL_orig=loadHisto(fin,h1combiOrig_HNameOnFile,"h1csLL_orig",1,h1dummy);
+    h2covLL_orig=loadHisto(fin,covCombiOrig_H2NameOnFile,"h2llCov_orig",1,h2dummy);
+  }
   fin.Close();
+
+  if (inpFName!=h1combiOrig_FileName) {
+    TFile fin2(h1combiOrig_FileName);
+    h1csLL_orig=loadHisto(fin2,h1combiOrig_HNameOnFile,"h1csLL_orig",1,h1dummy);
+    h2covLL_orig=loadHisto(fin2,covCombiOrig_H2NameOnFile,"h2llCov_orig",1,h2dummy);
+    fin2.Close();
+  }
 
   if (!h1csEE_tmp || !h1csMM_tmp || !h1csLL_orig ||
       !h2covEE || !h2covMM || !h2covLL_orig) return;
+
+  if (correctEEcov) {
+    for (int ibin=132-12; ibin<=132; ibin++) {
+      for (int jbin=1; jbin<=132; jbin++) {
+	double factor=2.;
+	if (jbin>120) factor*=2;
+	h2covEE->SetBinContent(ibin,jbin,
+			       h2covEE->GetBinContent(ibin,jbin)/factor);
+      }
+    }
+  }
 
   // xxCovStat is the covariance of measured yield
   // xxCovSyst equals to other covariances
@@ -242,36 +387,69 @@ void work8TeV_2D(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     //return;
   }
 
+
+  // prepare combined result for plotting
+  TString massStr= "idx"; //niceMassAxisLabel(2,"");
+  TString sigmaStr= niceMassAxisLabel(2,"",1);
+  TString axisStr= ";" + massStr + ";" + sigmaStr;
+  TH1D *h1comb_loc= convert2histo1D(*blue->getEst(),*blue->getCov(),
+				    "h1Combi_loc",
+				    "combined measurement " + axisStr,
+				    h1csEE_tmp,0);
+  hsBlack.SetStyle(h1comb_loc);
+  logAxis(h1comb_loc);
+  TH1D *h1combUnc= errorAsCentral(h1comb_loc);
+
+  // compare to theory uncertainties
+  if (1) {
+    TH1D *h1theory_onFile= loadHisto(theoryCSFName,theoryCSHisto1DName,
+				     "h1cs_theory_loc_onFile",1,h1dummy);
+    if (!h1theory_onFile) return;
+    TH1D *h1theory= (theoryCSHisto1D_perMBW) ?
+      h1theory_onFile : perMassBinWidth(h1theory_onFile);
+    HistoStyle_t(kRed,7,1).SetStyle(h1theory);
+    TH1D *h1theoryErr= errorAsCentral(h1theory);
+
+    TString theoryIsOrig=1;
+    TString thLabel= (theoryIsOrig) ? "orig.BLUE code" : "theory";
+    plotHisto(h1comb_loc, "cTheoryVsCombi",0,1,"LPE1","BLUE result");
+    plotHistoAuto(h1theory, "cTheoryVsCombi",0,1,"LPE1",thLabel);
+    plotHisto(h1combUnc, "cTheoryVsCombiErr",0,1,"LP","BLUE result unc.");
+    plotHistoAuto(h1theoryErr,"cTheoryVsCombiErr",0,1,"LP",thLabel+" unc.");
+    printRatio(h1theory,h1comb_loc);
+    printRatio(h1theoryErr,h1combUnc);
+  }
+
   // check the values and the uncertainties
   if (1) {
-    TString massStr= niceMassAxisLabel(2,"");
-    TString sigmaStr= niceMassAxisLabel(2,"",1);
-    TString axisStr= ";" + massStr + ";" + sigmaStr;
-    TH1D *h1comb_loc= convert2histo1D(*blue->getEst(),*blue->getCov(),
-				      "h1Combi_loc",
-				      "combined measurement " + axisStr,
-				      h1csEE_tmp,0);
-    hsBlack.SetStyle(h1comb_loc);
-    logAxis(h1comb_loc);
+    h1csLL_orig->SetLineColor(kRed);
+    h1csLL_orig->SetMarkerColor(kRed);
+    h1csLL_orig->SetStats(0);
+
     TH1D *h1comb_diff= cloneHisto(h1csLL_orig,"h1comb_diff","h1comb_diff");
     h1comb_diff->Add(h1comb_loc,-1);
     removeError(h1comb_diff);
     printHisto(h1comb_diff,0);
     TH1D *h1combUnc_orig= errorAsCentral(h1csLL_orig);
-    TH1D *h1combUnc= errorAsCentral(h1comb_loc);
     TH1D *h1combUnc_diff= cloneHisto(h1combUnc_orig,
 				     "h1combUnc_diff","h1combUnc_diff");
     h1combUnc_diff->Add(h1combUnc,-1);
     printHisto(h1combUnc_diff,0);
  
-    TH1D *h1comb_ratio= cloneHisto(h1csLL_orig,
-			   "h1comb_ratio;"+massStr+";orig/new","h1comb_ratio");
-    h1comb_ratio->Divide(h1comb_loc);
+    TH1D *h1comb_ratio= cloneHisto(h1csLL_orig, "h1comb_ratio",
+				   "h1comb_ratio;"+massStr+";orig/new");
+    h1comb_ratio->Divide(h1csLL_orig,h1comb_loc);
     removeError(h1comb_ratio);
     plotHisto(h1comb_ratio,"cCombRatio",logX,0,"LP");
 
-    plotHisto(h1combUnc_orig,"cCombUnc",logX,1,"LP","orig");
-    plotHistoSame(h1combUnc,"cCombUnc","LP","new comb");
+    plotHisto(h1combUnc,"cCombUnc",logX,1,"LP","new comb");
+    plotHistoAuto(h1combUnc_orig,"cCombUnc",logX,1,"LP","orig");
+
+    TH1D *h1combUnc_ratio= cloneHisto(h1combUnc_orig,"h1combUnc_ratio",
+			      "h1combUnc_ratio;"+massStr+";origUnc/newUnc");
+    h1combUnc_ratio->Divide(h1combUnc_orig,h1combUnc);
+    removeError(h1combUnc_ratio);
+    plotHisto(h1combUnc_ratio,"cCombUncRatio",logX,0,"LP");
 
     //printHisto(h1comb_ratio);
     printRatio(h1csLL_orig,h1comb_loc);
@@ -279,7 +457,7 @@ void work8TeV_2D(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 
     if (use_scale_user>0)
       std::cout << "use_scale_user=" << use_scale_user << "\n";
-    return;
+    //return;
   }
 
   if (printCanvases || (saveTag.Length()>0)) {
@@ -293,6 +471,17 @@ void work8TeV_2D(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     fout.Close();
     std::cout << "file <" << fout.GetName() << "> created\n";
   }
+
+  if (specSave) {
+    TString canvList;
+    canvList+=" cErr cTheoryVsCombi cTheoryVsCombiErr";
+    canvList+=" cCombRatio cCombUnc cCombUncRatio";
+    canvList+=" c2CovStatYield_mmCov_onFile c2CovStatYield_eeCov_onFile";
+    canvList+=" cCombiRange_0_24 cCombiRange_24_48 cCombiRange_48_72 ";
+    canvList+=" cCombiRange_72_96 cCombiRange_96_120 cCombiRange_120_132";
+    SaveCanvases(canvList,"dir-8TeV-spec"+specSaveTag);
+  }
+
 }
 
 // -------------------------------------------------------
