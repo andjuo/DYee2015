@@ -1,4 +1,5 @@
 #include "inputs.h"
+#include "DYmm13TeV_eff.h"
 #include <TLine.h>
 #include <fstream>
 
@@ -30,8 +31,10 @@ void setAutoRanges(const std::vector<TH1D*> &h1V,
 
 // ----------------------------------------------------------------
 
-void plotDYeeESF(TString theSet="ID", int save=0)
+void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0)
 {
+  closeCanvases(10);
+
   TH2D *h2bin= NULL;
   if (theSet=="ID")
     h2bin=new TH2D("h2bin","h2bin;|#eta|;p_{T} [GeV]",
@@ -163,7 +166,7 @@ void plotDYeeESF(TString theSet="ID", int save=0)
   HistoStyle_t hsDataTag(6 ,   26,1,0.8,2.); hsDataTag.SetStyle(h2effData_tag);
   HistoStyle_t hsDataZRange(46,   23,1,0.8,2.); hsDataZRange.SetStyle(h2effData_Zrange);
 
-  if (1) {
+  if (showPlots) {
     std::vector<TH2D*> h2_data_vs_mc;
     std::vector<HistoStyle_t> hs_data_vs_mc;
     std::vector<TString> label_data_vs_mc;
@@ -174,7 +177,7 @@ void plotDYeeESF(TString theSet="ID", int save=0)
     plotEffs(h2_data_vs_mc,hs_data_vs_mc,label_data_vs_mc,"Data_vs_MC",effName,0);
   }
 
-  if (1) {
+  if (showPlots) {
     std::vector<TH2D*> h2_data_var;
     std::vector<HistoStyle_t> hs_data_var;
     std::vector<TString> label_data_var;
@@ -193,7 +196,7 @@ void plotDYeeESF(TString theSet="ID", int save=0)
     plotEffs(h2_data_var,hs_data_var,label_data_var, "Data",effName,0);
   }
 
-  if (1) {
+  if (showPlots) {
     std::vector<TH2D*> h2_mc_var;
     std::vector<HistoStyle_t> hs_mc_var;
     std::vector<TString> label_mc_var;
@@ -202,6 +205,18 @@ void plotDYeeESF(TString theSet="ID", int save=0)
     h2_mc_var.push_back(h2effMC_NLOvsLO); label_mc_var.push_back("MC: NLO vs LO");
     hs_mc_var.push_back(hsMCNLO);
     plotEffs(h2_mc_var,hs_mc_var,label_mc_var, "MC",effName,0);
+  }
+
+  if (1 && (theSet=="RECO")) {
+    std::cout << "printing the scale factors\n";
+    printRatio(h2effData,h2effMC);
+    printRatio(h2effData_sigPdf,h2effMC);
+    TH2D *h2effData_dEff_sigPdf=cloneHisto(h2effData,"h2effData_dEff_sigPdf","h2effData_dEff_sigPdf");
+    h2effData_dEff_sigPdf->Add(h2effData_sigPdf,-1);
+    printRatio(h2effData_dEff_sigPdf,h2effMC);
+    TH2D *h2effData_dEff_bkgPdf=cloneHisto(h2effData,"h2effData_dEff_bkgPdf","h2effData_dEff_bkgPdf");
+    h2effData_dEff_bkgPdf->Add(h2effData_bkgPdf,-1);
+    printRatio(h2effData_dEff_bkgPdf,h2effMC);
   }
 
 
