@@ -1882,6 +1882,7 @@ TH2D* convert2histo(const TMatrixD &m, const TH1D *h1_for_axes,
     }
     myXArr[nBins]= h1axes->GetBinLowEdge(nBins) +
       h1axes->GetBinWidth(nBins);
+    nBins++; // to match xb->GetArray() behavior
   }
   const Double_t *x= (xb->GetSize()!=0) ? xb->GetArray() : myXArr;
   TH2D *h2= new TH2D(h2name,h2title, nBins-1,x, nBins-1,x);
