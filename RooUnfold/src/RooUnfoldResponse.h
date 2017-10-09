@@ -15,6 +15,7 @@
 #include "TNamed.h"
 #include "TMatrixD.h"
 #include "TH1.h"
+#include <TBuffer.h>
 #if ROOT_VERSION_CODE >= ROOT_VERSION(5,0,0)
 #include "TVectorDfwd.h"
 #else
