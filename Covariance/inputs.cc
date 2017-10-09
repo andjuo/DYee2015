@@ -131,7 +131,7 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(const TString key, int value) :
 PlotCovCorrOpt_t::PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o) :
   autoZRangeCorr(o.autoZRangeCorr), gridLines(o.gridLines),
   logScaleX(o.logScaleX), logScaleY(o.logScaleY),
-  setTickX(o.setTickX), setTickY(setTickY),
+  setTickX(o.setTickX), setTickY(o.setTickY),
   yTitleOffset(o.yTitleOffset),
   leftMargin(o.leftMargin), rightMargin(o.rightMargin)
 {}

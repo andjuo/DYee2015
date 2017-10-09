@@ -103,7 +103,7 @@ public :
    int BranchExists(TString brName);
 
    friend
-     std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj);
+     std::ostream& operator<<(std::ostream &out, const DYmm13TeV_t &obj);
 };
 
 #ifndef Inputs_H
