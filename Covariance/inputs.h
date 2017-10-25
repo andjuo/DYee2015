@@ -182,6 +182,23 @@ inline void printHistoTH2(TH2* h2)
 {  printHisto((TH2D*)h2); }
 
 
+template<class histo_t>
+inline
+void prepareHisto(histo_t *h, int noStats=1)
+{
+  h->SetDirectory(0);
+  if (noStats) h->SetStats(0);
+  h->Sumw2();
+}
+
+template<class histo_t>
+inline
+void prepareHisto(std::vector<histo_t*> &hV, int noStats=1)
+{
+  for (unsigned int ih=0; ih<hV.size(); ih++) prepareHisto(hV[ih],noStats);
+}
+
+
 template <class th1_t>
 inline
 void removeError(th1_t *h1)
@@ -857,6 +874,51 @@ const HistoStyle_t hsBlue2(kBlue,24,1,0.8,2.);
 const HistoStyle_t hsViolet(9,25,1,0.8,2.); // square
 extern const HistoStyle_t hsVec[6];
 
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+//
+// commonly used methods in data structures derived from TTree->MakeClass
+//
+
+template<class data_t>
+void DeactivateBranches(data_t &d)
+{ d.fChain->SetBranchStatus("*",0); }
+
+// -----------------------------------------------------------
+
+template<class data_t>
+void ActivateBranches(data_t &d, TString brNames)
+{
+  if (brNames.Length()==0) {
+    std::cout << "ActivateBranches non-empty string is expected\n";
+    return;
+  }
+  std::stringstream ss(brNames.Data());
+  TString br;
+  while (!ss.eof()) {
+    ss >> br;
+    if (br.Length()>1) {
+      std::cout << "adding branch <" << br << ">\n";
+      d.fChain->SetBranchStatus(br,1);
+    }
+  }
+}
+
+// -----------------------------------------------------------
+
+template<class data_t>
+int BranchExists(data_t &d, TString brName)
+{
+  int yes=0;
+  TObjArray *brObjArr= d.fChain->GetListOfBranches();
+  for (int ibr=0; !yes && (ibr<brObjArr->GetEntries()); ibr++) {
+    if (TString(brObjArr->At(ibr)->GetName()) == brName) yes=1;
+  }
+  return yes;
+}
+
+// -----------------------------------------------------------
 // -----------------------------------------------------------
 
 #endif
