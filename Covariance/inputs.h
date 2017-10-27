@@ -919,6 +919,19 @@ int BranchExists(data_t &d, TString brName)
 }
 
 // -----------------------------------------------------------
+
+template<class tReal_t, class tIdx_t>
+double invMass(tIdx_t idx1, tIdx_t idx2,
+	 const std::vector<tReal_t> *ptV, const std::vector<tReal_t> *etaV,
+	 const std::vector<tReal_t> *phiV, const std::vector<tReal_t> *enV)
+{
+  TLorentzVector v1,v2;
+  v1.SetPtEtaPhiE(ptV->at(idx1),etaV->at(idx1),phiV->at(idx1),enV->at(idx1));
+  v2.SetPtEtaPhiE(ptV->at(idx2),etaV->at(idx2),phiV->at(idx2),enV->at(idx2));
+  return (v1+v2).M();
+}
+
+// -----------------------------------------------------------
 // -----------------------------------------------------------
 
 #endif
