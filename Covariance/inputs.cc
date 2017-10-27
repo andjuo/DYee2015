@@ -116,6 +116,19 @@ PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
 
 // -----------------------------------------------------------
 
+PlotCovCorrOpt_t:: PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
+				    int set_logScaleX, int set_logScaleY,
+				    double set_yTitleOffset,
+		    double set_leftMargin, double set_rightMargin) :
+  autoZRangeCorr(set_autoZRangeCorr), gridLines(set_gridLines),
+  logScaleX(set_logScaleX), logScaleY(set_logScaleY),
+  setTickX(0), setTickY(1),
+  yTitleOffset(set_yTitleOffset),
+  leftMargin(set_leftMargin), rightMargin(set_rightMargin)
+{}
+
+// -----------------------------------------------------------
+
 PlotCovCorrOpt_t:: PlotCovCorrOpt_t(const TString key, int value) :
   autoZRangeCorr(1), gridLines(1),
   logScaleX(1), logScaleY(1),
@@ -180,6 +193,22 @@ void PlotCovCorrOpt_t::adjustTicks(TCanvas *c) const
 {
   c->SetTickx(setTickX);
   c->SetTicky(setTickY);
+  c->Modified();
+  c->Update();
+}
+
+// -----------------------------------------------------------
+
+void PlotCovCorrOpt_t::applyToCanvas(TCanvas *c, int changeMargin) const
+{
+  c->SetLogx(logScaleX);
+  c->SetLogy(logScaleY);
+  c->SetTickx(setTickX);
+  c->SetTicky(setTickY);
+  if (changeMargin) {
+    c->SetLeftMargin(leftMargin);
+    c->SetRightMargin(rightMargin);
+  }
   c->Modified();
   c->Update();
 }

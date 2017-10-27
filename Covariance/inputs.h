@@ -87,6 +87,10 @@ public:
   PlotCovCorrOpt_t(int set_autoZRangeCorr=1, int set_gridLines=1,
 		   int set_logScale=1, double set_yTitleOffset=1.5,
 		   double set_leftMargin=0.15, double set_rightMargin=0.15);
+  PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
+		   int set_logScaleX, int set_logScaleY,
+		   double set_yTitleOffset=1.5,
+		   double set_leftMargin=0.15, double set_rightMargin=0.15);
   PlotCovCorrOpt_t(const TString key, int value);
   PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o);
 
@@ -101,6 +105,7 @@ public:
   void assign(const PlotCovCorrOpt_t &opt);
   int setValue(TString key, int value, int verbose=1);
   void adjustTicks(TCanvas *c) const;
+  void applyToCanvas(TCanvas *c, int changeMargin=1) const;
 };
 
 // -----------------------------------------------------------
@@ -844,6 +849,22 @@ template<class type1_t, class type2_t>
 inline
 void HERE(const char *format, const type1_t x, const type2_t y)
 { std::cout << Form(format,x,y) << std::endl; }
+
+
+inline
+void HERE(int debug, const char *msg)
+{ if (debug) std::cout << msg << std::endl; }
+
+template<class type_t>
+inline
+void HERE(int debug, const char *format, const type_t x)
+{ if (debug) std::cout << Form(format,x) << std::endl; }
+
+template<class type1_t, class type2_t>
+inline
+void HERE(int debug, const char *format, const type1_t x, const type2_t y)
+{ if (debug) std::cout << Form(format,x,y) << std::endl; }
+
 
 
 void ptrOk(const void *ptr);
