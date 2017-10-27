@@ -4,6 +4,7 @@
 *.d
 *.so
 *.pyc
+*.pcm
 __init__.py
 
 # latex
