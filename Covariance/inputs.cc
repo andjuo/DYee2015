@@ -1106,6 +1106,41 @@ int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative,
 
 // ---------------------------------------------------------
 
+int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, const TH2D *h2alt,
+		    int relative,
+		    int listRangesOnError)
+{
+  if (!compareRanges(h2target,h2nominal,listRangesOnError) ||
+      !compareRanges(h2target,h2alt,listRangesOnError)) {
+    std::cout << "assignDiffAsUnc(TH2D,cTH2D,cTH2D): ranges are different\n";
+    std::cout << "nominal:     "; printHisto(h2nominal);
+    std::cout << "alternative: "; printHisto(h2alt);
+    std::cout << "target :     "; printHisto(h2target);
+    return 0;
+  }
+  for (int ibin=1; ibin<=h2target->GetNbinsX(); ibin++) {
+    for (int jbin=1; jbin<=h2target->GetNbinsY(); jbin++) {
+      double diff= h2nominal->GetBinContent(ibin,jbin) -
+	h2alt->GetBinContent(ibin,jbin);
+      double vCentral= 0;
+      if (relative) {
+	vCentral=1;
+	if (h2nominal->GetBinContent(ibin,jbin)!=0) {
+	  diff/= h2nominal->GetBinContent(ibin,jbin);
+	}
+	else if (diff!=0) {
+	  diff/= h2alt->GetBinContent(ibin,jbin);
+	}
+      }
+      h2target->SetBinContent(ibin,jbin, vCentral);
+      h2target->SetBinError  (ibin,jbin, diff);
+    }
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------
+
 int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
 		  int listRangesOnError)
 {
@@ -1167,6 +1202,41 @@ int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr,
   return 1;
 }
 
+// ---------------------------------------------------------
+
+int symmetrizeByX(TH2D *h2)
+{
+  if (!h2) {
+    std::cout << "symmetrizeByX got NULL histoPtr\n";
+    return 0;
+  }
+  if (h2->GetNbinsX()%2==1) {
+    std::cout << "symmetrizeByX error: histo has an odd number of X bins\n";
+    return 0;
+  }
+
+  for (int ptBin=1; ptBin<=h2->GetNbinsY(); ptBin++) {
+    for (int etaBin=1; etaBin<=h2->GetNbinsX()/2; etaBin++) {
+      int etaBinRev= h2->GetNbinsX() - etaBin + 1;
+      if (0) {
+	std::cout << "etaBin=" << etaBin << "\n";
+	printBin(h2,etaBin,ptBin,1,1);
+	printBin(h2,etaBinRev,ptBin,1,1);
+      }
+      double v1= h2->GetBinContent(etaBin,ptBin);
+      double v2= h2->GetBinContent(etaBinRev,ptBin);
+      double v=0.5*(v1+v2);
+      h2->SetBinContent(etaBin,ptBin, v);
+      h2->SetBinContent(etaBinRev,ptBin, v);
+      double v1err= h2->GetBinError(etaBin,ptBin);
+      double v2err= h2->GetBinError(etaBinRev,ptBin);
+      double verr=0.5*(v1err+v2err);
+      h2->SetBinError(etaBin,ptBin, verr);
+      h2->SetBinError(etaBinRev,ptBin, verr);
+    }
+  }
+  return 1;
+}
 
 // ---------------------------------------------------------
 
@@ -1336,11 +1406,33 @@ void scaleBin(TH1D* h1, int ibin, double x)
 
 // ---------------------------------------------------------
 
-void printBin(const TH1D *h1, int ibin, int newLine)
+void printBin(const TH1D *h1, int ibin, int printRange, int newLine)
 {
-  std::cout << h1->GetName() << "[" << ibin << "]="
-	    << h1->GetBinContent(ibin) << " +- "
+  std::cout << h1->GetName() << "[" << ibin << "]";
+  if (printRange) {
+    std::cout <<  "(range " << h1->GetBinLowEdge(ibin) << " .. "
+	      << (h1->GetBinLowEdge(ibin) + h1->GetBinWidth(ibin)) << ") ";
+  }
+  std::cout << " = " << h1->GetBinContent(ibin) << " +- "
 	    << h1->GetBinError(ibin);
+  if (newLine) std::cout << "\n";
+}
+
+// ---------------------------------------------------------
+
+void printBin(const TH2D *h2, int ibin, int jbin, int printRange, int newLine)
+{
+  std::cout << h2->GetName() << "[" << ibin << "," << jbin << "]";
+  if (printRange) {
+    const TAxis *ax= h2->GetXaxis();
+    const TAxis *ay= h2->GetYaxis();
+    std::cout <<  "(range " << ax->GetBinLowEdge(ibin) << " .. "
+	      << (ax->GetBinLowEdge(ibin) + ax->GetBinWidth(ibin)) << " , "
+	      << ay->GetBinLowEdge(jbin) << " .. "
+	      << (ay->GetBinLowEdge(jbin) + ay->GetBinWidth(jbin)) << ") ";
+  }
+  std::cout << " = " << h2->GetBinContent(ibin,jbin) << " +- "
+	    << h2->GetBinError(ibin,jbin);
   if (newLine) std::cout << "\n";
 }
 

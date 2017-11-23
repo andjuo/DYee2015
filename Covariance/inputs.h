@@ -237,10 +237,13 @@ int setError(TH2D *h2dest, const TH2D *h2src);
 int allGE(const TH1D *h1a, const TH1D *h1b); // 1 if h1a[i]>=h1b[i] for all i.
 int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, int relative,
 		    int listRangesOnError=0);
+int assignDiffAsUnc(TH2D *h2target, const TH2D *h2nominal, const TH2D *h2alt,
+		    int relative, int listRangesOnError=0); // replaces values
 int addShiftByUnc(TH2D *h2target, const TH2D *h2src, double nSigmas,
 		  int listRangesOnError=0);
 int addInQuadrature(TH1D *h1target, const TH1D *h1addTerm, int nullifyErr=1,
 		    double factor=1.);
+int symmetrizeByX(TH2D* h2);
 int hasValueAbove(const TH2D *h2, double limit);
 int hasValueBelow(const TH2D *h2, double limit);
 void removeNegatives(TH1D* h1);
@@ -254,7 +257,9 @@ int checkRange(const std::vector<TH1D*> &h1V,
 
 
 void scaleBin(TH1D *h1, int ibin, double x);
-void printBin(const TH1D *h1, int ibin, int newLine=1);
+void printBin(const TH1D *h1, int ibin, int printRange=1, int newLine=1);
+void printBin(const TH2D *h2, int ibin, int jbin,
+	      int printRange=1, int newLine=1);
 int hasDoubleZero(const TH2D *h2);
 void setToOne(TH2D* h2);
 
@@ -833,6 +838,16 @@ int setValue(T &var, const std::string &option, const std::string &key,
 // -----------------------------------
 
 TString makeNumberStr(int idx, int digits);
+
+// -----------------------------------
+
+template<class type_t>
+inline
+void nullPtr(type_t *ptr)
+{
+  if (!ptr) std::cout << "nullPtr: ptr is null" << std::endl;
+  else std::cout << "nullPtr: ptr is non-null" << std::endl;
+}
 
 // -----------------------------------
 
