@@ -12,6 +12,7 @@
 typedef enum { _varNone=0, _varYield, _varBkg, _varBkgXS, _varSig, _varDetRes,
 	       _varFSRRes, _varFSRRes_Poisson,
 	       _varEff, _varRho, _varRhoFile, _varRhoSystFile,
+	       _varRhoSystFileSymm,
 	       _varAcc, _varEffAcc, _varLast,
 	       _varRhoSyst, _varTheory, _varYieldPoisson } TVaried_t;
 
