@@ -198,6 +198,19 @@ void DYTnPEff_t::setError(const DYTnPEff_t &e)
 
 // -------------------------------------------------------------
 
+int DYTnPEff_t::changeEff(const DYTnPEff_t &e, int ibin, int jbin) {
+  for (unsigned int ih=0; ih<this->fullListSize(); ih++) {
+    this->h2fullList(ih)->SetBinContent(ibin,jbin,
+		     e.h2fullList(ih)->GetBinContent(ibin,jbin));
+    this->h2fullList(ih)->SetBinError(ibin,jbin,
+		      e.h2fullList(ih)->GetBinError(ibin,jbin));
+  }
+  return 1;
+}
+
+
+// -------------------------------------------------------------
+
 void DYTnPEff_t::resetAll()
 {
   for (int ikind=0; ikind<3; ikind++) {
@@ -522,6 +535,20 @@ int DYTnPEff_t::assign_DiffAsUnc(const DYTnPEff_t &e, int relative)
 
 // -------------------------------------------------------------
 
+int DYTnPEff_t::assign_DiffAsUnc(const DYTnPEff_t &e0, const DYTnPEff_t &e1)
+{
+  int res=1;
+  for (unsigned int ih=0; (ih<fullListSize()) && res; ih++) {
+    res= ::assignDiffAsUnc(h2fullList(ih),e0.h2fullList(ih),e1.h2fullList(ih),0,0);
+  }
+  if (!res) {
+    std::cout << "error in DYTnPEff_t::assign_DiffAsUnc(DYTnPEff_t,DYTnPEff_t)\n";
+  }
+  return res;
+}
+
+// -------------------------------------------------------------
+
 int DYTnPEff_t::randomize(const DYTnPEff_t &e, TString tag, int systematic)
 {
   if (!assign(e,tag)) {
@@ -746,6 +773,31 @@ int DYTnPEff_helper_compareArrays(const TArrayD *xa, const TArrayD *ya,
   }
 
   return ok;
+}
+
+// -------------------------------------------------------------
+
+int DYTnPEff_t::symmetrize()
+{
+  {
+    const TAxis* ax=h2Eff_RecoID_Data->GetXaxis();
+    double etaL= ax->GetBinLowEdge(1);
+    double etaLw= ax->GetBinWidth(1);
+    double etaR= ax->GetBinLowEdge(ax->GetNbins());
+    double etaRw=ax->GetBinWidth(ax->GetNbins());
+    std::cout << "check: " << fabs(etaL+etaLw) << "," << etaR << " and "
+	      << fabs(etaL) << "," << (etaR+etaRw) << "\n";
+    if (fabs(fabs(etaL+etaLw)-etaR)>1e-3 ||
+	fabs(fabs(etaL)-etaR-etaRw)>1e-3) {
+      std::cout << "DYTnPEff_t::symmetrize assumes that eta is on xAxis\n";
+      return 0;
+    }
+  }
+
+  for (unsigned int ih=0; ih<fullListSize(); ih++) {
+    ::symmetrizeByX(h2fullList(ih));
+  }
+  return 1;
 }
 
 // -------------------------------------------------------------
@@ -1749,6 +1801,22 @@ DYTnPEff_t* DYTnPEffColl_t::randomizeByKind(int kind, TString tag,
 
 // -------------------------------------------------------------
 
+int DYTnPEffColl_t::symmetrize()
+{
+  int ok=fTnPEff.symmetrize();
+  for (unsigned int i=0; (i<fTnPEffSrcV.size()) && ok; i++) {
+    if (!fTnPEffSrcV[i]->symmetrize()) ok=0;
+    else {
+      if (fTnPEffSystV[i]) {
+	ok=fTnPEffSystV[i]->assign_DiffAsUnc(fTnPEff, *fTnPEffSrcV[i]);
+      }
+    }
+  }
+  return ok;
+}
+
+// -------------------------------------------------------------
+
 void DYTnPEffColl_t::displayAll(int includeSrc) const
 {
   fTnPEff.displayAll();
@@ -1882,8 +1950,11 @@ int createEffCollection(TString effFileNameBase,
 			int nPt, const double *pt,
 			DYTnPEffColl_t &effColl,
 			TString saveFileName,
+			int symmetrizeColl,
 			int specialHandling)
 {
+  const int createReadyUseVersion=1;
+
   std::cout << "entered createEffCollection\n";
 
   // create basic holder for the efficiencies
@@ -1996,7 +2067,13 @@ int createEffCollection(TString effFileNameBase,
 	}
 	else {
 	  std::cout << "- " << histoNameFile << " not found on file\n";
-	  tnpEffV[iSrc+1]->setHisto(iKind,isMC,h2binZero);
+	  if (createReadyUseVersion==0) {
+	    tnpEffV[iSrc+1]->setHisto(iKind,isMC,h2binZero);
+	  }
+	  else {
+	      std::cout << "prepareReadyUseVersion=1. "
+			<< "Not replacing by empty histo\n";
+	  }
 	}
       }
     }
@@ -2016,6 +2093,17 @@ int createEffCollection(TString effFileNameBase,
       tnpEffV[i]->listNumbers();
     }
     std::cout << "\n -- listing done\n";
+  }
+
+
+  if (symmetrizeColl) {
+    std::cout << "\n\tSymmetrizing efficiencies\n";
+    for (unsigned int i=0; i<tnpEffV.size(); i++) {
+      if (!tnpEffV[i]->symmetrize()) {
+	std::cout << "symmetrize of idx=" << i << " failed\n";
+	return 0;
+      }
+    }
   }
 
   // collection
@@ -2295,6 +2383,123 @@ TH1D* EventSpace_t::calculateScaleFactor_misc(const DYTnPEff_t &eff,
     h1rho->SetBinError( im+1, dAvgRho );
   }
   return h1rho;
+}
+
+// -------------------------------------------------------------
+
+std::vector<TH2D*>* EventSpace_t::contributionsToScaleFactor
+                         (const DYTnPEff_t &effRef,
+			  const DYTnPEff_t &effAlt,
+			  int hlt4p3,
+			  TString hNameBase, TString hTitleBase) const
+{
+  std::cout << "\n\ncontributionsToScaleFactor : for hNameBase=" << hNameBase
+	    << ", titleBase=" << hTitleBase << "\n";
+
+  if (DYtools::nMassBins!=int(fh2ESV.size())) {
+    std::cout << "nMassBins!=fh2ESV.size(): versions are different\n";
+    return NULL;
+  }
+
+  TH1D *h1rhoRef= calculateScaleFactor(effRef,hlt4p3,
+				       hNameBase+"_ref", hTitleBase+"_ref");
+
+  std::vector<TH2D*> *h2contrV= new std::vector<TH2D*>();
+  h2contrV->reserve(DYtools::nMassBins);
+
+  for (int im=0; im<DYtools::nMassBins; im++) {
+    TString massStr= "_" + DYtools::massStr(im,2);
+    TString hName= hNameBase + massStr;
+    TH2D *h2contr= (TH2D*)fh2EffBinDef->Clone(hName);
+    h2contr->SetTitle(hTitleBase + massStr);
+    if (!h2contr) {
+      std::cout << "cannot create h2contr\n";
+      return NULL;
+    }
+    h2contr->SetDirectory(0);
+    h2contr->SetStats(0);
+    h2contr->Reset();
+    h2contr->Sumw2();
+    h2contrV->push_back(h2contr);
+  }
+
+  DYTnPEff_t dEff(effRef,"_dEff");
+
+  for (int ibin=1; ibin<=fh2EffBinDef->GetNbinsX(); ibin++) {
+    //const double eta= fh2EffBinDef->GetXaxis()->GetBinCenter(ibin);
+    for (int jbin=1; jbin<=fh2EffBinDef->GetNbinsY(); jbin++) {
+      //const double pt= fh2EffBinDef->GetYaxis()->GetBinCenter(jbin);
+
+      // copy the alternative eff
+      dEff.changeEff(effAlt, ibin,jbin);
+
+      // get new avg rho
+      TString changeTag=Form("_mdf_%d_%d",ibin,jbin);
+      TH1D *h1rho_mdf= calculateScaleFactor(dEff,hlt4p3,
+				    hNameBase+changeTag, hTitleBase+changeTag);
+
+      // record differences
+      for (unsigned int im=0; im<h2contrV->size(); im++) {
+	(*h2contrV)[im]->SetBinContent(ibin,jbin,
+	    h1rhoRef->GetBinContent(im+1) - h1rho_mdf->GetBinContent(im+1));
+	(*h2contrV)[im]->SetBinError(ibin,jbin, 0.);
+      }
+
+      // restore alternative eff
+      dEff.changeEff(effRef, ibin,jbin);
+
+      // clean-up
+      delete h1rho_mdf;
+    }
+  }
+
+  // clean-up
+  delete h1rhoRef;
+
+  return h2contrV;
+}
+
+// -------------------------------------------------------------
+
+void EventSpace_t::listContributionsToAvgSF(const DYTnPEff_t &effRef,
+					    const DYTnPEff_t &effAlt,
+					    int hlt4p3,
+			      TString hNameBase, TString hTitleBase,
+			      double contrMin, double contrMax) const
+{
+  std::cout << "entered listContributionsToAvgSF\n";
+  std::vector<TH2D*> *contr=
+    this->contributionsToScaleFactor(effRef,effAlt,hlt4p3,hNameBase,hTitleBase);
+  if (!contr) {
+    std::cout << "failed to get contributions\n";
+    return;
+  }
+
+  std::cout << "listing contributions from " << contrMin << " to " << contrMax
+	    << "\n";
+  for (unsigned int im=0; im<contr->size(); im++) {
+    std::cout << "im=" << im << ", " << DYtools::massStr(im) << "\n";
+    TH2D *h2= contr->at(im);
+    for (int iEtaBin=1; iEtaBin<=h2->GetNbinsX(); iEtaBin++) {
+      for (int iPtBin=1; iPtBin<=h2->GetNbinsY(); iPtBin++) {
+	if ((fabs(h2->GetBinContent(iEtaBin,iPtBin))>contrMin) &&
+	    (fabs(h2->GetBinContent(iEtaBin,iPtBin))<=contrMax)) {
+	  double x= h2->GetXaxis()->GetBinLowEdge(iEtaBin);
+	  double dx=h2->GetXaxis()->GetBinWidth(iEtaBin);
+	  double y= h2->GetYaxis()->GetBinLowEdge(iPtBin);
+	  double dy=h2->GetYaxis()->GetBinWidth(iPtBin);
+	  std::cout << " " << x << " -- " << (x+dx) << "  "
+		    << y << " -- " << (y+dy) << "   "
+		    << h2->GetBinContent(iEtaBin,iPtBin) << "\n";
+	}
+      }
+    }
+  }
+
+  clearVec(*contr);
+  delete contr;
+
+  return;
 }
 
 // -------------------------------------------------------------

@@ -213,6 +213,7 @@ public:
 
   void removeError();
   void setError(const DYTnPEff_t &e);
+  int changeEff(const DYTnPEff_t &e, int ibin, int jbin); // copy value (ibin,jbin)
   void resetAll();
   int excludeGap();
   int appendTag(TString tag);
@@ -325,16 +326,15 @@ public:
   double scaleFactorIdx_misc(int ibin1, int jbin1, int ibin2, int jbin2,
 			     int miscFlag) const;
 
-
   int updateVectors(); // copy TH2D* pointers to arrays
   int assign(const DYTnPEff_t &e, TString tag);
   int assign_DiffAsUnc(const DYTnPEff_t &nominal, int relative); // histos have to be created
+  int assign_DiffAsUnc(const DYTnPEff_t &nominal,const DYTnPEff_t &alternative); // histos have to be created
   int randomize(const DYTnPEff_t &e, TString tag, int systematic=0);
   int randomizeRelErr(const DYTnPEff_t &e0, const DYTnPEff_t &eForRelUnc,
 		      TString tag, int systematic=0);
   int randomize(const DYTnPEff_t &e_errPos, const DYTnPEff_t &e_errNeg,
 		TString tag, int systematic=0);
-
   int multiply(const DYTnPEff_t &e);
   int add(const DYTnPEff_t &e);
   int addShiftByUnc(const DYTnPEff_t &e, double nSigmas_data,double nSigmas_mc);
@@ -342,6 +342,7 @@ public:
   // (x,dx) * (1,e0* dRelUnc)
   int includeRelUnc(const DYTnPEff_t &e0, const DYTnPEff_t &eRelUnc);
   //int includeUnc(const DYTnPEff_t &eUnc); // use add, instead
+  int symmetrize();
 
   int checkBinning() const;
   void printNumbers(TString fileTag="") const;
@@ -434,6 +435,8 @@ public:
 			      int maxSigmaData=0, int maxSigmaMC=0,
       TH2D **h2chk=NULL, unsigned int ihChk=0, unsigned int iSrcChk=0) const;
 
+  int symmetrize(); // symmetrize all efficiencies
+
   //void printNumbers() const;
   void displayAll(int includeSrc=0) const;
   //void plotProfiles(int skipGap, int plotVsPt) const;
@@ -474,6 +477,7 @@ int createEffCollection(TString effFileNameBase,
 			int nPt, const double *pt,
 			DYTnPEffColl_t &effColl, // create effColl
 			TString saveFileName="",
+			int symmetrizeCollection=0,
 			int specialHandling=0); // tune special cases
 
 // -------------------------------------------------------------
@@ -498,6 +502,10 @@ public:
 
   template<class idx_t>
     const TH2D* h2ES(idx_t iMass) const { return fh2ESV[iMass]; }
+
+  template<class idx_t>
+    TH2D* edit_h2ES(idx_t iMass) { return fh2ESV[iMass]; }
+
 
   const TH2D* h2ES(double mass) const {
     int iMass= DYtools::massIdx(mass);
@@ -540,6 +548,16 @@ public:
 				  TString hName, TString hTitle,
 				  int followFIBin1=0, int followFIBin2=0,
 				  TH1D *h1followedBin=NULL) const;
+
+  std::vector<TH2D*>* contributionsToScaleFactor(const DYTnPEff_t &effRef,
+						 const DYTnPEff_t &effAlt,
+		 int hlt4p3, TString hNameBase, TString hTitleBase) const;
+
+  void listContributionsToAvgSF(const DYTnPEff_t &effRef,
+				const DYTnPEff_t &effAlt,
+				int hlt4p3,
+				TString hNameBase, TString hTitleBase,
+				double contrMin, double contrMax) const;
 
   void displayAll() const;
   void listAll() const;
