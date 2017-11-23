@@ -87,6 +87,10 @@ public:
   PlotCovCorrOpt_t(int set_autoZRangeCorr=1, int set_gridLines=1,
 		   int set_logScale=1, double set_yTitleOffset=1.5,
 		   double set_leftMargin=0.15, double set_rightMargin=0.15);
+  PlotCovCorrOpt_t(int set_autoZRangeCorr, int set_gridLines,
+		   int set_logScaleX, int set_logScaleY,
+		   double set_yTitleOffset=1.5,
+		   double set_leftMargin=0.15, double set_rightMargin=0.15);
   PlotCovCorrOpt_t(const TString key, int value);
   PlotCovCorrOpt_t(const PlotCovCorrOpt_t &o);
 
@@ -101,6 +105,7 @@ public:
   void assign(const PlotCovCorrOpt_t &opt);
   int setValue(TString key, int value, int verbose=1);
   void adjustTicks(TCanvas *c) const;
+  void applyToCanvas(TCanvas *c, int changeMargin=1) const;
 };
 
 // -----------------------------------------------------------
@@ -180,6 +185,23 @@ inline void printHistoTH1(TH1* h1)
 {  printHisto((TH1D*)h1); }
 inline void printHistoTH2(TH2* h2)
 {  printHisto((TH2D*)h2); }
+
+
+template<class histo_t>
+inline
+void prepareHisto(histo_t *h, int noStats=1)
+{
+  h->SetDirectory(0);
+  if (noStats) h->SetStats(0);
+  h->Sumw2();
+}
+
+template<class histo_t>
+inline
+void prepareHisto(std::vector<histo_t*> &hV, int noStats=1)
+{
+  for (unsigned int ih=0; ih<hV.size(); ih++) prepareHisto(hV[ih],noStats);
+}
 
 
 template <class th1_t>
@@ -829,6 +851,22 @@ void HERE(const char *format, const type1_t x, const type2_t y)
 { std::cout << Form(format,x,y) << std::endl; }
 
 
+inline
+void HERE(int debug, const char *msg)
+{ if (debug) std::cout << msg << std::endl; }
+
+template<class type_t>
+inline
+void HERE(int debug, const char *format, const type_t x)
+{ if (debug) std::cout << Form(format,x) << std::endl; }
+
+template<class type1_t, class type2_t>
+inline
+void HERE(int debug, const char *format, const type1_t x, const type2_t y)
+{ if (debug) std::cout << Form(format,x,y) << std::endl; }
+
+
+
 void ptrOk(const void *ptr);
 
 inline
@@ -857,6 +895,64 @@ const HistoStyle_t hsBlue2(kBlue,24,1,0.8,2.);
 const HistoStyle_t hsViolet(9,25,1,0.8,2.); // square
 extern const HistoStyle_t hsVec[6];
 
+// -----------------------------------------------------------
+// -----------------------------------------------------------
+
+//
+// commonly used methods in data structures derived from TTree->MakeClass
+//
+
+template<class data_t>
+void DeactivateBranches(data_t &d)
+{ d.fChain->SetBranchStatus("*",0); }
+
+// -----------------------------------------------------------
+
+template<class data_t>
+void ActivateBranches(data_t &d, TString brNames)
+{
+  if (brNames.Length()==0) {
+    std::cout << "ActivateBranches non-empty string is expected\n";
+    return;
+  }
+  std::stringstream ss(brNames.Data());
+  TString br;
+  while (!ss.eof()) {
+    ss >> br;
+    if (br.Length()>1) {
+      std::cout << "adding branch <" << br << ">\n";
+      d.fChain->SetBranchStatus(br,1);
+    }
+  }
+}
+
+// -----------------------------------------------------------
+
+template<class data_t>
+int BranchExists(data_t &d, TString brName)
+{
+  int yes=0;
+  TObjArray *brObjArr= d.fChain->GetListOfBranches();
+  for (int ibr=0; !yes && (ibr<brObjArr->GetEntries()); ibr++) {
+    if (TString(brObjArr->At(ibr)->GetName()) == brName) yes=1;
+  }
+  return yes;
+}
+
+// -----------------------------------------------------------
+
+template<class tReal_t, class tIdx_t>
+double invMass(tIdx_t idx1, tIdx_t idx2,
+	 const std::vector<tReal_t> *ptV, const std::vector<tReal_t> *etaV,
+	 const std::vector<tReal_t> *phiV, const std::vector<tReal_t> *enV)
+{
+  TLorentzVector v1,v2;
+  v1.SetPtEtaPhiE(ptV->at(idx1),etaV->at(idx1),phiV->at(idx1),enV->at(idx1));
+  v2.SetPtEtaPhiE(ptV->at(idx2),etaV->at(idx2),phiV->at(idx2),enV->at(idx2));
+  return (v1+v2).M();
+}
+
+// -----------------------------------------------------------
 // -----------------------------------------------------------
 
 #endif

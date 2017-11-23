@@ -142,7 +142,7 @@ std::ostream& operator<<(std::ostream &out, const TLorentzVector *v)
 
 // -------------------------------------------------------------
 
-std::ostream& operator<<(std::ostream &out, DYmm13TeV_t &obj)
+std::ostream& operator<<(std::ostream &out, const DYmm13TeV_t &obj)
 {
   out << "DYmm13TeV: \n";
   if ((obj.RunNo!=0) && (obj.EvtNo!=0))
