@@ -25,7 +25,7 @@ void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
 
 void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
 			    int limitToSrc=-1, int saveRndRhoVec=0,
-			    int recreateCollection=0)
+			    int recreateCollection=0, int symmetrizeColl=0)
 {
   closeCanvases(10);
 
@@ -43,18 +43,19 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
   DYTnPEffColl_t coll(elChannelFlag);
 
   TString collFileName= fnameBase + "Coll.root";
+  if (symmetrizeColl) collFileName.ReplaceAll(".root","-symm.root");
   TString inputEffKinds="RECO ID HLT"; // recommended to match effKinds
   TString includeEffKinds= inputEffKinds;
   TString includeEffSystSrc="bkgPdf sigPdf NLOvsLO tag";
   std::vector<TString> sources;
   int MConly=0;
-  addToVector(sources,includeEffSystSrc);
   if ((limitToSrc!=-1) && (limitToSrc!=1111)) {
     collFileName.ReplaceAll(".root",
 			    "-" + DYtools::effSystSrc[limitToSrc] + ".root");
     includeEffSystSrc=DYtools::effSystSrc[limitToSrc];
     if (includeEffSystSrc.Index("NLOvsLO")!=-1) MConly=1;
   }
+  addToVector(sources,includeEffSystSrc);
 
   if (recreateCollection) {
     if (!createEffCollection(fnameBase,inputEffKinds,
@@ -62,6 +63,7 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
 			     nEta,SC_eta,nPt,Ele_pt,
 			     coll,
 			     collFileName,
+			     symmetrizeColl,
 			     1)) {
       std::cout << "failure\n";
       return;
@@ -101,6 +103,13 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
   if (!esPostFsr.load(fname,esMainDirName)) return;
   std::cout << "loaded " << esMainDirName << " from file <" << fname << ">\n";
 
+  if (!compareRanges(esPostFsr.h2EffBinDef(),totUnc->h2fullList(0),1)) {
+    std::cout << "different binning\n";
+    return;
+  }
+  else {
+    std::cout << "binning ok\n";
+  }
 
   // calculate the scale factors using the alternative efficiency values
   if (limitToSrc==1111) {
@@ -117,6 +126,12 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
       effSrc->listNumbers();
       //tnpEffReadyV[iSrc+1]->listNumbersBrief(1,5);
       std::cout << "numbers listed\n";
+      if (0) {
+	std::cout << "\nChecking contributions to the syst.unc\n";
+	const DYTnPEff_t *effRef=coll.getTnPWithStatUncPtr();
+	esPostFsr.listContributionsToAvgSF(*effRef,*effSrc,0,
+					   "hRhoChk"+tag,"hRhoChk"+tag,0.005,1.);
+      }
       TString hname="h1rho_" + tag;
       //TH1D *h1rho_test=
       //esPostFsr.calculateScaleFactor(*tnpEffReadyV[iSrc+1],0,hname+"_test",
@@ -142,10 +157,30 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
       else plotHistoSame(h1rho_src,"cRho_syst","LP",sources[iSrc]);
       //h1rho_test->SetMarkerStyle(20);
       //plotHistoSame(h1rho_test,"cRho_syst","LP","test");
+
+      if (0 && (iSrc>=0)) {
+	TH1D *h1rho_chk=
+	  esPostFsr.calculateScaleFactor(*coll.getTnPSystUncSource(iSrc),
+					 0,"h1rho_chk_"+tag,"h1rho_chk_"+tag);
+	if (!h1rho_chk) {
+	  std::cout << "failed to get h1rho_chk\n";
+	  return;
+	}
+	h1rho_chk->SetLineColor(kRed);
+	h1rho_chk->SetMarkerColor(kRed);
+	removeError(h1rho_chk);
+	plotHistoSame(h1rho_chk,"cRho_syst","L",sources[iSrc]+" chk");
+      }
     }
 
     if (1) {
-      TFile fout("dyee-rho-syst2.root","recreate");
+      TString foutname="dyee-rho-syst2.root";
+      if (symmetrizeColl) foutname.ReplaceAll(".root","-symm.root");
+      if ((limitToSrc!=-1) && (limitToSrc!=1111)) {
+	foutname.ReplaceAll(".root",
+			    "_"+DYtools::effSystSrc[limitToSrc]+".root");
+      }
+      TFile fout(foutname,"recreate");
       for (unsigned int i=0; i<h1rhoSystV.size(); i++) {
 	h1rhoSystV[i]->Write();
       }
@@ -215,7 +250,9 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
 
   TString foutName;
   if (saveRndRhoVec) {
-    foutName="dir-RhoSyst" + versionName(inpVersion) + "/";
+    foutName="dir-RhoSyst";
+    if (symmetrizeColl) foutName+="Symm-";
+    foutName+= versionName(inpVersion) + "/";
     gSystem->mkdir(foutName);
     foutName += "dyee_rhoRndSystVec_" + versionName(inpVersion);
     if ((limitToSrc!=-1) && (limitToSrc!=1111)) {
@@ -295,6 +332,7 @@ void deriveSFUnc(const DYTnPEffColl_t &coll, const EventSpace_t &es,
     removeError(h1rhoRnd);
     h1rhoRnd->SetStats(0);
     h1rhoRnd->SetLineColor(itoy%10+1);
+    h1rhoRnd->GetYaxis()->SetRangeUser(0.7,1.3);
     logAxis(h1rhoRnd,1);
     if (itoy<20) plotHistoAuto(h1rhoRnd,"cRhoRnd",1,0,"L");
 
