@@ -108,7 +108,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
       addToVector(mmCovIdx,8, _varYield, _varBkg, _varDetRes, _varEff,
 		  _varRhoFile, _varAcc, _varFSRRes, _varTheory);
     }
-    if (includeRhoSyst) {
+    if (includeRhoSyst) { // symm case is managed by file names
       addToVector(eeCovIdx,1,_varRhoSystFile);
       addToVector(mmCovIdx,1,_varRhoSystFile);
     }
@@ -135,9 +135,15 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     eeNewFName.push_back("cov_ee_ElMay2017_varYieldPoisson_2000.root");
     mmOldFName.push_back("cov_mumu_varYield_2000.root");
     mmNewFName.push_back("cov_mumu_varYieldPoisson_2000.root");
-    if (includeRhoSyst) {
+    if (includeRhoSyst==1) {
       eeOldFName.push_back("cov_ee_ElMay2017_varRhoSystFile_2000.root");
       eeNewFName.push_back("cov_ee_ElMay2017false_varRhoSystFile_2000.root");
+      //mmOldFName.push_back("cov_mumu_varRhoSystFile_2000.root");
+      //mmNewFName.push_back("");
+    }
+    else if (includeRhoSyst==2) {
+      eeOldFName.push_back("cov_ee_ElMay2017_varRhoSystFile_2000.root");
+      eeNewFName.push_back("cov_ee_ElMay2017false_varRhoSystFileSymm_2000.root");
       //mmOldFName.push_back("cov_mumu_varRhoSystFile_2000.root");
       //mmNewFName.push_back("");
     }
