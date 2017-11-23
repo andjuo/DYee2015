@@ -58,7 +58,7 @@ void work(TVersion_t inpVer,
   std::vector<TH1D*> rndCSVec;
   int res=1;
   int removeNegativeSignal=1;
-  if ((var!=_varRhoFile) && (var!=_varRhoSystFile))
+  if ((var!=_varRhoFile) && (var!=_varRhoSystFile) &&(var!=_varRhoSystFileSymm))
     res=eeCS.sampleRndVec(var,nSample,removeNegativeSignal,rndCSVec);
   else if (var==_varRhoFile) {
     TString inpVerTag=versionName(inpVer);
@@ -71,6 +71,14 @@ void work(TVersion_t inpVer,
   else if (var==_varRhoSystFile) {
     TString inpVerTag=versionName(inpVer);
     TString loadFName=Form("dir-RhoSyst%s/dyee_rhoRndSystVec_%s_%d.root",
+			   inpVerTag.Data(),inpVerTag.Data(),
+			   nSample);
+    RndVecInfo_t info(loadFName,"rhoRndSyst/h1rho_rnd");
+    res=eeCS.sampleRndVec(var,nSample,info,removeNegativeSignal, rndCSVec);
+  }
+  else if (var==_varRhoSystFileSymm) {
+    TString inpVerTag=versionName(inpVer);
+    TString loadFName=Form("dir-RhoSystSymm-%s/dyee_rhoRndSystVec_%s_%d.root",
 			   inpVerTag.Data(),inpVerTag.Data(),
 			   nSample);
     RndVecInfo_t info(loadFName,"rhoRndSyst/h1rho_rnd");
@@ -198,7 +206,7 @@ void createSystFile(TVersion_t inpVer,
   TH1D *h1cs_file= cloneHisto(eeCS.h1PreFsrCS(),"h1cs_file","h1cs_file");
 
   std::vector<TH1D*> h1RhoV;
-  TString fname="dyee-rho-syst.root";
+  TString fname="dyee-rho-syst2.root";
   TFile fin(fname);
   if (!fin.IsOpen()) {
     std::cout << "failed to open the file <" << fin.GetName() << ">\n";
@@ -310,7 +318,7 @@ void createSystFile(TVersion_t inpVer,
   }
 
   if (doSave) {
-    TString fname="dyeeCS-rhoSyst.root";
+    TString fname="dyeeCS-rhoSyst2.root";
     TFile fout(fname,"RECREATE");
     if (!fout.IsOpen()) {
       std::cout << "failed to create a file <" << fout.GetName() << ">\n";
