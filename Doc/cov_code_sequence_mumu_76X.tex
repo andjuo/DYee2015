@@ -545,6 +545,26 @@ and the agreement between my evaluation of the uncertainty and the
 uncertainty from Kyeongpil Lee is very similar. Thus I have to recheck
 the electron channel.
 
+\textit{Update on Aug 11, 2017.} Due to the mismatch in the evaluated
+systematic uncertainty between myself and Ridhi, I communicated with
+Ridhi and Fabrice Couderc. Ridhi has sent me the files with RECO, ID
+and HLT efficiencies, that she was using to evaluate the systematics,
+and I found no difference from my values while our evaluations differ
+a lot. The largest difference in the efficiencies was coming from
+RECO, so I was trying to verify that the efficiency scale factors are
+correct.  I wrote to Fabrice about the contents of the files with RECO
+efficiencies and their scale factors in her directory
+\url{http://fcouderc.web.cern.ch/fcouderc/EGamma/scaleFactors/moriond2016_76X/reco/}
+I was not sure about the differences between my evaluation of
+systematic uncertainties and the values from Fabrice. It turned out,
+the plots with systematics were done using the $\eta$-averaged
+efficiencies (both data and MC), which has led to disagreement. I
+introduced methods that do averaging of the 2D histograms.
+
+The latest version of \myund{calcRhoRndVec_ee_syst2} has an additional
+flag, whether the efficiencies should be symmetrized. It also tags
+the files with this version. The macro should be run with values,
+e.g.\ (2000,0,-1,1, 1 [recreate], 1 [symmetrize]).
 
 \end{document}
 
