@@ -98,6 +98,7 @@ inline
   }
   else if (iMass<0) s=Form("lt%1.0lf",massBinEdges[0]);
   else  s=Form("gt%1.0lf",massBinEdges[nMassBins]);
+  if (changeToUnderscore==2) s.ReplaceAll("_","to");
   return s;
 }
 
