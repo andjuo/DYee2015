@@ -31,7 +31,7 @@ void setAutoRanges(const std::vector<TH1D*> &h1V,
 
 // ----------------------------------------------------------------
 
-void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0)
+void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0, int altSet=0)
 {
   closeCanvases(10);
 
@@ -75,6 +75,15 @@ void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0)
   TString fname_HLT_finePt="dyee_triggerEff_76X_finePt.txt";
   TString fname_HLT="dyee_triggerEff_76X.txt";
   TString effName="RECO";
+
+  if (altSet) {
+    fname_RECO="RC_eleRECO_Final.txt";
+    fname_ID="RC_eleCutBasedID_Medium_Final.txt";
+    fname_HLT_finePt="";
+    fname_HLT="RC_eleTrigger_Final.txt";
+  }
+
+
   TString fname;
   if (theSet=="ID") { fname=fname_ID; effName="ID"; }
   else if (theSet=="RECO") { fname=fname_RECO; effName="RECO"; }
@@ -139,6 +148,11 @@ void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0)
       fin >> eff;
       h2effMC_NLOvsLO->SetBinContent(iEta,iPt, eff);
       h2effMC_NLOvsLO->SetBinError(iEta,iPt, deff);
+    }
+
+    if ((effName=="HLT") && altSet) {
+      // unclear value, close to MC eff.\n";
+      fin >> eff;
     }
 
     fin >> eff;
@@ -207,20 +221,76 @@ void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0)
     plotEffs(h2_mc_var,hs_mc_var,label_mc_var, "MC",effName,0);
   }
 
-  if (1 && (theSet=="RECO")) {
-    std::cout << "printing the scale factors\n";
+  if (0 && (theSet=="RECO")) {
+    std::cout << "printing the scale factors (altSet=" << altSet <<")\n";
     printRatio(h2effData,h2effMC);
     printRatio(h2effData_sigPdf,h2effMC);
     TH2D *h2effData_dEff_sigPdf=cloneHisto(h2effData,"h2effData_dEff_sigPdf","h2effData_dEff_sigPdf");
     h2effData_dEff_sigPdf->Add(h2effData_sigPdf,-1);
     printRatio(h2effData_dEff_sigPdf,h2effMC);
+    return;
     TH2D *h2effData_dEff_bkgPdf=cloneHisto(h2effData,"h2effData_dEff_bkgPdf","h2effData_dEff_bkgPdf");
     h2effData_dEff_bkgPdf->Add(h2effData_bkgPdf,-1);
     printRatio(h2effData_dEff_bkgPdf,h2effMC);
   }
+  else if (1 && (theSet=="RECO")) {
+    std::cout << "printing the alt-SYMMETRIZED scale factors "
+	      << "(altSet=" << altSet <<")\n";
+    printRatio(h2effData,h2effMC);
+    TH2D *h2effDataSymm= cloneHisto(h2effData,"h2effDataSymm","h2effDataSymm");
+    TH2D *h2sigPdfSymm= cloneHisto(h2effData_sigPdf,
+				   "h2sigPdfSymm","h2sigPdfSymm");
+    if (0) {
+      for (int ptBin=1; ptBin<=h2sigPdfSymm->GetNbinsY(); ptBin++) {
+	for (int etaBin=1; etaBin<=h2sigPdfSymm->GetNbinsX()/2; etaBin++) {
+	  int etaBinRev= h2sigPdfSymm->GetNbinsX() - etaBin + 1;
+	  if (0) {
+	    std::cout << "etaBin=" << etaBin << "\n";
+	    printBin(h2effData_sigPdf,etaBin,ptBin,1,1);
+	    printBin(h2effData_sigPdf,etaBinRev,ptBin,1,1);
+	  }
+	  double v1= h2effData_sigPdf->GetBinContent(etaBin,ptBin);
+	  double v2= h2effData_sigPdf->GetBinContent(etaBinRev,ptBin);
+	  double v=0.5*(v1+v2);
+	  h2sigPdfSymm->SetBinContent(etaBin,ptBin, v);
+	  h2sigPdfSymm->SetBinContent(etaBinRev,ptBin, v);
+
+	  v1= h2effData->GetBinContent(etaBin,ptBin);
+	  v2= h2effData->GetBinContent(etaBinRev,ptBin);
+	  v= 0.5*(v1+v2);
+	  h2effDataSymm->SetBinContent(etaBin,ptBin, v);
+	  h2effDataSymm->SetBinContent(etaBinRev,ptBin, v);
+	}
+      }
+    }
+    else {
+      std::cout << "calling symmetrizeByX\n";
+      symmetrizeByX(h2effDataSymm);
+      symmetrizeByX(h2sigPdfSymm);
+    }
+
+    printRatio(h2sigPdfSymm,h2effMC);
+    TH2D *h2effDataSymm_dEff_sigPdfSymm=cloneHisto(h2effDataSymm,
+	   "h2effDataSymm_dEff_sigPdfSymm","h2effDataSymm_dEff_sigPdfSymm");
+    h2effDataSymm_dEff_sigPdfSymm->Add(h2sigPdfSymm,-1);
+    printRatio(h2effDataSymm_dEff_sigPdfSymm,h2effMC);
+    return;
+  }
 
 
-  if (save) {
+  if (save==-1) {
+    std::cout << std::string(50,'-') << "\n";
+    std::cout << "print all histos (altSet=" << altSet << ")\n";
+    for (unsigned int ih=0; ih<allHistosV.size(); ih++) {
+      const TH2D *h2=allHistosV[ih];
+      std::cout << "\nih=" << ih << ", histoName=" << h2->GetName() << "\n";
+      printHisto(h2);
+    }
+    std::cout << "printed all histos (altSet=" << altSet << ")\n";
+    std::cout << std::string(50,'-') << "\n";
+  }
+
+  if (save==1) {
     if (theSet=="ID") {
       TH2D *h2signed= new TH2D("h2signed","h2signed",nEta,SC_eta,nPt,Ele_pt);
       h2signed->SetStats(0);
@@ -246,6 +316,7 @@ void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0)
       }
     }
 
+    if (altSet) theSet+="_alt";
     TString foutName="dyee_effSyst_" + theSet + ".root";
     TFile fout(foutName,"RECREATE");
     if (!fout.IsOpen()) {
