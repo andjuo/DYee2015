@@ -233,7 +233,7 @@ void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0, int altSet=0)
     h2effData_dEff_bkgPdf->Add(h2effData_bkgPdf,-1);
     printRatio(h2effData_dEff_bkgPdf,h2effMC);
   }
-  else if (1 && (theSet=="RECO")) {
+  else if (0 && (theSet=="RECO")) {
     std::cout << "printing the alt-SYMMETRIZED scale factors "
 	      << "(altSet=" << altSet <<")\n";
     printRatio(h2effData,h2effMC);
@@ -273,6 +273,7 @@ void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0, int altSet=0)
     TH2D *h2effDataSymm_dEff_sigPdfSymm=cloneHisto(h2effDataSymm,
 	   "h2effDataSymm_dEff_sigPdfSymm","h2effDataSymm_dEff_sigPdfSymm");
     h2effDataSymm_dEff_sigPdfSymm->Add(h2sigPdfSymm,-1);
+    std::cout << "how much rho_sigPdf changes because of symmetrization\n";
     printRatio(h2effDataSymm_dEff_sigPdfSymm,h2effMC);
     return;
   }
@@ -334,6 +335,7 @@ void plotDYeeESF(TString theSet="ID", int showPlots=1, int save=0, int altSet=0)
 	std::cout << "histogram " << h2->GetName() << " saved\n";
       }
     }
+    std::cout << "file <" << fout.GetName() << "> saved\n";
     fout.Close();
   }
 
