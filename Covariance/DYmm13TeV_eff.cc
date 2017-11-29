@@ -946,7 +946,7 @@ void DYTnPEff_t::printNumbers(TString fileTag) const
 
 // -------------------------------------------------------------
 
-void DYTnPEff_t::displayAll() const
+void DYTnPEff_t::displayAll(int reallyAll) const
 {
   int logScaleX=0, logScaleY=1;
   //#ifdef def_fewMassBins
@@ -956,7 +956,7 @@ void DYTnPEff_t::displayAll() const
   PlotCovCorrOpt_t opt(0,1,logScaleX);
   opt.setLogScale(logScaleX,logScaleY);
 
-  if (0) {
+  if (reallyAll) {
     for (int iv=0; iv<3; iv++) {
       const std::vector<TH2D*> *h2=
 	(iv==0) ? &h2VReco : ((iv==1) ? &h2VIso : &h2VHLT);
@@ -1817,15 +1817,15 @@ int DYTnPEffColl_t::symmetrize()
 
 // -------------------------------------------------------------
 
-void DYTnPEffColl_t::displayAll(int includeSrc) const
+void DYTnPEffColl_t::displayAll(int includeSrc, int reallyAll) const
 {
-  fTnPEff.displayAll();
+  fTnPEff.displayAll(reallyAll);
   if (includeSrc) {
     for (unsigned int i=0; i<fTnPEffSrcV.size(); i++)
-      fTnPEffSrcV[i]->displayAll();
+      fTnPEffSrcV[i]->displayAll(reallyAll);
   }
   for (unsigned int i=0; i<fTnPEffSystV.size(); i++)
-    fTnPEffSystV[i]->displayAll();
+    fTnPEffSystV[i]->displayAll(reallyAll);
 }
 
 // -------------------------------------------------------------
@@ -2297,6 +2297,120 @@ TH1D* EventSpace_t::calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 
 // -------------------------------------------------------------
 
+TH1D* EventSpace_t::calculateScaleFactor_contr(const DYTnPEff_t &eff, int hlt4p3,
+					       TString hName, TString hTitle,
+					       std::vector<TH2D*> &h2contrV,
+					       TString h2nameTag,
+					       double threshold) const
+{
+  std::cout << "\n\ncalculateScaleFactor_contr : for hName="
+	    << hName << ", title=" << hTitle << "\n";
+  TH1D* h1rho= new TH1D(hName,hTitle, DYtools::nMassBins,DYtools::massBinEdges);
+  if (!h1rho) {
+    std::cout << "cannot create h1rho\n";
+    return NULL;
+  }
+  h1rho->SetDirectory(0);
+  h1rho->SetStats(0);
+  h1rho->Sumw2();
+  h1rho->GetXaxis()->SetMoreLogLabels();
+  h1rho->GetXaxis()->SetNoExponent();
+  h1rho->GetXaxis()->SetTitle("M [Gev]");
+  //h1rho->GetYaxis()->SetTitle("average event scale factor");
+
+  for (unsigned int im=0; im<fh2ESV.size(); im++) {
+    //std::cout << "im=" << im << "\n";
+    const TH2D* h2sp= fh2ESV[im];
+    if (!h2sp) { HERE("h2sp is null"); return NULL; }
+    double sum=0, sumRho=0;
+
+    TH2D *h2contr= cloneHisto(h2sp,
+			      h2sp->GetName()+("contr"+h2nameTag),
+			      h2sp->GetName()+("contr"+h2nameTag));
+    if (!h2contr) { HERE("h2contr is null"); return NULL; }
+    h2contrV.push_back(h2contr);
+
+    //printHisto(fh2EffBinDef);
+    //printHisto(h2sp);
+    //return NULL;
+
+    for (int ibin1=1; ibin1<=fh2EffBinDef->GetNbinsX(); ibin1++) {
+      for (int jbin1=1; jbin1<=fh2EffBinDef->GetNbinsY(); jbin1++) {
+	const int fi1= DYtools::FlatIndex(fh2EffBinDef,ibin1,jbin1,1) + 1;
+	//std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "\n";
+	for (int ibin2=1; ibin2<=fh2EffBinDef->GetNbinsX(); ibin2++) {
+	  for (int jbin2=1; jbin2<=fh2EffBinDef->GetNbinsY(); jbin2++) {
+	    const int fi2= DYtools::FlatIndex(fh2EffBinDef,ibin2,jbin2,1) + 1;
+	    //std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "\n";
+	    //if (!h2sp) HERE("h2sp is null"); else HERE("h2sp ok");
+	    //std::cout << " eSpace bin content=" << h2sp->GetBinContent(fi1,fi2) << std::endl;
+	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
+	    //std::cout << "requesting scale factor\n";
+	    double rho= eff.scaleFactorIdx(ibin1,jbin1,ibin2,jbin2, hlt4p3);
+	    if (0 && (im==0) && (rho!=0.)) {
+	      std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "; ";
+	      std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "; ";
+	      std::cout << "got rho=" << rho << "\n";
+	      if (0) {
+		std::cout << "(eta,pt): " << fh2EffBinDef->GetXaxis()->GetBinCenter(ibin1) << "," << fh2EffBinDef->GetYaxis()->GetBinCenter(jbin1) << "; " << fh2EffBinDef->GetXaxis()->GetBinCenter(ibin2) << "," << fh2EffBinDef->GetYaxis()->GetBinCenter(jbin2) << "\n";
+	      }
+	    }
+	    sumRho += rho* h2sp->GetBinContent(fi1,fi2);
+	    sum += h2sp->GetBinContent(fi1,fi2);
+	    h2contr->SetBinContent(fi1,fi2, rho* h2sp->GetBinContent(fi1,fi2));
+	  }
+	}
+      }
+    }
+
+    // normalize ,so that h2contr->Integral=avgRho
+    if (sum!=double(0)) h2contr->Scale(1/sum);
+    // nullify below threshold
+    if (threshold!=0) {
+      for (int ibin=1; ibin<=h2contr->GetNbinsX(); ibin++) {
+	for (int jbin=1; jbin<=h2contr->GetNbinsY(); jbin++) {
+	  if (fabs(h2contr->GetBinContent(ibin,jbin))<threshold) {
+	    h2contr->SetBinContent(ibin,jbin, 0.);
+	  }
+	}
+      }
+    }
+
+    // evaluate uncertainty
+    double sumDRhoSqr=0.;
+    for (int ibin1=1; ibin1<=fh2EffBinDef->GetNbinsX(); ibin1++) {
+      for (int jbin1=1; jbin1<=fh2EffBinDef->GetNbinsY(); jbin1++) {
+	const int fi1= DYtools::FlatIndex(fh2EffBinDef,ibin1,jbin1,1) + 1;
+	//std::cout << "ibin1=" << ibin1 << ", jbin1=" << jbin1 << ", fi1=" << fi1 << "\n";
+	for (int ibin2=1; ibin2<=fh2EffBinDef->GetNbinsX(); ibin2++) {
+	  for (int jbin2=1; jbin2<=fh2EffBinDef->GetNbinsY(); jbin2++) {
+	    const int fi2= DYtools::FlatIndex(fh2EffBinDef,ibin2,jbin2,1) + 1;
+	    //std::cout << "ibin2=" << ibin2 << ", jbin2=" << jbin2 << ", fi2=" << fi2 << "\n";
+	    //if (!h2sp) HERE("h2sp is null"); else HERE("h2sp ok");
+	    //std::cout << " eSpace bin content=" << h2sp->GetBinContent(fi1,fi2) << std::endl;
+	    if (h2sp->GetBinContent(fi1,fi2) == 0) continue;
+	    //std::cout << "requesting scale factor\n";
+	    double rho= eff.scaleFactorIdx(ibin1,jbin1,ibin2,jbin2, hlt4p3);
+	    //std::cout << "got rho=" << rho << "\n";
+	    sumDRhoSqr += pow( (rho - sumRho/sum)/sum *
+			       h2sp->GetBinError(fi1,fi2) , 2);
+	  }
+	}
+      }
+    }
+
+
+    double avgRho= (sum==0.) ? 0. : sumRho/sum;
+    //std::cout << "im=" << im << ", avgRho=" << avgRho << "\n";
+    h1rho->SetBinContent( im+1, avgRho );
+    double dAvgRho=(sumDRhoSqr<0) ? -sqrt(-sumDRhoSqr) : sqrt(sumDRhoSqr);
+    h1rho->SetBinError( im+1, dAvgRho );
+  }
+  return h1rho;
+}
+
+// -------------------------------------------------------------
+
 TH1D* EventSpace_t::calculateScaleFactor_misc(const DYTnPEff_t &eff,
 			      int hlt4p3, TString hName, TString hTitle,
 	      int followFIBin1, int followFIBin2, TH1D *h1followedBin) const
@@ -2500,6 +2614,104 @@ void EventSpace_t::listContributionsToAvgSF(const DYTnPEff_t &effRef,
   delete contr;
 
   return;
+}
+
+// -------------------------------------------------------------
+
+int EventSpace_t::listContributionsToAvgSF_v2(
+		       const DYTnPEff_t &effRef,
+		       const DYTnPEff_t &effAlt,
+		       int hlt4p3,
+		       TString hNameBase, TString hTitleBase,
+		       double contrMin, double contrMax,
+		       TString tag
+) const
+{
+  std::cout << "entered listContributionsToAvgSF_v2. Tag=" << tag << "\n";
+  std::vector<TH2D*> h2contrRefV, h2contrAltV;
+
+  double threshold=0.;
+  TH1D *h1rhoRef= this->calculateScaleFactor_contr(effRef,hlt4p3,
+						   hNameBase + "Ref",
+						   hTitleBase + "Ref",
+						   h2contrRefV,
+						   "Ref", threshold);
+  TH1D *h1rhoAlt= this->calculateScaleFactor_contr(effAlt,hlt4p3,
+						   hNameBase + "Alt",
+						   hTitleBase + "Alt",
+						   h2contrAltV,
+						   "Alt", threshold);
+  if (!h1rhoRef || !h1rhoAlt) {
+    std::cout << "failed to get h1rhoRef or h1rhoAlt\n";
+    return 0;
+  }
+  plotHisto(h1rhoRef, "c_h1avgRho_test"+tag,1,0,"LPE","ref");
+  hsBlue.SetStyle(h1rhoAlt);
+  plotHistoSame(h1rhoAlt, "c_h1avgRho_test"+tag,"LPE","alt");
+
+  for (unsigned int im=0; im<h2contrRefV.size(); im++) {
+    if (im>5) break;
+    const TH2D *h2ref=h2contrRefV[im];
+    TH2D *h2diff= cloneHisto(h2ref,h2ref->GetName()+TString("_diff"),
+			     h2ref->GetTitle()+TString("_diff"));
+    h2diff->Add(h2contrAltV[im], -1);
+
+    if (contrMin<contrMax) {
+      double sum=0.;
+      std::cout << "printing contributions for the mass bin im="
+		<< im << " (" << DYtools::massStr(im,2)
+		<< ") in the range of "<<contrMin << " .. " << contrMax << "\n";
+
+      // fh2ESV histos have ranges from -0.5 to EtaPiFIMax+0.5 (51.5)
+      // flat index is from 0 to 50 (by default)
+      // Thus, flatIdx=binIdx-1
+      int validFIMax=
+	DYtools::FlatIndex(fh2EffBinDef,
+		   fh2EffBinDef->GetNbinsX(),fh2EffBinDef->GetNbinsY(),1);
+      //std::cout << "validFIMax=" << validFIMax << "\n";
+
+      for (int ibin=1; ibin<=h2diff->GetNbinsX(); ibin++) {
+	if (ibin>validFIMax+1) break;
+	for (int jbin=1; jbin<=h2diff->GetNbinsY(); jbin++) {
+	  if (jbin>validFIMax+1) break;
+	  const double v=h2diff->GetBinContent(ibin,jbin);
+	  const double vAbs=fabs(v);
+	  if ((vAbs>=contrMin) && (vAbs<contrMax)) {
+	    double etaMin1,etaMax1, ptMin1,ptMax1;
+	    double etaMin2,etaMax2, ptMin2,ptMax2;
+	    const int fi1= ibin-1;
+	    const int fi2= jbin-1;
+	    if( ! DYtools::GetRange_from_FlatIndex(fh2EffBinDef, fi1,etaMin1,etaMax1,ptMin1,ptMax1) ||
+		! DYtools::GetRange_from_FlatIndex(fh2EffBinDef, fi2,etaMin2,etaMax2,ptMin2,ptMax2)) {
+	      std::cout << "failed to get ranges either for ibin=" << ibin
+			<<  " fi1=" << fi1 << ", "
+			<< " or jbin=" << jbin << " fi2=" << fi2 << "\n";
+	      return 0;
+	    }
+
+	    sum+=v;
+	    std::cout << " ibin=" << ibin
+		      << Form(" (%6.3lf-%6.3lf,%4.1lf-%4.1lf)",etaMin1,etaMax1,ptMin1,ptMax1)
+		      << ", jbin=" << jbin
+		      << Form(" (%6.3lf-%6.3lf,%4.1lf-%4.1lf)",etaMin2,etaMax2,ptMin2,ptMax2)
+		      << ", diff=" << v << "\n";
+
+	    if (0) {
+	      DYtools::GetRange_from_FlatIndex(fh2EffBinDef, fi2,etaMin2,etaMax2,ptMin2,ptMax2, 1);
+	      std::cout << "  fi2=" << fi2 << " corresponds to indices "
+			<< etaMin2 << "," << ptMin2 << "\n";
+	    }
+
+	  }
+	}
+      }
+      std::cout << " -- sum=" << sum << "\n";
+    }
+
+    plotHisto(h2diff,"c_rhoI_PI_"+DYtools::massStr(im,2)+"_"+tag,0,0);
+  }
+
+  return 1;
 }
 
 // -------------------------------------------------------------

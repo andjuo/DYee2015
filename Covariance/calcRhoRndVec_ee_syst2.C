@@ -69,6 +69,10 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
       return;
     }
     std::cout << "\n\tcollection recreated\n\n";
+    if (0) {
+      coll.displayAll(1,1); // includeSrc,reallyAll
+      return;
+    }
   }
   else {
     coll.setElChannel(isElectronChannel);
@@ -103,6 +107,13 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
   if (!esPostFsr.load(fname,esMainDirName)) return;
   std::cout << "loaded " << esMainDirName << " from file <" << fname << ">\n";
 
+  if (0) {
+    //printHisto(esPostFsr.h2ES(0));
+    plotHisto(esPostFsr.h2ES(0),"c_h2ES0",0,0);
+    return;
+  }
+
+
   if (!compareRanges(esPostFsr.h2EffBinDef(),totUnc->h2fullList(0),1)) {
     std::cout << "different binning\n";
     return;
@@ -126,6 +137,17 @@ void calcRhoRndVec_ee_syst2(int nToys=100, int rndProfileKind=0,
       effSrc->listNumbers();
       //tnpEffReadyV[iSrc+1]->listNumbersBrief(1,5);
       std::cout << "numbers listed\n";
+      if (0 && (iSrc==3)) {
+	const DYTnPEff_t *effRef=coll.getTnPWithStatUncPtr();
+	double drhoMin= 1 * 0.4e-3;
+	double drhoMax=1;
+	if (!esPostFsr.listContributionsToAvgSF_v2(*effRef,*effSrc,0,
+			      "hRhoChk"+tag,"hRhoChk"+tag,drhoMin,drhoMax,
+						   "src"+tag)) {
+	  std::cout << "error in the code\n";
+	  return;
+	}
+      }
       if (0) {
 	std::cout << "\nChecking contributions to the syst.unc\n";
 	const DYTnPEff_t *effRef=coll.getTnPWithStatUncPtr();

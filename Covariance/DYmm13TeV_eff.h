@@ -14,6 +14,39 @@ namespace DYtools {
 #endif
 
 // -------------------------------------------------------------
+inline
+  int GetRange_from_FlatIndex(const TH2D* h2BinDefs, int flatIdx,
+			      double &xMin, double &xMax,
+			      double &yMin, double &yMax,
+			      int returnIdx=0)
+{
+  xMin=-999; xMax=999;
+  yMin=-999; yMax=999;
+  int found=0;
+  for (int ibin=1; !found && (ibin<=h2BinDefs->GetNbinsX()); ibin++) {
+    for (int jbin=1; !found && (jbin<=h2BinDefs->GetNbinsY()); jbin++) {
+      int fi= (jbin-1) + (ibin-1)*h2BinDefs->GetNbinsY();
+      if (fi==flatIdx) {
+	found=1;
+	if (!returnIdx) {
+	  xMin= h2BinDefs->GetXaxis()->GetBinLowEdge(ibin);
+	  xMax= h2BinDefs->GetXaxis()->GetBinWidth(ibin) + xMin;
+	  yMin= h2BinDefs->GetYaxis()->GetBinLowEdge(jbin);
+	  yMax= h2BinDefs->GetYaxis()->GetBinWidth(jbin) + yMin;
+	}
+	else {
+	  xMin=ibin; xMax=ibin+1;
+	  yMin=jbin; yMax=jbin+1;
+	}
+      }
+    }
+  }
+  if (!found) std::cout << "GetRange_from_FlatIndex: failed @ flatIdx="
+			<< flatIdx << "\n";
+  return found;
+}
+
+// -------------------------------------------------------------
 
 inline
   int FlatIndex(const TH2D* h2BinDefs, double eta, double pt, int allowOverflow) {
@@ -346,7 +379,7 @@ public:
 
   int checkBinning() const;
   void printNumbers(TString fileTag="") const;
-  void displayAll() const;
+  void displayAll(int reallyAll=0) const;
   void displayEffTot(int data_or_mc= 1+2, TString tag="", int hlt4p3=-1,
 		     int misc=_misc_empty) const;
   void plotProfiles(int idxOnly=-1,
@@ -438,7 +471,7 @@ public:
   int symmetrize(); // symmetrize all efficiencies
 
   //void printNumbers() const;
-  void displayAll(int includeSrc=0) const;
+  void displayAll(int includeSrc=0, int reallyAll=0) const;
   //void plotProfiles(int skipGap, int plotVsPt) const;
   void listNumbers(int includeSrc=0) const;
 
@@ -544,6 +577,11 @@ public:
 
   TH1D* calculateScaleFactor(const DYTnPEff_t &eff, int hlt4p3,
 			     TString hName, TString hTitle) const;
+  TH1D* calculateScaleFactor_contr(const DYTnPEff_t &eff, int hlt4p3,
+				   TString hName, TString hTitle,
+				   std::vector<TH2D*> &h2contrV,
+				   TString h2nameTag,
+				   double threshold=1e-4) const;
   TH1D* calculateScaleFactor_misc(const DYTnPEff_t &eff, int miscFlag,
 				  TString hName, TString hTitle,
 				  int followFIBin1=0, int followFIBin2=0,
@@ -558,6 +596,14 @@ public:
 				int hlt4p3,
 				TString hNameBase, TString hTitleBase,
 				double contrMin, double contrMax) const;
+
+  // relies on calculateScaleFactor_contr
+  int listContributionsToAvgSF_v2(const DYTnPEff_t &effRef,
+				  const DYTnPEff_t &effAlt,
+				  int hlt4p3,
+				  TString hNameBase, TString hTitleBase,
+				  double contrMin, double contrMax,
+				  TString tag) const;
 
   void displayAll() const;
   void listAll() const;
