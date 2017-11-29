@@ -566,5 +566,95 @@ flag, whether the efficiencies should be symmetrized. It also tags
 the files with this version. The macro should be run with values,
 e.g.\ (2000,0,-1,1, 1 [recreate], 1 [symmetrize]).
 
+
+% -----------------------------------------------------
+\subsection{Restarting evaluation}
+\textit{Started on Nov 28, 2017}
+
+Working in DYee2015-20171128-rhoSyst-newCombi/Covariance on 'supercomp'.
+
+\medskip
+
+Since a new set of the uncertainties was released by Kyeongpil and
+Ridhi, and I have to answer Ridhi about the ESF uncertainties, I
+started from ESF systematics.
+
+The code
+\begin{verbatim}
+.x calcRhoRndVec_ee_syst2.C+(200,0,1111,1,1,0)
+\end{verbatim}
+requires an input file \myund{dyee_effSyst_RECO.root}, and probably
+the rest as well. This file is produced by a macro
+\myund{plotDYeeESF.C}:
+\begin{verbatim}
+.x plotDYeeESF.C+("RECO",1,1,0) # showPlots=1,save=1,altSet=0(not RC)
+\end{verbatim}
+altSet=1 required \myund{RC_eleRECO_Final.txt}, so I decided to go
+with my efficiencies, since as far as I recall, the values were the
+same.
+
+
+Having prepared \myund{dyee_effSyst_RECO.root},
+\myund{dyee_effSyst_ID.root}, \myund{dyee_effSyst_HLT.root}, I ran the
+macro \myund{calcRhoRndVec_ee_syst2.C}\ again (with $-1$ instead of
+1111), and had to also copy the file
+\myund{dyee_test_dressed_ElMay2017false.root}. Then I was able to
+obtain the randomized rho's, but because of the flag, different
+sources of systematic uncertainties were not separated.
+
+The macro created a file dyee-rho-syst2.root, containing several
+histograms:
+\begin{verbatim}
+TFile**		dyee-rho-syst2.root
+ TFile*		dyee-rho-syst2.root
+  KEY: TH1D	h1rho_stat;1	h1rho_stat
+  KEY: TH1D	h1rho_bkgPdf;1	h1rho_bkgPdf
+  KEY: TH1D	h1rho_sigPdf;1	h1rho_sigPdf
+  KEY: TH1D	h1rho_NLOvsLO;1	h1rho_NLOvsLO
+  KEY: TH1D	h1rho_tag;1	h1rho_tag
+  KEY: TObjString	timeTag;1	Collectable string class
+\end{verbatim}
+
+This file is subsequently used by studyDYeeCS.C. To be able to run as
+\myund{studyDYeeCS.C+(_varRhoSyst,10,0)} (nSamples=10, save=0), I had
+to copy the file \myund{cs_DYee_13TeV_ElMay2017false.root}.
+
+Since my uncertainties are smaller than those provided by Ridhi, I
+would like to make sure that I correctly include the sources. A
+possible problem would be that I include only one kind of systematic
+uncertainty for a particular source (e.g.\ only RECO uncertainty for
+tag dependency).
+
+The function is createEffCollection, defined in \myund{DYmm13TeV_eff.cc}.
+I could not find any problem with effCollection.
+It seems that all alternative tables are included as they are supposed
+to.
+
+Another question is whether
+\myund{coll.randomizeByKind(int(DYTnPEffColl_t::_rnd_ampl),tag,iSrc,1,1);}\
+indeed produces an alternative table. I looked at the numbers, they
+seem reasonable (the checked cases agree with the input txt file).
+
+\textit{Continued from Nov 29, 2017.}
+
+I decided to check my contributions. I wrote a new methods with the
+top-most \myund{EventSpace_t::listContributionsToAvgSF_v2}\ that
+relies on \myund{EventSpace_t::calculateScaleFactor_contr}.
+Eventually I got suspicious about my code. Resolving indices and
+ranges was successful. I use \myund{EventSpace_t::fill}\ with
+unmodified flat indices which would return 0 for the lowest
+$(p_T,\eta)=(-2.5..-2.0,10-20)$ bin. The maximum unmodified flat index
+value 49 is for the highest bin $(2.0-2.5,50-2000)$. Since the axes of
+\myund{EventSpace_t::fh2ESV}\ are from $-0.5$ to
+$\mathrm{DYtools::EtaPtFIMax}+0.5$, which is from $-0.5$ to $51.5$, I
+should disregard overflowing values.
+
+The conclusion was that I cannot see a problem in my code.
+
+
+
+% ------------------
+
+
 \end{document}
 
