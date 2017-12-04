@@ -844,8 +844,9 @@ TString makeNumberStr(int idx, int digits);
 
 template<class type_t>
 inline
-void nullPtr(type_t *ptr)
+void nullPtr(type_t *ptr, const char *name=NULL)
 {
+  if (name) std::cout << name << " ";
   if (!ptr) std::cout << "nullPtr: ptr is null" << std::endl;
   else std::cout << "nullPtr: ptr is non-null" << std::endl;
 }
