@@ -24,6 +24,7 @@ TString versionName(TVersion_t ver)
   case _verMu76X: name="Mu76X"; break;
   case _verMuApproved: name="MuApproved"; break;
   case _verMuMay2017: name="MuMay2017"; break;
+  case _verMuNov2017: name="MuNov2017"; break;
   case _verEl1: name="El1"; break;
   case _verEl2: name="El2"; break;
   case _verEl2skim: name="El2skim"; break;
@@ -34,6 +35,8 @@ TString versionName(TVersion_t ver)
   case _verEl3mb42: name="El3mb42"; break;
   case _verElMay2017: name="ElMay2017"; break;
   case _verElMay2017false: name="ElMay2017false"; break;
+  case _verElNov2017: name="ElNov2017"; break;
+  case _verElNov2017false: name="ElNov2017false"; break;
   default:
     std::cout << "versionName is not ready for this version type\n";
   }
@@ -48,12 +51,14 @@ int leptonIdx(TVersion_t v) {
   case _verUndef: i=-1;
     break;
   case _verMu1: case _verMu76X: case _verMuApproved: case _verMuMay2017:
+  case _verMuNov2017:
     i=1;
     break;
   case _verEl1: case _verEl2: case _verEl2skim: case _verEl2skim2:
   case _verEl2skim3: case _verEl3:
   case _verEl3mb41: case _verEl3mb42:
   case _verElMay2017: case _verElMay2017false:
+  case _verElNov2017: case _verElNov2017false:
     i=0;
     break;
   default:

@@ -30,12 +30,13 @@
 // -----------------------------------------------------------
 
 typedef enum { _verUndef=0, _verMu1=100, _verMu76X=101, _verMuApproved=102,
-	       _verMuMay2017=103,
+	       _verMuMay2017=103, _verMuNov2017=104,
 	       _verEl1=200,
 	       _verEl2=201, _verEl2skim=202, _verEl2skim2=203,
 	       _verEl2skim3=204,
 	       _verEl3=301, _verEl3mb41=302, _verEl3mb42=303,
-	       _verElMay2017=304, _verElMay2017false=305
+	       _verElMay2017=304, _verElMay2017false=305,
+	       _verElNov2017=306 , _verElNov2017false=307
 } TVersion_t;
 
 typedef enum { _subverUndef=0, _subver1=1, _subver2=2, _subver3=3,
