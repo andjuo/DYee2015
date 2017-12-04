@@ -651,6 +651,46 @@ should disregard overflowing values.
 
 The conclusion was that I cannot see a problem in my code.
 
+% ------------
+\bigskip
+
+\textit{Continued since Nov 30, 2017}
+
+Step 1. Introduced new \myund{TVersion_t}\ values: \myund{_verMuNov2017},
+\myund{_verElNov2017}, and \myund{_verElNov2017false}. This affected
+the module 'inputs'.
+
+Step 2. Adapting muon input. The main inputs are the same, so
+\myund{createCSInput_DYmm13TeV.C}\ required minimal modification,
+since only the uncertainties have to be changed. The diboson
+backgrounds have the same structure as in \myund{_verMuMay2017}. This
+had to be taken into account in the code.
+
+I will postpone modification of \myund{work13TeV_corr.C}\ until later.
+
+Step 3. Adapting electron input. I have to update
+\myund{createCSInput_DYe13TeV.C}. I think Ridhi did not provide the
+latest evaluation of the background. So I will use earlier versions
+and see what I get. The problem is that the final cross section
+\textit{is} provided. I have added inpSubVer key to read the cross
+section from a separate file.
+
+Step 4. Adaptation of \myund{work13TeV_corr.C}.
+I introduced working version \myund{_verMuNov2017}.
+I thought I found a bug, since \myund{_varRhoFile}\ was used alongside
+with \myund{_varRhoFileSyst}, while it seems that
+\myund{_varRhoFileSyst}\ is created by the same code as the
+varRhoFile, however, this is taken case in the adjustxxUnc.
+I also had to modify input files in adjustMMUnc and adjustEEUnc.
+
+I ran the code with \myund{work13TeV_corr.C+(0,1,1,1,0,"",0,1)}.
+
+Step 5. I also added saving of the inputs for the BLUE method to a separate
+directory, \myund{BLUE_inp}.
+I also created a file testBLUE.C that reads this input and tries to
+recombine.
+
+Check was successful.
 
 
 % ------------------
