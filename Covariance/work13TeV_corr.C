@@ -49,6 +49,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   inpVer=_verMuMay2017; inpSubVer=_subver2;
   inpVer=_verMuMay2017; inpSubVer=_subver3;
   //inpVer=_verElMay2017false;
+  inpVer=_verMuNov2017; inpSubVer=_subver1;
 
   eeCSHisto1DName="h1PreFSRCS";
   mmCSHisto1DName="h1CS";
@@ -57,13 +58,17 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     eeCSFName="cs_DYee_13TeV_El3.root";
     mmCSFName="cs_DYmm_13TeVMuApproved_cs.root";
   }
-  if (inpVer==_verMuMay2017) {
+  else if (inpVer==_verMuMay2017) {
     eeCSFName="cs_DYee_13TeV_ElMay2017.root";
     mmCSFName="cs_DYmm_13TeVMuMay2017_cs.root";
   }
-  if (inpVer==_verElMay2017false) {
+  else if (inpVer==_verElMay2017false) {
     eeCSFName="cs_DYee_13TeV_ElMay2017false.root";
     mmCSFName="cs_DYmm_13TeVMuMay2017_cs.root";
+  }
+  else if (inpVer==_verMuNov2017) {
+    eeCSFName="cs_DYee_13TeV_ElNov2017false.root";
+    mmCSFName="cs_DYmm_13TeVMuNov2017_cs.root";
   }
 
   std::string showCanvs;
@@ -109,6 +114,8 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 		  _varRhoFile, _varAcc, _varFSRRes, _varTheory);
     }
     if (includeRhoSyst) { // symm case is managed by file names
+      // if _varRhoSystFile is present, the uncertainty is handled
+      // in adjustXXUnc functions
       addToVector(eeCovIdx,1,_varRhoSystFile);
       addToVector(mmCovIdx,1,_varRhoSystFile);
     }
@@ -158,6 +165,18 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
     //mmOldFName.push_back("cov_mumu_varRhoFile_2000.root");
     //mmNewFName.push_back("cov_mumu_varRhoFile_5000.root");
   }
+  else if (changeNames && (inpVer==_verMuNov2017)) {
+    eeOldFName.push_back("cov_ee_ElMay2017_varYield_2000.root");
+    eeNewFName.push_back("cov_ee_ElMay2017_varYieldPoisson_2000.root");
+    eeOldFName.push_back("cov_ee_ElMay2017_varRhoSystFile_2000.root");
+    eeNewFName.push_back("cov_ee_ElMay2017false_varRhoSystFile_2000.root");
+    //eeOldFName.push_back("cov_ee_varRhoFile_2000.root");
+    //eeNewFName.push_back("cov_ee_varRhoFile_5000.root");
+    mmOldFName.push_back("cov_mumu_varYield_2000.root");
+    mmNewFName.push_back("cov_mumu_varYieldPoisson_2000.root");
+    //mmOldFName.push_back("cov_mumu_varRhoFile_2000.root");
+    //mmNewFName.push_back("cov_mumu_varRhoFile_5000.root");
+  }
 
   if (modifyAccUnc) {
     eeOldFName.push_back("cov_ee_ElMay2017_varTheory_2000.root");
@@ -176,7 +195,7 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   for (unsigned int i=0; i<eeCovIdx.size(); i++) {
     TVaried_t var= TVaried_t(eeCovIdx[i]);
     TString fname = "cov_ee_";
-    if (inpVer==_verMuMay2017) {
+    if ((inpVer==_verMuMay2017) || (inpVer==_verMuNov2017)) {
       fname.Append(versionName(_verElMay2017) + "_");
     }
     else if (inpVer==_verElMay2017false) {
@@ -332,8 +351,13 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
   TMatrixD eeCovTot(eeCovS.Sum());
   TMatrixD mmCovTot(mmCovS.Sum());
 
+  TMatrixD eeCovTot_noLumi(eeCovTot);
+  TMatrixD mmCovTot_noLumi(mmCovTot);
+  TMatrixD emCovTot_noLumi(emCovTot);
+
   double lumiUnc=0.026;
-  if ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)) {
+  if ((inpVer==_verMuMay2017) || (inpVer==_verElMay2017false)
+      || (inpVer==_verMuNov2017)) {
     lumiUnc=0.023;
   }
 
@@ -383,11 +407,12 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 		showCombinationCanvases,internalScale,&ccOpt);
   if (!blue) { std::cout << "failed to get BLUE result\n"; return; }
 
+  TH1D *h1csLL_test= convert2histo1D(*blue->getEst(),*blue->getCov(),
+				     "h1csLL_test","h1csLL test",h1csEE_tmp);
+  setNiceMassAxisLabel(h1csLL_test,2,0,"",1,"",1+0*2);
+
   if (includeLumiUnc) {
     TMatrixD totFinalCov(*blue->getCov());
-    TH1D *h1csLL_test= convert2histo1D(*blue->getEst(),totFinalCov,
-				       "h1csLL_test","h1csLL test",h1csEE_tmp);
-    setNiceMassAxisLabel(h1csLL_test,2,0,"",1,"",1+0*2);
     if (!addLumiCov(totFinalCov,-lumiUnc,h1csLL_test)) return;
     plotCovCorr(totFinalCov,NULL,"h2finCovNoLumi","cFinCovNoLumi",
 		PlotCovCorrOpt_t(1,1,0));
@@ -424,6 +449,21 @@ void work13TeV_corr(int printCanvases=0, int corrCase=1, int includeLumiUnc=0,
 	std::cout << "failed to get histos from canvas\n";
       }
     }
+
+    if (1) {
+      // save inputs to BLUE method
+      fout.mkdir("BLUE_inp");
+      fout.cd("BLUE_inp");
+      eeCovTot_noLumi.Write("covTotEE_noLumi");
+      mmCovTot_noLumi.Write("covTotMM_noLumi");
+      emCovTot_noLumi.Write("covTotEM_noLumi");
+      lumiCov.Write("covTotLumi");
+      h1csEE_tmp->Write("h1csEE");
+      h1csMM_tmp->Write("h1csMM");
+      h1csLL_test->Write("h1csLL");
+      fout.cd();
+    }
+
     writeTimeTag(&fout);
     fout.Close();
     std::cout << "file <" << fout.GetName() << "> created\n";
@@ -457,6 +497,9 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
       std::cout << "version3\n";
     }
   }
+  else if (inpVer==_verMuNov2017) {
+    inpFile="./ROOTFile_Input_Cov_v4-KPLee20171124.root";
+  }
 
   TH1D *h1csMM= cloneHisto(h1csMM_loc,"h1csMM","h1csMM");
   if (0) {
@@ -482,6 +525,7 @@ int adjustMMUnc(const finfomap_t &mmCovFNames,
     mmUncSyst[_varBkg]= "h_RelUnc_Syst";
     relUncW  [_varBkg]= 0.01;
   }
+  //if (inpVer==_verMuNov2017) relUncW[_varBkg]=100;
   mmUncFiles[_varDetRes]= inpFile;
   mmUncStat [_varDetRes]= "h_RelUnc_Stat_DetRes";
   mmUncSyst [_varDetRes]= "h_RelUnc_Syst_DetRes";
@@ -577,6 +621,9 @@ int adjustEEUnc(const finfomap_t &eeCovFNames,
     //inpFile="DYee_ROOTFile_Input_v1-20170518.root";
     //inpFile="./DYee_ROOTFile_Input_v2-20170526.root";
     inpFile="./DYee_ROOTFile_Input_v3-20170529.root";
+  }
+  else if (inpVer==_verMuNov2017) {
+    inpFile="./ROOTFile_Input_Electron_v4_RC20171128.root";
   }
   if (inpSubVer==_subverUndef) { ; } // subver has no effect
 
