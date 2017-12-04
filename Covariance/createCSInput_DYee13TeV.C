@@ -15,10 +15,13 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
   bool forceOverflow=false;
 
   TVersion_t inpVer=_verEl1;
+  TSubVersion_t inpSubVer=_subver1;
   inpVer=_verEl2;
   inpVer=_verEl3;
   inpVer=_verElMay2017;
   inpVer=_verElMay2017false;
+  inpVer=_verElNov2017false;
+  inpSubVer=_subver2; // take the final cs from another file
 
   if (inpVer==_verEl2) {
     srcPath="/mnt/sdb/andriusj/v2_08082016_CovarianceMatrixInputs/";
@@ -40,6 +43,14 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
     setNiters_FSR=21;
     forceOverflow=true;
     if (inpVer==_verElMay2017false) forceOverflow=false;
+  }
+  else if ((inpVer==_verElNov2017) || (inpVer==_verElNov2017false)) {
+    srcPath="/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/";
+    lumiTot=2258.066; // new value
+    setNiters_detRes=21;
+    setNiters_FSR=21;
+    forceOverflow=true;
+    if (inpVer==_verElNov2017false) forceOverflow=false;
   }
 
   TString inpVerTag= versionName(inpVer);
@@ -81,7 +92,8 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
     h1ZZ->Reset();
   }
   else if ((inpVer==_verEl2) || (inpVer==_verEl3) || (inpVer==_verElMay2017) ||
-	   (inpVer==_verElMay2017false)) {
+	   (inpVer==_verElMay2017false) ||
+	   (inpVer==_verElNov2017) || (inpVer==_verElNov2017false)) {
     h1WZ= loadHisto(fname2, "h_WZ", "h1WZ", 1,h1dummy);
     h1ZZ= loadHisto(fname2, "h_ZZ", "h1ZZ", 1,h1dummy);
     if (!h1WZ || !h1ZZ) {
@@ -163,6 +175,15 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
     hNameMap[_varEffAcc]= "h_AccEff";
     hNameMap[_varLast]= "h_diffXsec_Meas";
   }
+  else if ((inpVer==_verElNov2017) || (inpVer==_verElNov2017false)) {
+    hNameMap[_varDetRes]= "Unfold_DetectorRes";
+    hNameMap[_varFSRRes]= "Unfold_FSRCorr";
+    hNameMap[_varEff]= "h_Eff";
+    hNameMap[_varRho]= "h_EffSF";
+    hNameMap[_varAcc]= "h_Acc";
+    hNameMap[_varEffAcc]= "h_AccEff";
+    hNameMap[_varLast]= "h_diffXsec_Meas";
+  }
   else {
     std::cout << "code (hNameMap) is not ready for this inpVer\n";
     return;
@@ -185,14 +206,25 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
   if (!rooUnfDetRes || !rooUnfFSRRes) return;
   if (!h1Acc || !h1Eff || !h1EffAcc || !h1Rho || !h1_DiffXSec_data) return;
 
+  if (((inpVer==_verElNov2017) || (inpVer==_verElNov2017false)) &&
+      (inpSubVer==_subver2)) {
+    std::cout << "\n\tSpecial case for " << versionName(inpVer)
+	      << subVersionName(inpSubVer) << "\n";
+    if (0) h1_DiffXSec_data= loadHisto("/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/DiffXsec_Electron_v7_RC20171128.root","h_DiffXSec","h1RC_xsec_spec", 1,h1dummy);
+    else  h1_DiffXSec_data= loadHisto("/media/sf_CMSData/DY13TeV-CovInputs/v20170518_Input_Cov_ee/ROOTFile_Input_Electron_v4_RC20171128.root","h_DiffXSec","h1RC_xsec_spec", 1,h1dummy);
+    if (!h1_DiffXSec_data) return;
+  }
+
   //if (rooUnfFSRRes && (inpVer==_verEl3)) {
   //  std::cout << "\n\tscaling rooUnfFSRRes by luminosity\n";
   //  rooUnfFSRRes->Scale(lumiTot);
   //}
 
   if (0 &&
-      ((inpVer==_verEl3) || (inpVer==_verElMay2017) ||
-       (inpVer==_verElMay2017false))) {
+      ((inpVer==_verEl3) ||
+       (inpVer==_verElMay2017) || (inpVer==_verElMay2017false) ||
+       (inpVer==_verElNov2017) || (inpVer==_verElNov2017false)
+       )) {
     std::cout << "\n\nReplacing h1EffAcc with my version\n";
     TFile finAJ("dyee_test_dressed_" + versionName(inpVer) + TString(".root"));
     if (!finAJ.IsOpen()) {
@@ -261,7 +293,8 @@ void createCSInput_DYee13TeV(int doSave=0, int printHistosAtTheEnd=0)
   }
 
 
-  if (inpVer==_verElMay2017) {
+  if ((inpVer==_verElMay2017) || (inpVer==_verElMay2017false) ||
+      (inpVer==_verElNov2017) || (inpVer==_verElNov2017false)) {
     nullifyOverflow(h1Yield);
     nullifyOverflow(h1BkgTot);
     printHisto(h1Yield,1);

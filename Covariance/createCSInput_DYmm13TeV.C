@@ -42,8 +42,9 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0,
     fname6Base="ROOTFile_Input6_CrossCheck.root";
   }
   else if (1) {
-    srcPath="/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov/";
+    srcPath="/media/sf_CMSData/DY13TeV-CovInputs/v20170504_Input_Cov_mm/";
     inpVer=_verMuMay2017;
+    inpVer=_verMuNov2017;
     inpVerTag=versionName(inpVer);
     lumi42=843.404;
     lumiTot=2759.017;
@@ -171,7 +172,8 @@ void createCSInput_DYmm13TeV(int doSave=0, int removeNegativeSignal=0,
     std::cout << "b=" << bkgName(b) << "\n";
     TString histoBkgName="h_"+bkgName(b);
     TH1D *h1=NULL;
-    if ((inpVer==_verMuMay2017) && ((b==_bkgZZ) || (b==_bkgWZ))) {
+    if (((inpVer==_verMuMay2017) || (inpVer==_verMuNov2017))
+	&& ((b==_bkgZZ) || (b==_bkgWZ))) {
       TString tmpName="h_"+bkgName(b) + "_HLTv4p2";
       TH1D *h1a= loadHisto(fin2, tmpName, tmpName,1,h1Dummy);
       tmpName.ReplaceAll("4p2","4p3");
