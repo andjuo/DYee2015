@@ -113,7 +113,7 @@ void testBLUE(int includeLumiUnc=1)
       h1csLL_orig->SetMarkerStyle(24);
       plotHistoSame(h1csLL_orig,"cCombiCS","LPE","\\ell\\ell\\ orig");
       TH1D *h1csLL_origErr= errorAsCentral(h1csLL_orig,0);
-      plotHistoSame(h1csLL_origErr,"cErr","LP","\\ell\ell\\ orig");
+      plotHistoSame(h1csLL_origErr,"cErr","LP","\\ell\\ell\\ orig");
     }
   }
 }
