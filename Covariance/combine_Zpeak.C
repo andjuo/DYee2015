@@ -164,6 +164,36 @@ void combine_Zpeak(int theCase=1, int subVer=0)
       addToVector(labelV,"lumi");
     }
   }
+  else if ((subVer==3) && valueEquals(theCase,"13 1313 131313 130 -13")) {
+    // DY 13TeV. 2017.Dec.05
+    // ee: 1949 +- 2 (stat) +- 96 (exp.syst) +- 47 (theo) +- 45 (lumi) pb
+    // mm: 1907 +- 1 (Stat) +- 25 (exp.syst) +- 37 (theo) +- 44 (lumi) pb
+    dLumiRel=0.023;
+    sigmaZee= 1949.0;
+    addToVector(dSigmaEE,2, 2.,96.);
+    sigmaZmm= 1907.0;
+    addToVector(dSigmaMM,2, 1.,25.);
+    addToVector(dSigmaEM,2, 0.,0.);
+    addToVector(labelV,"stat expSyst");
+    if (theCase==-13) {
+      dSigmaEE.clear(); addToVector(dSigmaEE,1, 2.);
+      dSigmaMM.clear(); addToVector(dSigmaMM,1, 1.);
+      dSigmaEM.clear(); addToVector(dSigmaEM,1, 0.);
+      labelV.clear(); addToVector(labelV,"stat");
+    }
+    if ((theCase==130) || (theCase==131313)) {
+      addToVector(dSigmaEE,1, 47.);
+      addToVector(dSigmaMM,1, 37.);
+      addToVector(dSigmaEM,1, sqrt(47.*37.));
+      addToVector(labelV,"th.syst");
+    }
+    if ((theCase==1313) || (theCase==131313)) {
+      addToVector(dSigmaEE,1,round(sigmaZee*dLumiRel));
+      addToVector(dSigmaMM,1,round(sigmaZmm*dLumiRel));
+      addToVector(dSigmaEM,1,sqrt(dSigmaEE.back()*dSigmaMM.back()));
+      addToVector(labelV,"lumi");
+    }
+  }
   else {
     std::cout << "not ready for case " << theCase << "\n";
     return;
